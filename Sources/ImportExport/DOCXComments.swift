@@ -26,25 +26,35 @@ struct DOCXCommentsWriter {
         let end = (ends[paragraphID]?[offset] ?? []).map { "<w:commentRangeEnd w:id=\"\($0)\"/><w:r><w:commentReference w:id=\"\($0)\"/></w:r>" }.joined()
         return start + end
     }
+    private func paragraphID(_ index: Int) -> String { String(format: "%08X", index + 1) }
+    var extendedXML: String {
+        let values = comments.enumerated().map { index, comment in
+            "<w15:commentEx w15:paraId=\"\(paragraphID(index))\" w15:done=\"\(comment.resolved ? 1 : 0)\"/>"
+        }.joined()
+        return "<w15:commentsEx xmlns:w15=\"http://schemas.microsoft.com/office/word/2012/wordml\">\(values)</w15:commentsEx>"
+    }
     var xml: String {
         let contents = comments.enumerated().map { id, comment in
-            let paragraphs = comment.text.components(separatedBy: "\n").map { text in
-                "<w:p><w:r><w:t xml:space=\"preserve\">\(DOCX.xml(text))</w:t></w:r></w:p>"
+            let lines = comment.text.components(separatedBy: "\n")
+            let paragraphs = lines.enumerated().map { index, text in
+                let identifier = index == lines.count - 1 ? " w14:paraId=\"\(paragraphID(id))\"" : ""
+                return "<w:p\(identifier)><w:r><w:t xml:space=\"preserve\">\(DOCX.xml(text))</w:t></w:r></w:p>"
             }.joined()
             return "<w:comment w:id=\"\(id)\" w:author=\"\(DOCX.xml(comment.author))\">\(paragraphs)</w:comment>"
         }.joined()
-        return "<w:comments xmlns:w=\"\(DOCX.wordNS)\">\(contents)</w:comments>"
+        return "<w:comments xmlns:w=\"\(DOCX.wordNS)\" xmlns:w14=\"http://schemas.microsoft.com/office/word/2010/wordml\" xmlns:mc=\"http://schemas.openxmlformats.org/markup-compatibility/2006\" mc:Ignorable=\"w14\">\(contents)</w:comments>"
     }
 }
 
 final class DOCXCommentsReader: NSObject, XMLParserDelegate {
-    struct Value { let id: String; let text: String; let author: String }
+    struct Value { let id: String; let text: String; let author: String; let paragraphID: String? }
     var values: [Value] = []
-    private var id: String?, author = "", text = "", collecting = false
+    private var id: String?, paragraphID: String?, author = "", text = "", collecting = false
     func parser(_ parser: XMLParser, didStartElement name: String, namespaceURI: String?, qualifiedName: String?, attributes a: [String: String]) {
         guard namespaceURI == DOCX.wordNS else { return }
         switch name {
-        case "comment": id = a["w:id"] ?? a["id"]; author = a["w:author"] ?? a["author"] ?? ""; text = ""
+        case "comment": id = a["w:id"] ?? a["id"]; author = a["w:author"] ?? a["author"] ?? ""; text = ""; paragraphID = nil
+        case "p": if id != nil { paragraphID = a["w14:paraId"]?.uppercased() }
         case "t": collecting = id != nil
         case "tab": if id != nil { text += "\t" }
         case "br": if id != nil { text += "\n" }
@@ -58,9 +68,20 @@ final class DOCXCommentsReader: NSObject, XMLParserDelegate {
         case "t": collecting = false
         case "p": if id != nil { text += "\n" }
         case "comment":
-            if let id { values.append(Value(id: id, text: text.hasSuffix("\n") ? String(text.dropLast()) : text, author: author)) }
+            if let id { values.append(Value(id: id, text: text.hasSuffix("\n") ? String(text.dropLast()) : text, author: author, paragraphID: paragraphID)) }
             id = nil; collecting = false
         default: break
         }
+    }
+}
+
+/// Word 2013's commentEx joins to the final comment paragraph through w14:paraId.
+final class DOCXCommentResolutionReader: NSObject, XMLParserDelegate {
+    var resolved: [String: Bool] = [:]
+    var hasReplies = false
+    func parser(_ parser: XMLParser, didStartElement name: String, namespaceURI: String?, qualifiedName: String?, attributes a: [String: String]) {
+        guard namespaceURI == "http://schemas.microsoft.com/office/word/2012/wordml", name == "commentEx", let id = a["w15:paraId"] ?? a["paraId"] else { return }
+        resolved[id.uppercased()] = ["1", "true", "on"].contains(a["w15:done"] ?? a["done"] ?? "0")
+        if a["w15:paraIdParent"] != nil || a["paraIdParent"] != nil { hasReplies = true }
     }
 }

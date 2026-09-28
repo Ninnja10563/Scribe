@@ -11,7 +11,6 @@ extension EditorWindowController {
         if ["txt", "md", "docx"].contains(format) {
             let alert = NSAlert(); alert.messageText = "Export a \(format.uppercased()) copy?"
             alert.informativeText = format == "txt" ? "Plain text removes all formatting, page layout, and document metadata. Your Scribe document is kept intact." : "This export preserves supported text formatting. Some Scribe metadata and layout features may not transfer. Your Scribe document is kept intact."
-            if format == "docx", model.comments.contains(where: { $0.resolved }) { alert.informativeText += " Resolved comments are exported as ordinary comments." }
             if format == "docx", model.comments.contains(where: { $0.isDetached == true }) { alert.informativeText += " Detached comments are retained in the package, but other editors may hide them." }
             alert.addButton(withTitle: "Export Copy"); alert.addButton(withTitle: "Cancel")
             guard alert.runModal() == .alertFirstButtonReturn else { return }

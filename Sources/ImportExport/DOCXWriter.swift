@@ -12,9 +12,9 @@ final class DOCXWriter {
     private let comments: DOCXCommentsWriter
     init(_ document: ScribeDocument) { self.document = document; numbering = DOCXNumberingWriter(paragraphs: document.paragraphs); comments = DOCXCommentsWriter(document: document) }
     private func put(_ path: String, _ xml: String) { parts[path] = Data(xml.utf8) }
-    private func relationship(type: String, target: String, external: Bool = false) -> String {
+    private func relationship(type: String, target: String, external: Bool = false, namespace: String = DOCX.relationNS) -> String {
         let id = "rId\(nextID)"; nextID += 1
-        relationships.append("<Relationship Id=\"\(id)\" Type=\"\(DOCX.relationNS)/\(type)\" Target=\"\(DOCX.xml(target))\"\(external ? " TargetMode=\"External\"" : "")/>")
+        relationships.append("<Relationship Id=\"\(id)\" Type=\"\(namespace)/\(type)\" Target=\"\(DOCX.xml(target))\"\(external ? " TargetMode=\"External\"" : "")/>")
         return id
     }
     func encode() throws -> Data {
@@ -65,6 +65,9 @@ final class DOCXWriter {
         if !document.comments.isEmpty {
             put("word/comments.xml", comments.xml)
             _ = relationship(type: "comments", target: "comments.xml")
+            put("word/commentsExtended.xml", comments.extendedXML)
+            _ = relationship(type: "commentsExtended", target: "commentsExtended.xml", namespace: "http://schemas.microsoft.com/office/2011/relationships")
+            overrides.append("<Override PartName=\"/word/commentsExtended.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.wordprocessingml.commentsExtended+xml\"/>")
             overrides.append("<Override PartName=\"/word/comments.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.wordprocessingml.comments+xml\"/>")
         }
         put("word/settings.xml", "<w:settings xmlns:w=\"\(DOCX.wordNS)\"><w:updateFields w:val=\"true\"/></w:settings>")

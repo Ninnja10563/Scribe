@@ -19,15 +19,17 @@ public enum DOCX {
         let files = try ZipArchive.decode(data)
         guard let content = files["word/document.xml"] else { throw DocumentError.invalid("DOCX has no main document part") }
         let delegate = WordReader(); delegate.files = files
+        var partTargets: [String: String] = [:]
         if let rels = files["word/_rels/document.xml.rels"] {
-            let reader = RelationshipReader(); try parse(rels, delegate: reader); delegate.links = reader.links; delegate.targets = reader.targets
+            let reader = RelationshipReader(); try parse(rels, delegate: reader); delegate.links = reader.links; delegate.targets = reader.targets; partTargets = reader.partTargets
         }
-        if let styles = files["word/styles.xml"] {
+        func part(_ name: String, namespace: String = DOCX.relationNS) -> Data? { files["word/" + (partTargets[namespace + "/" + name] ?? name + ".xml")] }
+        if let styles = part("styles") {
             let reader = StyleReader(); try parse(styles, delegate: reader)
             for style in reader.styles { delegate.document.updateStyle(style) }
             delegate.styleLists = reader.resolvedLists
         }
-        if let numbering = files["word/numbering.xml"] { try parse(numbering, delegate: delegate.numbering) }
+        if let numbering = part("numbering") { try parse(numbering, delegate: delegate.numbering) }
         try parse(content, delegate: delegate)
         delegate.warnings.formUnion(delegate.numbering.warnings)
         guard delegate.sawDocument else { throw DocumentError.invalid("missing Word document root") }
@@ -36,7 +38,10 @@ public enum DOCX {
         for p in delegate.paragraphs where !delegate.document.styles.contains(where: { $0.id == p.styleID }) {
             delegate.document.updateStyle(ParagraphStyle(id: p.styleID, name: p.styleID))
         }
-        if let data = files["word/comments.xml"] {
+        let resolutions = DOCXCommentResolutionReader()
+        if let data = part("commentsExtended", namespace: "http://schemas.microsoft.com/office/2011/relationships") { try parse(data, delegate: resolutions) }
+        if resolutions.hasReplies { delegate.warnings.insert("Comment replies are imported as separate comments; thread hierarchy is not retained.") }
+        if let data = part("comments") {
             let reader = DOCXCommentsReader(); try parse(data, delegate: reader)
             let index = DocumentTextIndex(paragraphs: delegate.paragraphs)
             for value in reader.values {
@@ -48,6 +53,7 @@ public enum DOCX {
                     if let range = index.range(for: anchor) { anchor.length = range.length } else { detached = true }
                 }
                 var comment = Comment(anchor: anchor, text: value.text, author: value.author)
+                comment.resolved = value.paragraphID.flatMap { resolutions.resolved[$0] } ?? false
                 if detached { comment.isDetached = true }
                 delegate.document.comments.append(comment)
             }
@@ -55,8 +61,8 @@ public enum DOCX {
         if files.keys.contains(where: { $0.contains("footnotes") || $0.contains("endnotes") }) {
             delegate.warnings.insert("Footnotes and endnotes are not imported in this version.")
         }
-        if files.keys.contains(where: { $0.contains("commentsExtended") || $0.contains("commentsExtensible") }) {
-            delegate.warnings.insert("Modern comment threading and resolution metadata are not imported.")
+        if files.keys.contains(where: { $0.contains("commentsExtensible") }) {
+            delegate.warnings.insert("Newer comment identity and collaboration metadata are not imported.")
         }
         for (id, isHeader) in [(delegate.headerID, true), (delegate.footerID, false)] {
             guard let id, let target = delegate.targets[id], let data = files["word/" + target] else { continue }
@@ -71,7 +77,8 @@ public enum DOCX {
     static func parse(_ data: Data, delegate: XMLParserDelegate) throws {
         guard let xml = String(data: data, encoding: .utf8), !xml.localizedCaseInsensitiveContains("<!DOCTYPE") else { throw DocumentError.invalid("unsupported XML encoding or document type declaration") }
         let parser = XMLParser(data: data); parser.shouldProcessNamespaces = true
-        parser.shouldResolveExternalEntities = false; parser.delegate = delegate
+        let normalizer = OfficeXMLDelegate(receiver: delegate)
+        parser.shouldResolveExternalEntities = false; parser.shouldReportNamespacePrefixes = true; parser.delegate = normalizer
         guard parser.parse(), parser.parserError == nil else { throw DocumentError.invalid("malformed Office XML") }
     }
     static func xml(_ s: String) -> String {
@@ -131,11 +138,14 @@ private func applyParagraph(_ name: String, _ a: [String: String], _ f: inout Pa
     }
 }
 private class RelationshipReader: NSObject, XMLParserDelegate {
-    var links: [String: String] = [:], targets: [String: String] = [:]
+    var links: [String: String] = [:], targets: [String: String] = [:], partTargets: [String: String] = [:]
     func parser(_ parser: XMLParser, didStartElement name: String, namespaceURI: String?, qualifiedName: String?, attributes a: [String: String]) {
         if name == "Relationship", let id = a["Id"], let target = a["Target"] {
             if a["Type"]?.hasSuffix("/hyperlink") == true { links[id] = target }
-            else if a["TargetMode"] != "External", !target.hasPrefix("/"), !target.split(separator: "/").contains("..") { targets[id] = target }
+            else if a["TargetMode"] != "External", !target.hasPrefix("/"), !target.split(separator: "/").contains("..") {
+                targets[id] = target
+                if let type = a["Type"] { partTargets[type] = target }
+            }
         }
     }
 }
