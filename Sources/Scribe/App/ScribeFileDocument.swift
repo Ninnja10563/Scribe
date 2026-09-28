@@ -13,6 +13,9 @@ import ImportExport
     private var recoveryWork: DispatchWorkItem?
     private var isRestoring = false
     override class var autosavesInPlace: Bool { true }
+    override class var readableTypes: [String] { [typeName] }
+    override class var writableTypes: [String] { [typeName] }
+    override class func canConcurrentlyReadDocuments(ofType typeName: String) -> Bool { false }
     override init() { super.init(); hasUndoManager = true }
     override func makeWindowControllers() {
         let controller = EditorWindowController(document: self)

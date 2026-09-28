@@ -17,7 +17,7 @@ import ImportExport
         NSWindow.allowsAutomaticWindowTabbing = true
         MainMenu.install()
         NSApp.activate(ignoringOtherApps: true)
-        if CommandLine.arguments.contains("--smoke-test") { smokeTest(); return }
+        if CommandLine.arguments.contains("--smoke-test") { Task { await smokeTest() }; return }
         Task {
             let snapshots = (try? await ScribeFileDocument.recovery.snapshots()) ?? []
             for snapshot in snapshots {
@@ -46,7 +46,7 @@ import ImportExport
     @objc func showAbout() {
         NSApp.orderFrontStandardAboutPanel(options: [.applicationName: "Scribe", .applicationVersion: "0.2.0", .credits: NSAttributedString(string: "A native document workspace for macOS.\nEarly development release.")])
     }
-    private func smokeTest() {
+    private func smokeTest() async {
         do {
             let document = ScribeFileDocument()
             document.model.sections[0].paragraphs = [Paragraph("Scribe", style: "title"), Paragraph("A native document workspace", style: "subtitle"), Paragraph("A considered place to write", style: "heading1"), Paragraph("Scribe brings named styles, an outline, flowing pages and familiar macOS editing together. This document exercises the same layout used for PDF and printing.")]
@@ -79,6 +79,7 @@ import ImportExport
             try DOCX.encode(document.snapshot()).write(to: folder.appendingPathComponent("Smoke.docx"))
             let pages = controller.editor.textViews.count
             guard pages > 1 else { fatalError("Text did not paginate") }
+            try await Task.sleep(nanoseconds: 500_000_000)
             controller.window?.displayIfNeeded()
             if let view = controller.window?.contentView, let bitmap = view.bitmapImageRepForCachingDisplay(in: view.bounds) {
                 view.cacheDisplay(in: view.bounds, to: bitmap)

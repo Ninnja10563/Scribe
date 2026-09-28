@@ -166,7 +166,7 @@ import DocumentCore
         for container in layout.textContainers { container.containerSize = NSSize(width: settings.contentWidth, height: settings.contentHeight) }
         paginate()
     }
-    nonisolated func textStorage(_ textStorage: NSTextStorage, didProcessEditing editedMask: NSTextStorage.EditActions, range editedRange: NSRange, changeInLength delta: Int) {
+    nonisolated func textStorage(_ textStorage: NSTextStorage, didProcessEditing editedMask: NSTextStorageEditActions, range editedRange: NSRange, changeInLength delta: Int) {
         MainActor.assumeIsolated {
             let page = pageCharacterRanges.firstIndex { NSMaxRange($0) >= editedRange.location } ?? max(0, textViews.count - 1)
             firstDirtyPage = min(firstDirtyPage, max(0, page - 1))

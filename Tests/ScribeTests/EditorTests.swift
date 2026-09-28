@@ -57,11 +57,14 @@ import DocumentCore
     }
     func testNativeDocumentControllerCreatesAndReopensFile() throws {
         let controller = ScribeDocumentController()
+        print("Document lifecycle: creating untitled")
         let document = try controller.makeUntitledDocument(ofType: ScribeFileDocument.typeName) as! ScribeFileDocument
         document.model.sections[0].paragraphs = [Paragraph("Saved through NSDocument", style: "heading1")]
         let url = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".scribe")
         defer { try? FileManager.default.removeItem(at: url) }
+        print("Document lifecycle: writing")
         try document.write(to: url, ofType: ScribeFileDocument.typeName)
+        print("Document lifecycle: reopening")
         let reopened = try ScribeFileDocument(contentsOf: url, ofType: ScribeFileDocument.typeName)
         XCTAssertEqual(reopened.model.plainText, "Saved through NSDocument")
         XCTAssertEqual(reopened.model.outline.count, 1)
