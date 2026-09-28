@@ -11,59 +11,13 @@ public struct ImportResult {
 public enum DOCX {
     static let wordNS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
     static let relationNS = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
-    public static func encode(_ document: ScribeDocument) throws -> Data {
-        try NativeFormat.validate(document)
-        var relationships: [(String, String)] = []
-        var body = ""
-        for (sectionIndex, section) in document.sections.enumerated() {
-            for p in section.paragraphs {
-                var properties = "<w:pStyle w:val=\"\(xml(p.styleID))\"/>"
-                if p.pageBreakBefore { properties += "<w:pageBreakBefore/>" }
-                if let formatting = p.formatting { properties += paragraphProperties(formatting) }
-                if let list = p.list {
-                    properties += "<w:numPr><w:ilvl w:val=\"\(list.level)\"/><w:numId w:val=\"\(list.kind == .bullet ? 1 : 2)\"/></w:numPr>"
-                }
-                let runs = p.runs.map { run -> String in
-                    let content = "<w:r><w:rPr>\(runProperties(run.format))</w:rPr><w:t xml:space=\"preserve\">\(xml(run.text))</w:t></w:r>"
-                    guard let link = run.link else { return content }
-                    let id = "link\(relationships.count + 1)"; relationships.append((id, link))
-                    return "<w:hyperlink r:id=\"\(id)\">\(content)</w:hyperlink>"
-                }.joined()
-                body += "<w:p><w:pPr>\(properties)</w:pPr>\(runs)</w:p>"
-            }
-            let settings = sectionProperties(section.page)
-            body += sectionIndex == document.sections.count - 1 ? settings : "<w:p><w:pPr>\(settings)</w:pPr></w:p>"
-        }
-        let styles = document.styles.map { style in
-            "<w:style w:type=\"paragraph\" w:styleId=\"\(xml(style.id))\"\(style.id == "normal" ? " w:default=\"1\"" : "")><w:name w:val=\"\(xml(style.name))\"/><w:pPr>\(paragraphProperties(style.paragraph))\(style.headingLevel.map { "<w:outlineLvl w:val=\"\($0 - 1)\"/>" } ?? "")</w:pPr><w:rPr>\(runProperties(style.text))</w:rPr></w:style>"
-        }.joined()
-        let rels = relationships.map { "<Relationship Id=\"\($0.0)\" Type=\"\(relationNS)/hyperlink\" Target=\"\(xml($0.1))\" TargetMode=\"External\"/>" }.joined()
-        let contentTypes = """
-        <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-        <Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/><Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/><Override PartName="/word/numbering.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.numbering+xml"/></Types>
-        """
-        let numbering = (1...2).map { id in
-            let levels = (0...8).map { level in
-                "<w:lvl w:ilvl=\"\(level)\"><w:start w:val=\"1\"/><w:numFmt w:val=\"\(id == 1 ? "bullet" : "decimal")\"/><w:lvlText w:val=\"\(id == 1 ? "•" : "%\(level + 1).")\"/><w:pPr><w:ind w:left=\"\((level + 1) * 360)\" w:hanging=\"180\"/></w:pPr></w:lvl>"
-            }.joined()
-            return "<w:abstractNum w:abstractNumId=\"\(id)\">\(levels)</w:abstractNum><w:num w:numId=\"\(id)\"><w:abstractNumId w:val=\"\(id)\"/></w:num>"
-        }.joined()
-        let files: [String: String] = [
-            "[Content_Types].xml": contentTypes,
-            "_rels/.rels": "<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\"><Relationship Id=\"rId1\" Type=\"\(relationNS)/officeDocument\" Target=\"word/document.xml\"/></Relationships>",
-            "word/document.xml": "<?xml version=\"1.0\" encoding=\"UTF-8\"?><w:document xmlns:w=\"\(wordNS)\" xmlns:r=\"\(relationNS)\"><w:body>\(body)</w:body></w:document>",
-            "word/styles.xml": "<w:styles xmlns:w=\"\(wordNS)\">\(styles)</w:styles>",
-            "word/numbering.xml": "<w:numbering xmlns:w=\"\(wordNS)\">\(numbering)</w:numbering>",
-            "word/_rels/document.xml.rels": "<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\"><Relationship Id=\"styles\" Type=\"\(relationNS)/styles\" Target=\"styles.xml\"/><Relationship Id=\"numbering\" Type=\"\(relationNS)/numbering\" Target=\"numbering.xml\"/>\(rels)</Relationships>"
-        ]
-        return try ZipArchive.encode(files.mapValues { Data($0.utf8) })
-    }
+    public static func encode(_ document: ScribeDocument) throws -> Data { try DOCXWriter(document).encode() }
     public static func decode(_ data: Data) throws -> ImportResult {
         let files = try ZipArchive.decode(data)
         guard let content = files["word/document.xml"] else { throw DocumentError.invalid("DOCX has no main document part") }
-        let delegate = WordReader()
+        let delegate = WordReader(); delegate.files = files
         if let rels = files["word/_rels/document.xml.rels"] {
-            let reader = RelationshipReader(); try parse(rels, delegate: reader); delegate.links = reader.links
+            let reader = RelationshipReader(); try parse(rels, delegate: reader); delegate.links = reader.links; delegate.targets = reader.targets
         }
         if let styles = files["word/styles.xml"] {
             let reader = StyleReader(); try parse(styles, delegate: reader)
@@ -78,6 +32,13 @@ public enum DOCX {
         }
         if files.keys.contains(where: { $0.contains("comments") || $0.contains("footnotes") || $0.contains("endnotes") }) {
             delegate.warnings.insert("Comments and notes are not imported in this version.")
+        }
+        for (id, isHeader) in [(delegate.headerID, true), (delegate.footerID, false)] {
+            guard let id, let target = delegate.targets[id], let data = files["word/" + target] else { continue }
+            let reader = WordReader(); try parse(data, delegate: reader)
+            let text = reader.paragraphs.map(\.text).joined(separator: " ")
+            if isHeader { delegate.document.sections[0].header = text } else { delegate.document.sections[0].footer = text }
+            if String(data: data, encoding: .utf8)?.contains("fld") == true { delegate.warnings.insert("Running-content fields are imported as their cached text; update page numbering in Scribe if needed.") }
         }
         try NativeFormat.validate(delegate.document)
         return ImportResult(document: delegate.document, warnings: delegate.warnings.sorted())
@@ -131,9 +92,12 @@ private func applyRun(_ name: String, _ a: [String: String], _ f: inout TextForm
     }
 }
 private class RelationshipReader: NSObject, XMLParserDelegate {
-    var links: [String: String] = [:]
+    var links: [String: String] = [:], targets: [String: String] = [:]
     func parser(_ parser: XMLParser, didStartElement name: String, namespaceURI: String?, qualifiedName: String?, attributes a: [String: String]) {
-        if name == "Relationship", let id = a["Id"], let target = a["Target"], a["Type"]?.hasSuffix("/hyperlink") == true { links[id] = target }
+        if name == "Relationship", let id = a["Id"], let target = a["Target"] {
+            if a["Type"]?.hasSuffix("/hyperlink") == true { links[id] = target }
+            else if a["TargetMode"] != "External", !target.hasPrefix("/"), !target.split(separator: "/").contains("..") { targets[id] = target }
+        }
     }
 }
 private class StyleReader: NSObject, XMLParserDelegate {
@@ -155,11 +119,23 @@ private class WordReader: NSObject, XMLParserDelegate {
     var document = ScribeDocument(), paragraphs: [Paragraph] = [], warnings: Set<String> = []
     var paragraph: Paragraph?, run = TextRun(""), collecting = false, links: [String: String] = [:], link: String?
     var inRun = false, sawDocument = false
+    var files: [String: Data] = [:], targets: [String: String] = [:]
+    var headerID: String?, footerID: String?
+    var tableDepth = 0, tableIndex: Int?, row = -1, column = -1
+    var inDrawing = false, drawingTarget: String?, drawingWidth = 100.0, drawingHeight = 100.0, drawingAlt = ""
     func parser(_ parser: XMLParser, didStartElement name: String, namespaceURI: String?, qualifiedName: String?, attributes a: [String: String]) {
+        if inDrawing {
+            if name == "extent", let cx = a["cx"].flatMap(Double.init), let cy = a["cy"].flatMap(Double.init) { drawingWidth = cx / 12700; drawingHeight = cy / 12700 }
+            if name == "docPr" { drawingAlt = a["descr"] ?? a["name"] ?? "" }
+            if name == "blip", let id = a["r:embed"] ?? a["embed"] { drawingTarget = targets[id] }
+            if name == "anchor" { warnings.insert("Floating images are imported inline with the text.") }
+        }
         guard namespaceURI == DOCX.wordNS else { return }
         switch name {
         case "document": sawDocument = true
-        case "p": paragraph = Paragraph(); paragraph?.runs = []
+        case "p":
+            paragraph = Paragraph(); paragraph?.runs = []
+            if let t = tableIndex, row >= 0, column >= 0 { paragraph?.tableCell = TableCellReference(tableID: document.tables[t].id, row: row, column: column) }
         case "r": run = TextRun("", link: link); inRun = true
         case "t": collecting = true
         case "tab": run.text += "\t"
@@ -184,9 +160,29 @@ private class WordReader: NSObject, XMLParserDelegate {
             if let n = wordAttribute(a, "bottom").flatMap(Double.init) { document.sections[0].page.bottom = n / 20 }
             if let n = wordAttribute(a, "left").flatMap(Double.init) { document.sections[0].page.left = n / 20 }
             if let n = wordAttribute(a, "right").flatMap(Double.init) { document.sections[0].page.right = n / 20 }
-        case "tbl": warnings.insert("Table cells are imported as sequential paragraphs; table geometry is not retained.")
-        case "drawing", "pict": warnings.insert("Images and drawings are not imported in this version.")
-        case "headerReference", "footerReference": warnings.insert("Headers and footers are not imported in this version.")
+        case "tbl":
+            tableDepth += 1
+            if tableDepth == 1 {
+                var table = DocumentTable(rows: 1, columns: 1, width: document.sections[0].page.contentWidth)
+                table.columnWidths = []; table.firstRowIsHeader = false
+                document.tables.append(table); tableIndex = document.tables.count - 1; row = -1; column = -1
+            } else { warnings.insert("Nested tables are flattened into the enclosing cell.") }
+        case "gridCol":
+            if tableDepth == 1, let t = tableIndex, let width = wordAttribute(a, "w").flatMap(Double.init) { document.tables[t].columnWidths.append(max(12, width / 20)) }
+        case "tr": if tableDepth == 1 { row += 1; column = -1 }
+        case "tc":
+            if tableDepth == 1, let t = tableIndex {
+                column += 1
+                if column >= document.tables[t].columnWidths.count { document.tables[t].columnWidths.append(100) }
+            }
+        case "tblHeader": if let t = tableIndex { document.tables[t].firstRowIsHeader = true }
+        case "gridSpan", "vMerge": warnings.insert("Merged cells are imported as individual cells; merged geometry is not retained.")
+        case "drawing":
+            if !run.text.isEmpty { paragraph?.runs.append(run); run = TextRun("", link: link) }
+            inDrawing = true; drawingTarget = nil; drawingWidth = 100; drawingHeight = 100; drawingAlt = ""
+        case "pict": warnings.insert("Legacy drawings are not imported.")
+        case "headerReference": headerID = a["r:id"] ?? a["id"]
+        case "footerReference": footerID = a["r:id"] ?? a["id"]
         case "ins", "del": warnings.insert("Tracked changes are flattened; review history is not retained.")
         case "sectPr": if !paragraphs.isEmpty && paragraph != nil { warnings.insert("Section settings are flattened to one page layout.") }
         default: if inRun { applyRun(name, a, &run.format) }
@@ -197,7 +193,23 @@ private class WordReader: NSObject, XMLParserDelegate {
         guard namespaceURI == DOCX.wordNS else { return }
         switch name {
         case "t": collecting = false
-        case "r": paragraph?.runs.append(run); inRun = false
+        case "r": if !run.text.isEmpty { paragraph?.runs.append(run) }; inRun = false
+        case "drawing":
+            inDrawing = false
+            if let target = drawingTarget, let data = files["word/" + target], ["png", "jpg", "jpeg", "tiff", "heic"].contains((target as NSString).pathExtension.lowercased()) {
+                var imageRun = TextRun("\u{FFFC}")
+                let scale = min(1, document.sections[0].page.contentWidth / max(1, drawingWidth), (document.sections[0].page.contentHeight - 24) / max(1, drawingHeight))
+                imageRun.image = InlineImage(data: data, fileExtension: (target as NSString).pathExtension.lowercased(), width: max(1, drawingWidth * scale), height: max(1, drawingHeight * scale), altText: drawingAlt)
+                paragraph?.runs.append(imageRun)
+            } else { warnings.insert("An unsupported or missing image was omitted.") }
+            run = TextRun("", link: link)
+        case "tbl":
+            if tableDepth == 1, let t = tableIndex {
+                document.tables[t].rows = max(1, row + 1)
+                if document.tables[t].columnWidths.isEmpty { document.tables[t].columnWidths = [100] }
+                tableIndex = nil; row = -1; column = -1
+            }
+            tableDepth = max(0, tableDepth - 1)
         case "p": if let p = paragraph { paragraphs.append(p) }; paragraph = nil
         case "hyperlink": link = nil
         default: break

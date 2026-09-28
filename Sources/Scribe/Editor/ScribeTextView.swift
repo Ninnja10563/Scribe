@@ -7,9 +7,11 @@ import DocumentCore
     override func paste(_ sender: Any?) {
         // Normalize clipboard paragraphs and exclude unsupported attachments before they enter the model.
         let pasteboard = NSPasteboard.general
+        if let data = pasteboard.data(forType: .png) ?? pasteboard.data(forType: .tiff) {
+            do { try insertImageData(data) } catch { presentError(error) }; return
+        }
         if let data = pasteboard.data(forType: .rtf),
-           let value = try? NSAttributedString(data: data, options: [.documentType: NSAttributedString.DocumentType.rtf], documentAttributes: nil),
-           !value.containsAttachments {
+           let value = try? NSAttributedString(data: data, options: [.documentType: NSAttributedString.DocumentType.rtf], documentAttributes: nil) {
             let normalized = AttributedDocument.capture(value, preserving: ScribeDocument())
             replaceSelection(AttributedDocument.render(normalized), action: "Paste")
         } else if let string = pasteboard.string(forType: .string) {
@@ -22,6 +24,24 @@ import DocumentCore
         textStorage?.replaceCharacters(in: range, with: value)
         didChangeText(); setSelectedRange(NSRange(location: range.location + value.length, length: 0))
         undoManager?.setActionName(action)
+    }
+    override func draggingEntered(_ sender: NSDraggingInfo) -> NSDragOperation {
+        if imageURL(from: sender.draggingPasteboard) != nil { return .copy }
+        return super.draggingEntered(sender)
+    }
+    override func performDragOperation(_ sender: NSDraggingInfo) -> Bool {
+        if let url = imageURL(from: sender.draggingPasteboard) {
+            let point = convert(sender.draggingLocation, from: nil)
+            setSelectedRange(NSRange(location: characterIndexForInsertion(at: point), length: 0))
+            do { try insertImageData(Data(contentsOf: url), altText: url.deletingPathExtension().lastPathComponent); return true }
+            catch { presentError(error); return false }
+        }
+        return super.performDragOperation(sender)
+    }
+    private func imageURL(from pasteboard: NSPasteboard) -> URL? {
+        guard let urls = pasteboard.readObjects(forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true]) as? [URL],
+              let url = urls.first, ["png", "jpg", "jpeg", "heic", "tif", "tiff"].contains(url.pathExtension.lowercased()) else { return nil }
+        return url
     }
     @objc func toggleBold(_ sender: Any?) { toggleTrait(.boldFontMask) }
     @objc func toggleItalic(_ sender: Any?) { toggleTrait(.italicFontMask) }
@@ -57,10 +77,30 @@ import DocumentCore
     @objc func insertPageBreak(_ sender: Any?) { insertText("\n\u{c}", replacementRange: selectedRange()) }
     @objc func insertSpecialCharacter(_ sender: Any?) { NSApp.orderFrontCharacterPalette(sender) }
     override func insertTab(_ sender: Any?) {
+        if moveTableCell(by: 1) { return }
         if changeListLevel(by: 1) { return }; super.insertTab(sender)
     }
     override func insertBacktab(_ sender: Any?) {
+        if moveTableCell(by: -1) { return }
         if changeListLevel(by: -1) { return }; super.insertBacktab(sender)
+    }
+    private func moveTableCell(by delta: Int) -> Bool {
+        guard let editor, let storage = textStorage, storage.length > 0 else { return false }
+        let attributes = storage.attributes(at: min(selectedRange().location, storage.length - 1), effectiveRange: nil)
+        guard let data = attributes[.scribeCell] as? Data, let cell = try? JSONDecoder().decode(TableCellReference.self, from: data),
+              let table = editor.owner?.model.tables.first(where: { $0.id == cell.tableID }) else { return false }
+        let target = cell.row * table.columnWidths.count + cell.column + delta
+        if target >= table.rows * table.columnWidths.count {
+            editor.owner?.performEdit("Add Table Row") { $0.addTableRow(tableID: table.id, after: table.rows - 1) }
+        }
+        guard target >= 0 else { return true }
+        let reference = TableCellReference(tableID: cell.tableID, row: target / table.columnWidths.count, column: target % table.columnWidths.count)
+        storage.enumerateAttribute(.scribeCell, in: NSRange(location: 0, length: storage.length)) { value, range, stop in
+            if let data = value as? Data, let current = try? JSONDecoder().decode(TableCellReference.self, from: data), current == reference {
+                editor.select(NSRange(location: range.location, length: 0)); stop.pointee = true
+            }
+        }
+        return true
     }
     private func changeListLevel(by delta: Int) -> Bool {
         guard let data = typingAttributes[.scribeList] as? Data,

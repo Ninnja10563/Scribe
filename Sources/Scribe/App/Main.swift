@@ -1,6 +1,7 @@
 #if canImport(AppKit)
 import AppKit
 import DocumentCore
+import ImportExport
 
 @main struct ScribeMain {
     @MainActor static func main() {
@@ -43,12 +44,19 @@ import DocumentCore
         sender.reply(toOpenOrPrint: .success)
     }
     @objc func showAbout() {
-        NSApp.orderFrontStandardAboutPanel(options: [.applicationName: "Scribe", .applicationVersion: "0.1.0", .credits: NSAttributedString(string: "A native document workspace for macOS.\nEarly development release.")])
+        NSApp.orderFrontStandardAboutPanel(options: [.applicationName: "Scribe", .applicationVersion: "0.2.0", .credits: NSAttributedString(string: "A native document workspace for macOS.\nEarly development release.")])
     }
     private func smokeTest() {
         do {
             let document = ScribeFileDocument()
             document.model.sections[0].paragraphs = [Paragraph("Scribe", style: "title"), Paragraph("A native document workspace", style: "subtitle"), Paragraph("A considered place to write", style: "heading1"), Paragraph("Scribe brings named styles, an outline, flowing pages and familiar macOS editing together. This document exercises the same layout used for PDF and printing.")]
+            document.model.insertTable(rows: 3, columns: 3, after: document.model.paragraphs.last!.id)
+            let cellValues = ["Section", "Purpose", "Status", "Structure", "Styles and outline", "Ready", "Layout", "Flowing pages", "Ready"]
+            var cellIndex = 0
+            for index in document.model.sections[0].paragraphs.indices where document.model.sections[0].paragraphs[index].tableCell != nil {
+                document.model.sections[0].paragraphs[index].runs = [TextRun(cellValues[cellIndex])]; cellIndex += 1
+            }
+            document.model.sections[0].pageNumbering = PageNumbering()
             for i in 1...80 { document.model.sections[0].paragraphs.append(Paragraph("Paragraph \(i). " + String(repeating: "Professional documents need clear structure and dependable editing. ", count: 6))) }
             documents.addDocument(document); document.makeWindowControllers(); document.showWindows()
             guard let controller = document.editorController else { fatalError("Missing editor") }
@@ -57,6 +65,7 @@ import DocumentCore
             try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
             try NativeFormat.save(document.snapshot(), to: folder.appendingPathComponent("Smoke.scribe"))
             try PrintRenderer(editor: controller.editor).exportPDF(to: folder.appendingPathComponent("Smoke.pdf"), title: "Scribe Smoke Test", author: "Scribe")
+            try DOCX.encode(document.snapshot()).write(to: folder.appendingPathComponent("Smoke.docx"))
             let pages = controller.editor.textViews.count
             guard pages > 1 else { fatalError("Text did not paginate") }
             controller.window?.displayIfNeeded()

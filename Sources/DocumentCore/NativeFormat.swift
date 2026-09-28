@@ -25,9 +25,15 @@ public enum NativeFormat {
         guard data.count <= maximumBytes else { throw DocumentError.tooLarge }
         struct Version: Decodable { let formatVersion: Int }
         let version = try JSONDecoder().decode(Version.self, from: data).formatVersion
-        guard version == ScribeDocument.currentVersion else { throw DocumentError.unsupportedVersion(version) }
-        // Future migrations must be explicit and preserve the original file.
-        let document = try JSONDecoder().decode(ScribeDocument.self, from: data)
+        guard (1...ScribeDocument.currentVersion).contains(version) else { throw DocumentError.unsupportedVersion(version) }
+        var migrated = data
+        if version == 1 {
+            // Additive v1 → v2 migration occurs in memory; original bytes are never rewritten on open.
+            guard var json = try JSONSerialization.jsonObject(with: data) as? [String: Any] else { throw DocumentError.invalid("missing document object") }
+            json["formatVersion"] = 2; json["tables"] = []
+            migrated = try JSONSerialization.data(withJSONObject: json)
+        }
+        let document = try JSONDecoder().decode(ScribeDocument.self, from: migrated)
         try validate(document)
         return document
     }
@@ -47,6 +53,15 @@ public enum NativeFormat {
         for section in document.sections {
             if let numbering = section.pageNumbering, !(1...1_000_000).contains(numbering.start) { throw DocumentError.invalid("invalid starting page number") }
         }
+        guard Set(document.tables.map(\.id)).count == document.tables.count else { throw DocumentError.invalid("duplicate table identifiers") }
+        for table in document.tables {
+            var colors = TextFormatting(); colors.foreground = table.borderColor; colors.highlight = table.headerBackground
+            try validateText(colors)
+            guard (1...100).contains(table.rows), (1...20).contains(table.columnWidths.count),
+                  table.columnWidths.allSatisfy({ $0.isFinite && (12...4000).contains($0) }),
+                  table.padding.isFinite, (0...50).contains(table.padding),
+                  table.borderWidth.isFinite, (0...10).contains(table.borderWidth) else { throw DocumentError.invalid("invalid table geometry") }
+        }
         for style in document.styles {
             try validateText(style.text)
             try validateParagraph(style.paragraph)
@@ -59,7 +74,18 @@ public enum NativeFormat {
             guard !p.text.contains("\n"), !p.text.contains("\r") else { throw DocumentError.invalid("paragraph contains a line separator") }
             if let list = p.list, !(0...8).contains(list.level) || list.start < 1 { throw DocumentError.invalid("invalid list") }
             if let formatting = p.formatting { try validateParagraph(formatting) }
-            for run in p.runs { try validateText(run.format) }
+            if let cell = p.tableCell {
+                guard let table = document.tables.first(where: { $0.id == cell.tableID }),
+                      (0..<table.rows).contains(cell.row), table.columnWidths.indices.contains(cell.column) else { throw DocumentError.invalid("invalid table cell reference") }
+            }
+            for run in p.runs {
+                try validateText(run.format)
+                if let image = run.image {
+                    guard run.text == "\u{FFFC}", image.data.count <= 32 * 1024 * 1024,
+                          !image.data.isEmpty, ["png", "jpg", "jpeg", "tiff", "heic"].contains(image.fileExtension),
+                          image.width.isFinite, image.height.isFinite, (1...4000).contains(image.width), (1...4000).contains(image.height) else { throw DocumentError.invalid("invalid inline image") }
+                }
+            }
         }
     }
     private static func validateText(_ format: TextFormatting) throws {

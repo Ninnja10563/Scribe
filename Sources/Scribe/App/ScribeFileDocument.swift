@@ -76,7 +76,11 @@ import ImportExport
                 let prefix = (editor.storage.string as NSString).substring(to: min(selection.location, editor.storage.length))
                 let index = min(prefix.components(separatedBy: "\n").count - 1, value.paragraphs.count - 1)
                 let paragraph = value.paragraphs[index]
-                editor.activeTextView.typingAttributes = AttributedDocument.attributes(style: value.style(for: paragraph), paragraph: paragraph)
+                if editor.storage.length > 0, selection.location < editor.storage.length {
+                    editor.activeTextView.typingAttributes = editor.storage.attributes(at: selection.location, effectiveRange: nil)
+                } else {
+                    editor.activeTextView.typingAttributes = AttributedDocument.attributes(style: value.style(for: paragraph), paragraph: paragraph)
+                }
             }
         }
         isRestoring = false; didEdit(); editorController?.refreshOutline()
@@ -117,7 +121,6 @@ import ImportExport
                 let result = try DOCX.decode(data); document.model = result.document; document.importWarnings = result.warnings
             case "rtf":
                 let value = try NSAttributedString(data: data, options: [.documentType: NSAttributedString.DocumentType.rtf], documentAttributes: nil)
-                if value.containsAttachments { document.importWarnings = ["RTF attachments are not imported in this version."] }
                 value.enumerateAttribute(.paragraphStyle, in: NSRange(location: 0, length: value.length)) { style, _, stop in
                     if let style = style as? NSParagraphStyle, !style.textBlocks.isEmpty {
                         document.importWarnings.append("RTF table cells are imported as paragraphs; table geometry is not retained."); stop.pointee = true

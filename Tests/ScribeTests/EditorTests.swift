@@ -35,6 +35,25 @@ import DocumentCore
         XCTAssertEqual(captured.plainText, "First\nSecond")
         XCTAssertEqual(captured.paragraphs[1].list?.kind, .decimal)
     }
+    func testTableAndImageProjectionPreservesNativeObjects() throws {
+        var document = ScribeDocument()
+        document.insertTable(rows: 3, columns: 3, after: document.paragraphs[0].id)
+        document.sections[0].paragraphs[1].runs = [TextRun("Header")]
+        let data = Data(base64Encoded: "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGNwSev4DwAEVgIy41TneAAAAABJRU5ErkJggg==")!
+        var run = TextRun("\u{FFFC}"); run.image = InlineImage(data: data, fileExtension: "png", width: 40, height: 40, altText: "Example")
+        document.sections[0].paragraphs[document.paragraphs.count - 1].runs = [run]
+        let rendered = AttributedDocument.render(document)
+        XCTAssertTrue(rendered.containsAttachments)
+        let captured = AttributedDocument.capture(rendered, preserving: document)
+        XCTAssertEqual(captured.tables, document.tables)
+        XCTAssertEqual(captured.paragraphs.filter { $0.tableCell != nil }.count, 9)
+        XCTAssertEqual(captured.paragraphs.last?.runs.last?.image, run.image)
+        try NativeFormat.validate(captured)
+        let file = ScribeFileDocument(); file.model = captured
+        let editor = PaginatedEditor(document: file)
+        XCTAssertGreaterThan(editor.layout.numberOfGlyphs, 0)
+        XCTAssertLessThan(editor.textViews.count, 4)
+    }
     func testProjectionPreservesStylesAndUnicode() {
         var doc = ScribeDocument()
         doc.sections[0].paragraphs = [Paragraph("Heading 👩🏽‍💻", style: "heading1"), Paragraph("Body café"), Paragraph("")]

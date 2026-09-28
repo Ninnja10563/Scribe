@@ -22,9 +22,11 @@ public actor RecoveryStore {
         return try FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil)
             .filter { $0.pathExtension == "json" }.compactMap { url in
                 guard let data = try? Data(contentsOf: url), data.count <= NativeFormat.maximumBytes,
-                      let snapshot = try? JSONDecoder().decode(RecoverySnapshot.self, from: data),
-                      (try? NativeFormat.validate(snapshot.document)) != nil else { return nil }
-                return snapshot
+                      let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                      let rawDocument = json["document"], let documentData = try? JSONSerialization.data(withJSONObject: rawDocument),
+                      let document = try? NativeFormat.decode(documentData),
+                      let metadata = try? JSONDecoder().decode(RecoveryMetadata.self, from: data) else { return nil }
+                return RecoverySnapshot(document: document, originalURL: metadata.originalURL, savedAt: metadata.savedAt)
             }.sorted { $0.savedAt > $1.savedAt }
     }
     public func remove(id: UUID) throws {
@@ -32,3 +34,5 @@ public actor RecoveryStore {
         if FileManager.default.fileExists(atPath: url.path) { try FileManager.default.removeItem(at: url) }
     }
 }
+
+private struct RecoveryMetadata: Decodable { let originalURL: URL?; let savedAt: Date }

@@ -87,6 +87,7 @@ import DocumentCore
         layout.addTextContainer(container)
         let view = ScribeTextView(frame: .zero, textContainer: container)
         view.delegate = self; view.editor = self
+        view.registerForDraggedTypes([.fileURL])
         view.isRichText = true; view.importsGraphics = false; view.allowsUndo = true
         view.isVerticallyResizable = false; view.isHorizontallyResizable = false
         view.textContainerInset = .zero; view.drawsBackground = false

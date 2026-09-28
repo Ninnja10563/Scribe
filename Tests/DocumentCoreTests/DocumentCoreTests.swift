@@ -61,6 +61,31 @@ final class DocumentCoreTests: XCTestCase {
         doc.sections[0].pageNumbering = PageNumbering()
         XCTAssertEqual(try NativeFormat.decode(NativeFormat.encode(doc)), doc)
     }
+    func testVersionOneMigrationDoesNotChangeSourceData() throws {
+        let document = ScribeDocument()
+        var json = try JSONSerialization.jsonObject(with: NativeFormat.encode(document)) as! [String: Any]
+        json["formatVersion"] = 1; json.removeValue(forKey: "tables")
+        let source = try JSONSerialization.data(withJSONObject: json)
+        let loaded = try NativeFormat.decode(source)
+        XCTAssertEqual(loaded.formatVersion, 2); XCTAssertTrue(loaded.tables.isEmpty)
+        XCTAssertEqual((try JSONSerialization.jsonObject(with: source) as! [String: Any])["formatVersion"] as? Int, 1)
+    }
+    func testTableMutationsPreserveCellContentAndReferences() throws {
+        var document = ScribeDocument()
+        document.insertTable(rows: 2, columns: 2, after: document.paragraphs[0].id)
+        let id = document.tables[0].id
+        document.sections[0].paragraphs[1].runs = [TextRun("Keep me")]
+        document.addTableRow(tableID: id, after: 0)
+        document.addTableColumn(tableID: id, after: 0)
+        XCTAssertEqual(document.tables[0].rows, 3); XCTAssertEqual(document.tables[0].columnWidths.count, 3)
+        XCTAssertEqual(document.paragraphs.filter { $0.tableCell != nil }.count, 9)
+        document.deleteTableRow(tableID: id, row: 1); document.deleteTableColumn(tableID: id, column: 1)
+        XCTAssertEqual(document.paragraphs.filter { $0.tableCell != nil }.count, 4)
+        XCTAssertTrue(document.plainText.contains("Keep me"))
+        XCTAssertEqual(try NativeFormat.decode(NativeFormat.encode(document)), document)
+        document.deleteTable(id: id)
+        XCTAssertTrue(document.tables.isEmpty); XCTAssertTrue(document.paragraphs.allSatisfy { $0.tableCell == nil })
+    }
     func testStatistics() {
         let stats = DocumentStatistics(text: "Don't stop.\nCafé 東京 👩🏽‍💻")
         XCTAssertEqual(stats.words, 4); XCTAssertEqual(stats.paragraphs, 2)

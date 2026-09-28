@@ -5,6 +5,8 @@ import DocumentCore
 extension NSAttributedString.Key {
     static let scribeStyle = NSAttributedString.Key("org.scribe.paragraphStyle")
     static let scribeParagraphID = NSAttributedString.Key("org.scribe.paragraphID")
+    static let scribeCell = NSAttributedString.Key("org.scribe.tableCell")
+    static let scribeImage = NSAttributedString.Key("org.scribe.image")
     static let scribeList = NSAttributedString.Key("org.scribe.list")
 }
 
@@ -13,9 +15,11 @@ extension NSAttributedString.Key {
     static func render(_ document: ScribeDocument) -> NSAttributedString {
         let result = NSMutableAttributedString(string: "")
         var numbering = ListNumbering()
+        let tables = TableProjection(document: document)
         for (index, paragraph) in document.paragraphs.enumerated() {
             let style = document.style(for: paragraph)
-            let base = attributes(style: style, paragraph: paragraph)
+            var base = attributes(style: style, paragraph: paragraph)
+            if let cell = paragraph.tableCell { tables.apply(cell, to: &base) }
             let start = result.length
             if paragraph.pageBreakBefore { result.append(NSAttributedString(string: "\u{c}", attributes: base)) }
             if let marker = numbering.marker(for: paragraph.list) { result.append(NSAttributedString(string: "\t" + marker + "\t", attributes: base)) }
@@ -23,6 +27,9 @@ extension NSAttributedString.Key {
                 var attrs = base
                 apply(run.format, over: style.text, to: &attrs)
                 if let link = run.link { attrs[.link] = link }
+                if let image = run.image, let attachment = ImageProjection.attachment(image) {
+                    attrs[.attachment] = attachment; attrs[.scribeImage] = try? JSONEncoder().encode(image)
+                }
                 result.append(NSAttributedString(string: run.text, attributes: attrs))
             }
             if index < document.paragraphs.count - 1 {
@@ -54,6 +61,7 @@ extension NSAttributedString.Key {
             if !document.styles.contains(where: { $0.id == p.styleID }) { p.styleID = "normal" }
             let style = document.style(for: p)
             p.pageBreakBefore = component.hasPrefix("\u{c}")
+            p.tableCell = (attrs[.scribeCell] as? Data).flatMap { try? JSONDecoder().decode(TableCellReference.self, from: $0) }
             p.list = (attrs[.scribeList] as? Data).flatMap { try? JSONDecoder().decode(ListDescriptor.self, from: $0) }
             if let ns = attrs[.paragraphStyle] as? NSParagraphStyle {
                 let f = paragraphFormatting(ns)
@@ -85,13 +93,22 @@ extension NSAttributedString.Key {
                     if let color = attributes[.backgroundColor] as? NSColor { format.highlight = color.hex }
                     if let baseline = attributes[.superscript] as? Int { format.baseline = baseline }
                     let link = (attributes[.link] as? URL)?.absoluteString ?? attributes[.link] as? String
-                    p.runs.append(TextRun(value, format: format, link: link))
+                    var run = TextRun(value, format: format, link: link)
+                    if let attachment = attributes[.attachment] as? NSTextAttachment {
+                        if let data = attributes[.scribeImage] as? Data { run.image = try? JSONDecoder().decode(InlineImage.self, from: data) }
+                        else if let bytes = attachment.fileWrapper?.regularFileContents {
+                            run.image = try? ImageProjection.image(from: bytes, maximumWidth: original.sections[0].page.contentWidth, maximumHeight: original.sections[0].page.contentHeight - 24)
+                        }
+                    }
+                    p.runs.append(run)
                 }
             }
             if p.runs.isEmpty { p.runs = [TextRun("")] }
             paragraphs.append(p); offset += length + 1
         }
         document.sections[0].paragraphs = paragraphs
+        let usedTables = Set(paragraphs.compactMap { $0.tableCell?.tableID })
+        document.tables.removeAll { !usedTables.contains($0.id) }
         // The current editing projection supports one section; imports are flattened explicitly.
         return document
     }
