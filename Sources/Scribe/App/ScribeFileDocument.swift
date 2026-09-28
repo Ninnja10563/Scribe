@@ -20,7 +20,9 @@ import ImportExport
     }
     func snapshot() -> ScribeDocument {
         if let editor = editorController?.editor {
-            model = AttributedDocument.capture(editor.storage, preserving: model)
+            let view = editor.activeTextView
+            let insertion = view.selectedRange().location == editor.storage.length ? view.typingAttributes : nil
+            model = AttributedDocument.capture(editor.storage, preserving: model, typingAttributes: insertion)
             var offset = 0
             editor.storage.beginEditing()
             for (index, component) in editor.storage.string.components(separatedBy: "\n").enumerated() {
@@ -67,8 +69,15 @@ import ImportExport
         if let editor = editorController?.editor {
             editor.storage.setAttributedString(AttributedDocument.render(value))
             editor.setPageSettings(value.sections[0].page)
+            editor.canvas.pageNumbering = value.sections[0].pageNumbering
             editor.canvas.header = value.sections[0].header; editor.canvas.footer = value.sections[0].footer
             editor.select(NSRange(location: min(selection.location, editor.storage.length), length: min(selection.length, max(0, editor.storage.length - selection.location))))
+            if selection.length == 0 {
+                let prefix = (editor.storage.string as NSString).substring(to: min(selection.location, editor.storage.length))
+                let index = min(prefix.components(separatedBy: "\n").count - 1, value.paragraphs.count - 1)
+                let paragraph = value.paragraphs[index]
+                editor.activeTextView.typingAttributes = AttributedDocument.attributes(style: value.style(for: paragraph), paragraph: paragraph)
+            }
         }
         isRestoring = false; didEdit(); editorController?.refreshOutline()
     }

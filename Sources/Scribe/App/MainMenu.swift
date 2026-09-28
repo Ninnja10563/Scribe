@@ -47,6 +47,8 @@ import AppKit
         item(view, "Enter Full Screen", #selector(NSWindow.toggleFullScreen(_:)))
         let insert = menu("Insert")
         item(insert, "Page Break", #selector(ScribeTextView.insertPageBreak(_:)), "\r")
+        item(insert, "Page Numbers…", #selector(EditorWindowController.pageNumbers))
+        item(insert, "Hyperlink…", #selector(EditorWindowController.insertLink), "k")
         item(insert, "Headers and Footers…", #selector(EditorWindowController.editHeaderFooter))
         item(insert, "Symbols and Characters…", #selector(ScribeTextView.insertSpecialCharacter(_:)))
         let format = menu("Format")
@@ -58,6 +60,7 @@ import AppKit
         item(format, "Align Left", #selector(NSTextView.alignLeft(_:))); item(format, "Centre", #selector(NSTextView.alignCenter(_:))); item(format, "Align Right", #selector(NSTextView.alignRight(_:))); item(format, "Justify", #selector(NSTextView.alignJustified(_:)))
         format.addItem(.separator())
         item(format, "Bullet List", #selector(EditorWindowController.bulletList)); item(format, "Numbered List", #selector(EditorWindowController.numberedList))
+        item(format, "Paragraph Spacing and Indents…", #selector(EditorWindowController.paragraphSettings))
         format.addItem(.separator()); item(format, "Modify Style…", #selector(EditorWindowController.editStyle)); item(format, "Create Style…", #selector(EditorWindowController.createStyle)); item(format, "Delete Custom Style", #selector(EditorWindowController.deleteStyle))
         let tools = menu("Tools"); item(tools, "Document Statistics…", #selector(EditorWindowController.documentStatistics))
         let window = menu("Window"); NSApp.windowsMenu = window

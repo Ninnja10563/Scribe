@@ -6,6 +6,35 @@ import DocumentCore
 
 @MainActor final class EditorTests: XCTestCase {
     override func setUp() { super.setUp(); _ = NSApplication.shared }
+    func testEmptyDocumentStyleAndFormattingUndo() throws {
+        let document = ScribeFileDocument(); document.makeWindowControllers()
+        defer { document.close() }
+        let editor = document.editorController!.editor
+        editor.applyStyle("heading1")
+        XCTAssertEqual(document.snapshot().paragraphs[0].styleID, "heading1")
+        let view = editor.activeTextView
+        view.insertText("A heading", replacementRange: NSRange(location: 0, length: 0))
+        XCTAssertEqual(document.snapshot().paragraphs[0].styleID, "heading1")
+        XCTAssertEqual((view.typingAttributes[.font] as? NSFont)?.pointSize, 22)
+        document.undoManager?.removeAllActions()
+        document.performEdit("Landscape") { $0.sections[0].page = PageSettings(paper: .letter, landscape: true) }
+        XCTAssertEqual(document.model.sections[0].page.width, 792)
+        document.undoManager?.undo()
+        XCTAssertEqual(document.model.sections[0].page.width, 595.276)
+        document.undoManager?.redo()
+        XCTAssertEqual(document.model.sections[0].page.width, 792)
+    }
+    func testListsAreVisibleAndRemainSemanticAfterRoundTrip() {
+        var document = ScribeDocument()
+        document.sections[0].paragraphs = [Paragraph("First"), Paragraph("Second")]
+        for i in 0...1 { document.sections[0].paragraphs[i].list = ListDescriptor(kind: .decimal) }
+        let rendered = AttributedDocument.render(document)
+        XCTAssertTrue(rendered.string.contains("1.\tFirst"))
+        XCTAssertTrue(rendered.string.contains("2.\tSecond"))
+        let captured = AttributedDocument.capture(rendered, preserving: document)
+        XCTAssertEqual(captured.plainText, "First\nSecond")
+        XCTAssertEqual(captured.paragraphs[1].list?.kind, .decimal)
+    }
     func testProjectionPreservesStylesAndUnicode() {
         var doc = ScribeDocument()
         doc.sections[0].paragraphs = [Paragraph("Heading 👩🏽‍💻", style: "heading1"), Paragraph("Body café"), Paragraph("")]

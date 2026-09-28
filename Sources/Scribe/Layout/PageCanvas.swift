@@ -8,6 +8,7 @@ import DocumentCore
     let gap: CGFloat = 24
     var header = ""
     var footer = ""
+    var pageNumbering: PageNumbering?
     override var isFlipped: Bool { true }
     var pageSize: NSSize { NSSize(width: pageSettings.width, height: pageSettings.height) }
     func pageRect(_ index: Int) -> NSRect {
@@ -26,7 +27,22 @@ import DocumentCore
             let attrs: [NSAttributedString.Key: Any] = [.font: NSFont.systemFont(ofSize: 9), .foregroundColor: NSColor.darkGray]
             (header as NSString).draw(at: NSPoint(x: rect.minX + pageSettings.left, y: rect.minY + 30), withAttributes: attrs)
             (footer as NSString).draw(at: NSPoint(x: rect.minX + pageSettings.left, y: rect.maxY - 38), withAttributes: attrs)
+            drawPageNumber(index: i, origin: rect.origin)
         }
+    }
+    func drawPageNumber(index: Int, origin: NSPoint) {
+        guard let numbering = pageNumbering else { return }
+        let label = numbering.label(pageIndex: index, pageCount: pageCount) as NSString
+        let attrs: [NSAttributedString.Key: Any] = [.font: NSFont.systemFont(ofSize: 9), .foregroundColor: NSColor.darkGray]
+        let width = label.size(withAttributes: attrs).width
+        let x: CGFloat
+        switch numbering.position {
+        case .topLeft, .bottomLeft: x = pageSettings.left
+        case .topCenter, .bottomCenter: x = (pageSettings.width - width) / 2
+        case .topRight, .bottomRight: x = pageSettings.width - pageSettings.right - width
+        }
+        let y = [.topLeft, .topCenter, .topRight].contains(numbering.position) ? 30.0 : pageSettings.height - 38
+        label.draw(at: NSPoint(x: origin.x + x, y: origin.y + y), withAttributes: attrs)
     }
 }
 
@@ -49,6 +65,7 @@ import DocumentCore
         owner = document
         super.init()
         canvas.pageSettings = document.model.sections[0].page
+        canvas.pageNumbering = document.model.sections[0].pageNumbering
         canvas.header = document.model.sections[0].header; canvas.footer = document.model.sections[0].footer
         storage.addLayoutManager(layout); layout.delegate = self
         layout.allowsNonContiguousLayout = true

@@ -31,6 +31,7 @@ public struct Section: Codable, Equatable, Sendable, Identifiable {
     public var paragraphs = [Paragraph()]
     public var header = ""
     public var footer = ""
+    public var pageNumbering: PageNumbering?
     public init() {}
 }
 

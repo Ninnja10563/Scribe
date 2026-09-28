@@ -53,6 +53,14 @@ final class DocumentCoreTests: XCTestCase {
         XCTAssertNil(numbering.marker(for: nil))
         XCTAssertEqual(numbering.marker(for: ListDescriptor(kind: .lowerRoman, start: 4)), "iv.")
     }
+    func testPageNumberFormatsAndInvalidStart() throws {
+        XCTAssertEqual(PageNumbering(format: .pageOfTotal, start: 5).label(pageIndex: 1, pageCount: 10), "Page 6 of 14")
+        XCTAssertEqual(PageNumbering(format: .roman).label(pageIndex: 8, pageCount: 10), "ix")
+        var doc = ScribeDocument(); doc.sections[0].pageNumbering = PageNumbering(start: -1)
+        XCTAssertThrowsError(try NativeFormat.encode(doc))
+        doc.sections[0].pageNumbering = PageNumbering()
+        XCTAssertEqual(try NativeFormat.decode(NativeFormat.encode(doc)), doc)
+    }
     func testStatistics() {
         let stats = DocumentStatistics(text: "Don't stop.\nCafé 東京 👩🏽‍💻")
         XCTAssertEqual(stats.words, 4); XCTAssertEqual(stats.paragraphs, 2)

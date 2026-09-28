@@ -34,7 +34,7 @@ extension NSAttributedString.Key {
         }
         return result
     }
-    static func capture(_ storage: NSAttributedString, preserving original: ScribeDocument) -> ScribeDocument {
+    static func capture(_ storage: NSAttributedString, preserving original: ScribeDocument, typingAttributes: [NSAttributedString.Key: Any]? = nil) -> ScribeDocument {
         var document = original
         var paragraphs: [Paragraph] = [], usedIDs: Set<UUID> = []
         let text = storage.string as NSString
@@ -42,8 +42,12 @@ extension NSAttributedString.Key {
         // components preserves the final empty paragraph, important after pressing Return.
         for component in storage.string.components(separatedBy: "\n") {
             let length = (component as NSString).length
-            let attrs: [NSAttributedString.Key: Any] = storage.length > 0 ? storage.attributes(at: min(offset, storage.length - 1), effectiveRange: nil) : [:]
+            let attrs: [NSAttributedString.Key: Any]
+            if offset == storage.length, let typingAttributes { attrs = typingAttributes }
+            else if storage.length > 0 { attrs = storage.attributes(at: min(offset, storage.length - 1), effectiveRange: nil) }
+            else { attrs = attributes(style: original.style(for: original.paragraphs[0]), paragraph: original.paragraphs[0]) }
             var p = Paragraph()
+            if storage.length == 0 { p.id = original.paragraphs[0].id }
             if let idString = attrs[.scribeParagraphID] as? String, let id = UUID(uuidString: idString), !usedIDs.contains(id) { p.id = id }
             usedIDs.insert(p.id)
             p.styleID = attrs[.scribeStyle] as? String ?? "normal"

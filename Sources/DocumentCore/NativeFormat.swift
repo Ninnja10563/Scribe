@@ -44,6 +44,9 @@ public enum NativeFormat {
               document.styles.contains(where: { $0.id == "normal" }) else {
             throw DocumentError.invalid("invalid style catalog")
         }
+        for section in document.sections {
+            if let numbering = section.pageNumbering, !(1...1_000_000).contains(numbering.start) { throw DocumentError.invalid("invalid starting page number") }
+        }
         for style in document.styles {
             try validateText(style.text)
             try validateParagraph(style.paragraph)
