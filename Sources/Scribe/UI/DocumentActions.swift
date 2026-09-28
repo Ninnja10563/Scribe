@@ -15,6 +15,9 @@ extension EditorWindowController {
             if format == "docx", model.styles.contains(where: { $0.text.fontFace != nil }) || model.paragraphs.contains(where: { $0.runs.contains(where: { $0.format.fontFace != nil }) }) {
                 alert.informativeText += " Specific font faces and intermediate weights may be approximated by their family and bold/italic traits in Word."
             }
+            if format == "docx", model.bookmarks.contains(where: { model.destinationParagraphID(for: DocumentLink.bookmark($0.id)) == nil }) {
+                alert.informativeText += " Bookmarks with deleted destinations are omitted; their linked text is retained."
+            }
             alert.addButton(withTitle: "Export Copy"); alert.addButton(withTitle: "Cancel")
             guard alert.runModal() == .alertFirstButtonReturn else { return }
         }

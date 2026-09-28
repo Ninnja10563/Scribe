@@ -63,10 +63,11 @@ import DocumentCore
     }
     private func internalDestinations(in selected: Set<Int>) -> [UUID: (page: Int, point: CGPoint)] {
         let full = NSRange(location: 0, length: editor.storage.length)
+        let model = editor.owner?.snapshot()
         var linked: Set<UUID> = []
         editor.storage.enumerateAttribute(.link, in: full) { value, _, _ in
             let text = (value as? URL)?.absoluteString ?? value as? String ?? ""
-            if let id = DocumentLink.paragraphID(text) { linked.insert(id) }
+            if let id = model?.destinationParagraphID(for: text) { linked.insert(id) }
         }
         var result: [UUID: (page: Int, point: CGPoint)] = [:]
         let p = editor.canvas.pageSettings
@@ -103,6 +104,7 @@ import DocumentCore
             throw DocumentError.invalid("could not create PDF output")
         }
         let destinations = internalDestinations(in: Set(selected))
+        let model = editor.owner?.snapshot()
         for index in selected {
             context.beginPDFPage(nil); context.saveGState()
             context.translateBy(x: 0, y: p.height); context.scaleBy(x: 1, y: -1)
@@ -121,7 +123,7 @@ import DocumentCore
                 let linkGlyphs = editor.layout.glyphRange(forCharacterRange: range, actualCharacterRange: nil)
                 let rect = editor.layout.boundingRect(forGlyphRange: NSIntersectionRange(linkGlyphs, glyphs), in: container)
                 let targetRect = CGRect(x: p.left + rect.minX, y: p.height - p.top - rect.maxY, width: rect.width, height: rect.height)
-                if let id = DocumentLink.paragraphID(url.absoluteString), destinations[id] != nil {
+                if let id = model?.destinationParagraphID(for: url.absoluteString), destinations[id] != nil {
                     context.setDestination(DocumentLink.officeBookmark(id) as CFString, for: targetRect)
                 } else if ["http", "https", "mailto"].contains(url.scheme ?? "") {
                     context.setURL(url as CFURL, for: targetRect)

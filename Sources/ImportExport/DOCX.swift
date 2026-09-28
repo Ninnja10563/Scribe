@@ -34,11 +34,19 @@ public enum DOCX {
         delegate.warnings.formUnion(delegate.numbering.warnings)
         guard delegate.sawDocument else { throw DocumentError.invalid("missing Word document root") }
         if delegate.paragraphs.isEmpty { delegate.paragraphs = [Paragraph()] }
+        var namedBookmarks: [String: Bookmark] = [:]
+        for name in delegate.bookmarkOrder {
+            guard let paragraphID = delegate.bookmarkParagraphs[name], !name.hasPrefix("_"),
+                  !(name.hasPrefix("Scribe_") && name.count == 39 && name.dropFirst(7).allSatisfy({ $0.isHexDigit })) else { continue }
+            let bookmark = Bookmark(name: name, anchor: TextAnchor(paragraphID: paragraphID, offset: 0, length: 0))
+            namedBookmarks[name] = bookmark; delegate.document.bookmarks.append(bookmark)
+        }
         for p in delegate.paragraphs.indices {
             for r in delegate.paragraphs[p].runs.indices {
                 guard let link = delegate.paragraphs[p].runs[r].link, link.hasPrefix("#") else { continue }
                 if let target = delegate.bookmarkParagraphs[String(link.dropFirst())] {
-                    delegate.paragraphs[p].runs[r].link = DocumentLink.paragraph(target)
+                    if let bookmark = namedBookmarks[String(link.dropFirst())] { delegate.paragraphs[p].runs[r].link = DocumentLink.bookmark(bookmark.id) }
+                    else { delegate.paragraphs[p].runs[r].link = DocumentLink.paragraph(target) }
                 } else {
                     delegate.paragraphs[p].runs[r].link = nil
                     delegate.warnings.insert("An internal hyperlink has a missing bookmark destination; its text was retained.")
@@ -206,6 +214,7 @@ private class WordReader: NSObject, XMLParserDelegate {
     var commentStarts: [String: TextAnchor] = [:], commentEnds: [String: TextAnchor] = [:], commentReferences: [String: TextAnchor] = [:]
     var styleLists: [String: StyleList] = [:]
     var bookmarkParagraphs: [String: UUID] = [:]
+    var bookmarkOrder: [String] = []
     var listID: String?, listLevel: Int?
     var inRun = false, sawDocument = false
     var collectingInstruction = false, instruction = ""
@@ -262,9 +271,10 @@ private class WordReader: NSObject, XMLParserDelegate {
             }
         case "bookmarkStart":
             if let name = wordAttribute(a, "name"), let paragraph {
+                if bookmarkParagraphs[name] == nil { bookmarkOrder.append(name) }
                 bookmarkParagraphs[name] = paragraph.id
                 if paragraph.runs.contains(where: { !$0.text.isEmpty }) || (inRun && !run.text.isEmpty) {
-                    warnings.insert("Internal links to positions within paragraphs navigate to the paragraph start in this version.")
+                    warnings.insert("Bookmarks and internal links to positions within paragraphs navigate to the paragraph start in this version.")
                 }
             }
         case "hyperlink":

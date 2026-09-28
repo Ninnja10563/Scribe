@@ -80,6 +80,7 @@ public enum NativeFormat {
         guard Set(paragraphs.compactMap { $0.toc?.tableID }) == tocIDs else { throw DocumentError.invalid("orphaned table of contents definition") }
         guard Set(paragraphs.map(\.id)).count == paragraphs.count else { throw DocumentError.invalid("duplicate paragraph identifiers") }
         guard Set(document.comments.map(\.id)).count == document.comments.count else { throw DocumentError.invalid("duplicate comment identifiers") }
+        guard Set(document.bookmarks.map(\.id)).count == document.bookmarks.count else { throw DocumentError.invalid("duplicate bookmark identifiers") }
         let textIndex = DocumentTextIndex(paragraphs: paragraphs)
         for comment in document.comments where comment.isDetached != true {
             guard textIndex.range(for: comment.anchor) != nil else { throw DocumentError.invalid("invalid comment anchor") }

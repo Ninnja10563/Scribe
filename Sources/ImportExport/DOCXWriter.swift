@@ -13,6 +13,7 @@ final class DOCXWriter {
     private let contents: DOCXTableOfContents
     private var contentWidth = 451.276
     private var bookmarkIDs: [UUID: Int] = [:]
+    private var namedBookmarks: DOCXBookmarks?
     init(_ document: ScribeDocument) { self.document = document; numbering = DOCXNumberingWriter(paragraphs: document.paragraphs); comments = DOCXCommentsWriter(document: document); contents = DOCXTableOfContents(document: document) }
     private func put(_ path: String, _ xml: String) { parts[path] = Data(xml.utf8) }
     private func relationship(type: String, target: String, external: Bool = false, namespace: String = DOCX.relationNS) -> String {
@@ -24,6 +25,7 @@ final class DOCXWriter {
         try NativeFormat.validate(document)
         let linked = Set(document.paragraphs.flatMap(\.runs).compactMap { $0.link.flatMap(DocumentLink.paragraphID) })
         for paragraph in document.paragraphs where linked.contains(paragraph.id) { bookmarkIDs[paragraph.id] = bookmarkIDs.count }
+        namedBookmarks = DOCXBookmarks(document, startingID: bookmarkIDs.count, reservedNames: Set(bookmarkIDs.keys.map(DocumentLink.officeBookmark)))
         var body = ""
         for (index, section) in document.sections.enumerated() {
             contentWidth = section.page.contentWidth
@@ -112,7 +114,7 @@ final class DOCXWriter {
         }
         text += comments.markers(paragraphID: p.id, offset: offset)
         let bookmark = bookmarkIDs[p.id].map { "<w:bookmarkStart w:id=\"\($0)\" w:name=\"\(DocumentLink.officeBookmark(p.id))\"/><w:bookmarkEnd w:id=\"\($0)\"/>" } ?? ""
-        return "<w:p><w:pPr>\(properties)</w:pPr>\(bookmark)\(contents.start(p.id))\(text)\(contents.end(p.id))</w:p>"
+        return "<w:p><w:pPr>\(properties)</w:pPr>\(bookmark)\(namedBookmarks?.markers(at: p.id) ?? "")\(contents.start(p.id))\(text)\(contents.end(p.id))</w:p>"
     }
     private func runXML(_ run: TextRun) -> String {
             if let image = run.image { return imageRun(image) }
@@ -123,6 +125,10 @@ final class DOCXWriter {
             if let id = DocumentLink.paragraphID(link) {
                 guard bookmarkIDs[id] != nil else { return content }
                 return "<w:hyperlink w:anchor=\"\(DocumentLink.officeBookmark(id))\">\(content)</w:hyperlink>"
+            }
+            if let id = DocumentLink.bookmarkID(link) {
+                guard let name = namedBookmarks?.name(for: id) else { return content }
+                return "<w:hyperlink w:anchor=\"\(DOCX.xml(name))\">\(content)</w:hyperlink>"
             }
             return "<w:hyperlink r:id=\"\(relationship(type: "hyperlink", target: link, external: true))\">\(content)</w:hyperlink>"
     }

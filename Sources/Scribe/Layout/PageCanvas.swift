@@ -230,8 +230,11 @@ import DocumentCore
     }
     func textView(_ textView: NSTextView, clickedOnLink link: Any, at charIndex: Int) -> Bool {
         let value = (link as? URL)?.absoluteString ?? link as? String ?? ""
-        guard let id = DocumentLink.paragraphID(value) else { return false }
-        if !jump(to: id) { owner?.editorController?.showStatus("The linked heading has been deleted."); NSSound.beep() }; return true
+        guard DocumentLink.paragraphID(value) != nil || DocumentLink.bookmarkID(value) != nil else { return false }
+        guard let id = owner?.snapshot().destinationParagraphID(for: value), jump(to: id) else {
+            owner?.editorController?.showStatus("The linked destination has been deleted."); NSSound.beep(); return true
+        }
+        return true
     }
     func navigationLocation(in range: NSRange) -> Int {
         let text = storage.string as NSString

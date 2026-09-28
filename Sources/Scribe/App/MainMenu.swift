@@ -56,6 +56,8 @@ import AppKit
         item(insert, "Page Numbers…", #selector(EditorWindowController.pageNumbers))
         item(insert, "Hyperlink…", #selector(EditorWindowController.insertLink), "k")
         item(insert, "Link to Heading…", #selector(EditorWindowController.insertHeadingLink))
+        item(insert, "Bookmark This Paragraph…", #selector(EditorWindowController.insertBookmark))
+        item(insert, "Bookmarks…", #selector(EditorWindowController.manageBookmarks))
         item(insert, "Headers and Footers…", #selector(EditorWindowController.editHeaderFooter))
         item(insert, "Symbols and Characters…", #selector(ScribeTextView.insertSpecialCharacter(_:)))
         let format = menu("Format")
