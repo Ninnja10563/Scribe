@@ -20,7 +20,7 @@ import AppKit
         let file = menu("File")
         item(file, "New", #selector(NSDocumentController.newDocument(_:)), "n")
         item(file, "Open…", #selector(NSDocumentController.openDocument(_:)), "o")
-        let recent = NSMenu(title: "Open Recent")
+        let recent = NSMenu(title: "Open Recent"); recent.delegate = RecentDocumentsMenu.shared
         let recentItem = NSMenuItem(title: "Open Recent", action: nil, keyEquivalent: ""); recentItem.submenu = recent; file.addItem(recentItem)
         item(recent, "Clear Menu", #selector(NSDocumentController.clearRecentDocuments(_:)))
         file.addItem(.separator())
@@ -84,6 +84,23 @@ import AppKit
         item(window, "Show Previous Tab", #selector(NSWindow.selectPreviousTab(_:)))
         item(window, "Merge All Windows", #selector(NSWindow.mergeAllWindows(_:)))
         NSApp.mainMenu = main
+    }
+}
+@MainActor private final class RecentDocumentsMenu: NSObject, NSMenuDelegate {
+    static let shared = RecentDocumentsMenu()
+    func menuNeedsUpdate(_ menu: NSMenu) {
+        menu.removeAllItems()
+        for url in NSDocumentController.shared.recentDocumentURLs {
+            let item = NSMenuItem(title: url.lastPathComponent, action: #selector(openRecent(_:)), keyEquivalent: "")
+            item.target = self; item.representedObject = url; item.toolTip = url.path; menu.addItem(item)
+        }
+        if menu.items.isEmpty { menu.addItem(NSMenuItem(title: "No Recent Documents", action: nil, keyEquivalent: "")) }
+        else { menu.addItem(.separator()); menu.addItem(NSMenuItem(title: "Clear Menu", action: #selector(NSDocumentController.clearRecentDocuments(_:)), keyEquivalent: "")) }
+    }
+    @objc private func openRecent(_ sender: NSMenuItem) {
+        guard let url = sender.representedObject as? URL else { return }
+        if url.pathExtension.lowercased() != "scribe", let controller = NSDocumentController.shared as? ScribeDocumentController { controller.importDocument(url) }
+        else { NSDocumentController.shared.openDocument(withContentsOf: url, display: true) { _, _, error in if let error { NSApp.presentError(error) } } }
     }
 }
 #endif

@@ -13,19 +13,25 @@ import DocumentCore
     private var task: Task<Void, Never>?
     override init(frame: NSRect) {
         super.init(frame: frame)
-        orientation = .horizontal; spacing = 8; edgeInsets = NSEdgeInsets(top: 8, left: 16, bottom: 8, right: 16)
+        orientation = .vertical; alignment = .leading; spacing = 8
+        edgeInsets = NSEdgeInsets(top: 8, left: 16, bottom: 8, right: 16)
         query.placeholderString = "Find in document"; query.delegate = self; query.setAccessibilityLabel("Find text")
         replacement.placeholderString = "Replace with"; replacement.setAccessibilityLabel("Replacement text")
-        query.widthAnchor.constraint(equalToConstant: 160).isActive = true
-        replacement.widthAnchor.constraint(equalToConstant: 130).isActive = true
-        addArrangedSubview(query); addArrangedSubview(replacement)
-        for button in [matchCase, wholeWord] { button.target = self; button.action = #selector(search); button.font = .systemFont(ofSize: 11); addArrangedSubview(button) }
-        addArrangedSubview(NSButton(title: "Previous", target: self, action: #selector(previous)))
-        addArrangedSubview(NSButton(title: "Next", target: self, action: #selector(next)))
-        addArrangedSubview(NSButton(title: "Replace", target: self, action: #selector(replace)))
-        addArrangedSubview(NSButton(title: "All", target: self, action: #selector(replaceAll)))
-        count.font = .systemFont(ofSize: 11); count.textColor = .secondaryLabelColor; addArrangedSubview(count)
-        addArrangedSubview(NSButton(title: "Done", target: self, action: #selector(close)))
+        query.widthAnchor.constraint(greaterThanOrEqualToConstant: 150).isActive = true
+        query.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        replacement.widthAnchor.constraint(equalToConstant: 260).isActive = true
+        for button in [matchCase, wholeWord] { button.target = self; button.action = #selector(search); button.font = .systemFont(ofSize: 11) }
+        count.font = .systemFont(ofSize: 11); count.textColor = .secondaryLabelColor
+        let top = NSStackView(views: [query, matchCase, wholeWord,
+            NSButton(title: "Previous", target: self, action: #selector(previous)),
+            NSButton(title: "Next", target: self, action: #selector(next)), count,
+            NSButton(title: "Done", target: self, action: #selector(close))])
+        let bottom = NSStackView(views: [replacement,
+            NSButton(title: "Replace", target: self, action: #selector(replace)),
+            NSButton(title: "Replace All", target: self, action: #selector(replaceAll))])
+        for row in [top, bottom] { row.spacing = 8; addArrangedSubview(row) }
+        top.widthAnchor.constraint(equalTo: widthAnchor, constant: -32).isActive = true
+
     }
     required init?(coder: NSCoder) { fatalError("Programmatic view") }
     func controlTextDidChange(_ obj: Notification) { search() }

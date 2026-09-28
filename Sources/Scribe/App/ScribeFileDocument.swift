@@ -138,6 +138,7 @@ import ImportExport
                 guard let string = String(data: data, encoding: .utf8) else { throw DocumentError.invalid("text must use UTF-8 encoding") }
                 document.model = url.pathExtension.lowercased() == "md" ? TextFormats.markdown(string) : TextFormats.plainText(string)
             }
+            noteNewRecentDocumentURL(url)
             document.model.title = url.deletingPathExtension().lastPathComponent
             addDocument(document); document.makeWindowControllers(); document.showWindows(); document.updateChangeCount(.changeDone)
             if !document.importWarnings.isEmpty {
