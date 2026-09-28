@@ -21,4 +21,4 @@ This is a foundation release. “Implemented” means there is working code and 
 | Reliability | NSDocument lifecycle/autosave, native undo plus document transactions, atomic saves, separate recoverable snapshots, archive validation | Crash/power-loss/disk-full fault injection, long-session memory testing |
 | Distribution | macOS CI, launch/render smoke artifacts, verified DMGs, versioned pre-releases and checksums | Developer ID signing, notarization, automatic updater |
 
-Limits: 128 MB native/decompressed archive safety limit; 32 MB per embedded image; 100 rows and 20 columns per table; 2,000 page-layout containers. These are explicit implementation bounds, not performance guarantees. An unlayable object is reported and PDF/print is blocked rather than silently truncated.
+Limits: 128 MB native/decompressed archive safety limit; 32 MB and 64 megapixels per decoded image; 100 rows and 20 columns per table; 2,000 page-layout containers. These are explicit implementation bounds, not performance guarantees. An unlayable object is reported and PDF/print is blocked rather than silently truncated.

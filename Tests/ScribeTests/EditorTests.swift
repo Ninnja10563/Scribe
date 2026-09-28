@@ -81,6 +81,15 @@ import DocumentCore
         controller.searchBar.next()
         XCTAssertLessThanOrEqual(NSMaxRange(view.selectedRange()), controller.editor.storage.length)
     }
+    func testUndecodableImageRetainsOriginalBytes() throws {
+        var document = ScribeDocument()
+        var run = TextRun("\u{FFFC}")
+        run.image = InlineImage(data: Data("damaged PNG".utf8), fileExtension: "png", width: 120, height: 50, altText: "Preserve me")
+        document.sections[0].paragraphs[0].runs = [run]
+        let rendered = AttributedDocument.render(document)
+        XCTAssertTrue(rendered.containsAttachments)
+        XCTAssertEqual(AttributedDocument.capture(rendered, preserving: document).paragraphs[0].runs[0].image, run.image)
+    }
     func testProjectionPreservesStylesAndUnicode() {
         var doc = ScribeDocument()
         doc.sections[0].paragraphs = [Paragraph("Heading 👩🏽‍💻", style: "heading1"), Paragraph("Body café"), Paragraph("")]
@@ -90,6 +99,7 @@ import DocumentCore
         XCTAssertEqual(roundTrip.paragraphs[0].id, doc.paragraphs[0].id)
         XCTAssertEqual(roundTrip.paragraphs[0].styleID, "heading1")
         XCTAssertNil(roundTrip.paragraphs[0].runs[0].format.fontSize)
+        XCTAssertNil(roundTrip.paragraphs[0].runs[0].format.foreground)
     }
     func testTextFlowsAndRepaginatesAfterGeometryChanges() {
         let document = ScribeFileDocument()

@@ -159,7 +159,7 @@ extension NSColor {
     }
     var hex: String? {
         guard let c = usingColorSpace(.sRGB) else { return nil }
-        return String(format: "#%02X%02X%02X", Int(c.redComponent * 255), Int(c.greenComponent * 255), Int(c.blueComponent * 255))
+        return String(format: "#%02X%02X%02X", Int((c.redComponent * 255).rounded()), Int((c.greenComponent * 255).rounded()), Int((c.blueComponent * 255).rounded()))
     }
 }
 #endif

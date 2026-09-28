@@ -86,6 +86,11 @@ final class DocumentCoreTests: XCTestCase {
         document.deleteTable(id: id)
         XCTAssertTrue(document.tables.isEmpty); XCTAssertTrue(document.paragraphs.allSatisfy { $0.tableCell == nil })
     }
+    func testCombiningMarksStayInsideWords() {
+        let text = "cafe\u{301} nai\u{308}ve"
+        XCTAssertEqual(DocumentStatistics(text: text).words, 2)
+        XCTAssertTrue(DocumentSearch.matches(in: text, query: "cafe", options: SearchOptions(wholeWord: true)).isEmpty)
+    }
     func testStatistics() {
         let stats = DocumentStatistics(text: "Don't stop.\nCafé 東京 👩🏽‍💻")
         XCTAssertEqual(stats.words, 4); XCTAssertEqual(stats.paragraphs, 2)

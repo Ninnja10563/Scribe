@@ -12,7 +12,7 @@ public enum DocumentSearch {
     public static func matches(in text: String, query: String, options: SearchOptions = SearchOptions()) -> [NSRange] {
         guard !query.isEmpty else { return [] }
         let escaped = NSRegularExpression.escapedPattern(for: query)
-        let pattern = options.wholeWord ? "(?<![\\p{L}\\p{N}_])(?:\(escaped))(?![\\p{L}\\p{N}_])" : escaped
+        let pattern = options.wholeWord ? "(?<![\\p{L}\\p{M}\\p{N}_])(?:\(escaped))(?![\\p{L}\\p{M}\\p{N}_])" : escaped
         guard let regex = try? NSRegularExpression(pattern: pattern, options: options.matchCase ? [] : [.caseInsensitive]) else { return [] }
         return regex.matches(in: text, range: NSRange(text.startIndex..., in: text)).map(\.range)
     }
@@ -26,7 +26,7 @@ public struct DocumentStatistics: Equatable, Sendable {
         characters = text.count
         charactersWithoutSpaces = text.filter { !$0.isWhitespace }.count
         paragraphs = text.isEmpty ? 0 : text.components(separatedBy: "\n").count
-        let regex = try! NSRegularExpression(pattern: "[\\p{L}\\p{N}]+(?:[’'-][\\p{L}\\p{N}]+)*")
+        let regex = try! NSRegularExpression(pattern: "[\\p{L}\\p{N}][\\p{L}\\p{M}\\p{N}]*(?:[’'-][\\p{L}\\p{N}][\\p{L}\\p{M}\\p{N}]*)*")
         words = regex.numberOfMatches(in: text, range: NSRange(text.startIndex..., in: text))
     }
 }

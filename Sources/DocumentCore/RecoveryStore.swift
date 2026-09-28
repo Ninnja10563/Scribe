@@ -15,6 +15,7 @@ public actor RecoveryStore {
         try NativeFormat.validate(snapshot.document)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         let data = try JSONEncoder().encode(snapshot)
+        guard data.count <= NativeFormat.maximumBytes else { throw DocumentError.tooLarge }
         try data.write(to: directory.appendingPathComponent(snapshot.document.id.uuidString).appendingPathExtension("json"), options: .atomic)
     }
     public func snapshots() throws -> [RecoverySnapshot] {
