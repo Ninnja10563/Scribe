@@ -53,7 +53,7 @@ final class AnchorTests: XCTestCase {
         let loaded = try NativeFormat.decode(JSONSerialization.data(withJSONObject: json))
         XCTAssertEqual(loaded.comments[0].text, "Keep the review")
         XCTAssertEqual(loaded.comments[0].isDetached, true)
-        XCTAssertEqual(loaded.formatVersion, 4)
+        XCTAssertEqual(loaded.formatVersion, ScribeDocument.currentVersion)
         XCTAssertEqual(try NativeFormat.decode(NativeFormat.encode(loaded)), loaded)
     }
 }

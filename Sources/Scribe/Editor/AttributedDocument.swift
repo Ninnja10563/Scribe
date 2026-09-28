@@ -7,6 +7,8 @@ extension NSAttributedString.Key {
     static let scribeParagraphID = NSAttributedString.Key("org.scribe.paragraphID")
     static let scribeCell = NSAttributedString.Key("org.scribe.tableCell")
     static let scribeImage = NSAttributedString.Key("org.scribe.image")
+    static let scribeRenderedFace = NSAttributedString.Key("org.scribe.renderedFace")
+    static let scribeFontFace = NSAttributedString.Key("org.scribe.fontFace")
     static let scribeList = NSAttributedString.Key("org.scribe.list")
 }
 
@@ -87,11 +89,21 @@ extension NSAttributedString.Key {
                     guard !value.isEmpty else { return }
                     var format = TextFormatting()
                     if let font = attributes[.font] as? NSFont {
-                        if font.familyName != style.text.fontFamily { format.fontFamily = font.familyName }
+                        let inheritedFont = FontProjection.font(TextFormatting(), over: style.text)
+                        let inheritedTraits = NSFontManager.shared.traits(of: inheritedFont)
+                        if font.familyName != inheritedFont.familyName { format.fontFamily = font.familyName }
                         if Double(font.pointSize) != style.text.fontSize { format.fontSize = Double(font.pointSize) }
                         let traits = NSFontManager.shared.traits(of: font)
-                        if traits.contains(.boldFontMask) != (style.text.bold ?? false) { format.bold = traits.contains(.boldFontMask) }
-                        if traits.contains(.italicFontMask) != (style.text.italic ?? false) { format.italic = traits.contains(.italicFontMask) }
+                        if traits.contains(.boldFontMask) != inheritedTraits.contains(.boldFontMask) { format.bold = traits.contains(.boldFontMask) }
+                        if traits.contains(.italicFontMask) != inheritedTraits.contains(.italicFontMask) { format.italic = traits.contains(.italicFontMask) }
+                        let inferred = FontProjection.font(format, over: style.text)
+                        if inferred.fontName != font.fontName { format.fontFace = font.fontName }
+                        // A missing installed face renders with a fallback, but remains in the
+                        // document until the user actually chooses a different font.
+                        if let requested = attributes[.scribeFontFace] as? String,
+                           attributes[.scribeRenderedFace] as? String == font.fontName {
+                            format.fontFace = requested == style.text.fontFace ? nil : requested
+                        }
                     }
                     let underline = (attributes[.underlineStyle] as? Int ?? 0) != 0
                     if underline != (style.text.underline ?? false) { format.underline = underline }
@@ -141,12 +153,13 @@ extension NSAttributedString.Key {
         return attrs
     }
     static func apply(_ f: TextFormatting, over base: TextFormatting, to attributes: inout [NSAttributedString.Key: Any]) {
-        let size = f.fontSize ?? base.fontSize ?? 12
-        let family = f.fontFamily ?? base.fontFamily ?? "Helvetica Neue"
-        var font = NSFont(name: family, size: size) ?? NSFont.systemFont(ofSize: size)
-        if f.bold ?? base.bold ?? false { font = NSFontManager.shared.convert(font, toHaveTrait: .boldFontMask) }
-        if f.italic ?? base.italic ?? false { font = NSFontManager.shared.convert(font, toHaveTrait: .italicFontMask) }
+        let font = FontProjection.font(f, over: base)
         attributes[.font] = font
+        if let face = FontProjection.requestedFace(f, over: base) {
+            attributes[.scribeFontFace] = face; attributes[.scribeRenderedFace] = font.fontName
+        } else {
+            attributes.removeValue(forKey: .scribeFontFace); attributes.removeValue(forKey: .scribeRenderedFace)
+        }
         attributes[.foregroundColor] = NSColor(hex: f.foreground ?? base.foreground ?? "#1D1D1F")
         attributes[.underlineStyle] = (f.underline ?? base.underline ?? false) ? NSUnderlineStyle.single.rawValue : 0
         attributes[.strikethroughStyle] = (f.strikethrough ?? base.strikethrough ?? false) ? NSUnderlineStyle.single.rawValue : 0

@@ -1,7 +1,7 @@
 import Foundation
 
 public struct ScribeDocument: Codable, Equatable, Sendable {
-    public static let currentVersion = 4
+    public static let currentVersion = 5
     public var formatVersion = currentVersion
     public var id = UUID()
     public var title = "Untitled"
@@ -74,6 +74,8 @@ public struct TextRun: Codable, Equatable, Sendable {
 /// Nil properties inherit from the paragraph's named style.
 public struct TextFormatting: Codable, Equatable, Sendable {
     public var fontFamily: String?
+    /// Optional PostScript face preserves weights/widths beyond bold and italic.
+    public var fontFace: String?
     public var fontSize: Double?
     public var bold: Bool?
     public var italic: Bool?

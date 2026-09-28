@@ -33,6 +33,7 @@ public enum NativeFormat {
             if version == 1 { json["tables"] = [] }
             // v2 → v3: absent seriesID/restart retain legacy contiguous-list semantics.
             // v3 → v4: legacy comment anchors remain single-paragraph ranges.
+            // v4 → v5: absent fontFace retains family/trait-based font selection.
             json["formatVersion"] = ScribeDocument.currentVersion
             migrated = try JSONSerialization.data(withJSONObject: json)
         }
@@ -98,6 +99,9 @@ public enum NativeFormat {
         }
     }
     private static func validateText(_ format: TextFormatting) throws {
+        if let face = format.fontFace, face.isEmpty || face.utf8.count > 512 || face.unicodeScalars.contains(where: { CharacterSet.controlCharacters.contains($0) }) {
+            throw DocumentError.invalid("invalid font face")
+        }
         if let size = format.fontSize, !size.isFinite || !(1...1000).contains(size) { throw DocumentError.invalid("invalid font size") }
         if let baseline = format.baseline, !(-1...1).contains(baseline) { throw DocumentError.invalid("invalid baseline") }
         for color in [format.foreground, format.highlight].compactMap({ $0 }) {

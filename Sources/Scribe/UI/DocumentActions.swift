@@ -12,6 +12,9 @@ extension EditorWindowController {
             let alert = NSAlert(); alert.messageText = "Export a \(format.uppercased()) copy?"
             alert.informativeText = format == "txt" ? "Plain text removes all formatting, page layout, and document metadata. Your Scribe document is kept intact." : "This export preserves supported text formatting. Some Scribe metadata and layout features may not transfer. Your Scribe document is kept intact."
             if format == "docx", model.comments.contains(where: { $0.isDetached == true }) { alert.informativeText += " Detached comments are retained in the package, but other editors may hide them." }
+            if format == "docx", model.styles.contains(where: { $0.text.fontFace != nil }) || model.paragraphs.contains(where: { $0.runs.contains(where: { $0.format.fontFace != nil }) }) {
+                alert.informativeText += " Specific font faces and intermediate weights may be approximated by their family and bold/italic traits in Word."
+            }
             alert.addButton(withTitle: "Export Copy"); alert.addButton(withTitle: "Cancel")
             guard alert.runModal() == .alertFirstButtonReturn else { return }
         }
@@ -127,6 +130,7 @@ extension EditorWindowController {
         alert.addButton(withTitle: "Apply"); alert.addButton(withTitle: "Cancel")
         guard alert.runModal() == .alertFirstButtonReturn else { return }
         guard let points = Double(size.stringValue), (1...200).contains(points), let spacing = Double(after.stringValue), (0...200).contains(spacing), !name.stringValue.isEmpty else { return }
+        if family.stringValue != style.text.fontFamily { style.text.fontFace = nil }
         style.name = name.stringValue; style.text.fontFamily = family.stringValue; style.text.fontSize = points; style.paragraph.spaceAfter = spacing
         fileDocument.performEdit("Modify Style") { $0.updateStyle(style) }
     }

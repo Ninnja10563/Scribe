@@ -58,3 +58,9 @@ Microsoft Open XML SDK 3.5.1 found 24 schema errors in the pre-release 0.4 smoke
 ### Search/statistics follow-up
 
 A semantic text snapshot now excludes generated list/page-break prefixes from Find and statistics while mapping Unicode matches back to AppKit UTF-16 selections. The snapshot is cached by editor revision; ordinary literal text resembling a list marker remains searchable. Native tests cover generated-versus-literal Roman numbers, multi-paragraph mapping and replacement/undo. This follow-up is after the v0.4.0 tag; macOS validation is pending.
+
+- [Scribe v0.4.0](https://github.com/Ninnja10563/Scribe/releases/tag/v0.4.0) was published by [release run 36494356424](https://github.com/Ninnja10563/Scribe/actions/runs/36494356424), including the independent schema gate. The published arm64 DMG was downloaded and its SHA-256 verified. The subsequent semantic Find/statistics changes passed [macOS run 36494378619](https://github.com/Ninnja10563/Scribe/actions/runs/36494378619).
+
+### Font-face persistence (v0.5 development)
+
+Native v5 adds optional PostScript face identities, preserving weights/widths beyond bold/italic. v4 migration retains previous family/trait semantics. Native regression tests cover Medium/Light/Condensed faces through capture/save/reopen, style inheritance, family overrides and missing-face retention. These tests are awaiting macOS CI. DOCX still approximates concrete faces using family and bold/italic information; the export dialog discloses this when applicable.
