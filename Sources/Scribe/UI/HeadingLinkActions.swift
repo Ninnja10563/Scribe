@@ -27,10 +27,10 @@ extension EditorWindowController {
         alert.addButton(withTitle: "Insert Link"); alert.addButton(withTitle: "Cancel")
         guard alert.runModal() == .alertFirstButtonReturn, headings.indices.contains(target.indexOfSelectedItem) else { return }
         let heading = headings[target.indexOfSelectedItem]
-        insertHeadingLink(to: heading.id, text: title.stringValue.isEmpty ? heading.title : title.stringValue, selection: selection)
+        applyHeadingLink(to: heading.id, text: title.stringValue.isEmpty ? heading.title : title.stringValue, selection: selection)
     }
 
-    func insertHeadingLink(to id: UUID, text: String, selection: NSRange) {
+    func applyHeadingLink(to id: UUID, text: String, selection: NSRange) {
         guard !text.isEmpty, fileDocument.snapshot().paragraphs.contains(where: { $0.id == id }) else { return }
         let view = editor.activeTextView
         var attributes = view.typingAttributes; attributes[.link] = DocumentLink.paragraph(id)

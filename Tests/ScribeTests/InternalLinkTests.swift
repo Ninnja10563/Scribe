@@ -35,7 +35,7 @@ import DocumentCore
         document.makeWindowControllers(); defer { document.close() }
         let controller = document.editorController!, editor = controller.editor
         document.undoManager?.removeAllActions()
-        controller.insertHeadingLink(to: heading.id, text: "Read more", selection: NSRange(location: 0, length: 7))
+        controller.applyHeadingLink(to: heading.id, text: "Read more", selection: NSRange(location: 0, length: 7))
         XCTAssertEqual(document.snapshot().paragraphs[0].runs[0].link, DocumentLink.paragraph(heading.id))
         XCTAssertTrue(editor.textView(editor.activeTextView, clickedOnLink: DocumentLink.paragraph(heading.id), at: 0))
         XCTAssertEqual(editor.activeTextView.selectedRange().location, (editor.storage.string as NSString).range(of: "Destination").location)
