@@ -104,6 +104,15 @@ import ImportExport
 
 @MainActor final class ScribeDocumentController: NSDocumentController {
     override var defaultType: String? { ScribeFileDocument.typeName }
+    override func makeUntitledDocument(ofType typeName: String) throws -> NSDocument {
+        guard typeName == ScribeFileDocument.typeName else { throw DocumentError.invalid("unsupported document type") }
+        let document = ScribeFileDocument(); document.fileType = typeName
+        return document
+    }
+    override func makeDocument(withContentsOf url: URL, ofType typeName: String) throws -> NSDocument {
+        guard typeName == ScribeFileDocument.typeName else { throw DocumentError.invalid("use Import for this file type") }
+        return try ScribeFileDocument(contentsOf: url, ofType: typeName)
+    }
     override func documentClass(forType typeName: String) -> AnyClass? { ScribeFileDocument.self }
     override func openDocument(_ sender: Any?) {
         let panel = NSOpenPanel()
