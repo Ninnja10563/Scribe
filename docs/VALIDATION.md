@@ -48,3 +48,7 @@ Developer ID signing, notarization, physical-Mac input/VoiceOver testing, and ma
 
 - The 0.4 candidate's actual light/dark review interface was visually inspected. `scripts/verify-smoke.py` independently verified its 14-page PDF, matching two-page selection, metadata, lists, table/image and two comments, including the join between comment paragraph IDs and Word resolved-state metadata.
 - The latest Linux run passed 39 portable tests, with one AppKit-only skip. The CDATA/namespace-rebinding regression passed in [36492472230](https://github.com/Ninnja10563/Scribe/actions/runs/36492472230), bringing the native suite to 59 tests. The release smoke test now also re-imports its generated DOCX using the optimized application binary, with explicit delegate-lifetime protection.
+
+### Independent Office XML schema validation
+
+Microsoft Open XML SDK 3.5.1 found 24 schema errors in the pre-release 0.4 smoke DOCX: paragraph/style/run/table property ordering and missing shading values. The writer now emits schema-ordered properties and explicit clear shading. A combined-formatting/list/table regression export passes Office 2013 validation locally, and 40 portable tests pass (one additional AppKit-only skip). CI now validates both that regression package and the optimized macOS app's smoke DOCX before allowing publication. This adds schema/semantic checks, not manual Word visual certification. The development-only validator and locked dependencies are in `tools/OOXMLValidation`; no .NET runtime ships in the app.

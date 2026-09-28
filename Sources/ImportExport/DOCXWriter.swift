@@ -82,11 +82,11 @@ final class DOCXWriter {
     private func paragraph(_ p: Paragraph) -> String {
         var properties = "<w:pStyle w:val=\"\(DOCX.xml(p.styleID))\"/>"
         if p.pageBreakBefore { properties += "<w:pageBreakBefore/>" }
-        if let f = p.formatting { properties += DOCX.paragraphProperties(f) }
         if let list = p.list {
             let id = numbering.paragraphIDs[p.id]!
             properties += "<w:numPr><w:ilvl w:val=\"\(list.level)\"/><w:numId w:val=\"\(id)\"/></w:numPr>"
         }
+        if let f = p.formatting { properties += DOCX.paragraphProperties(f) }
         var text = "", offset = 0
         let boundaries = comments.boundaries(paragraphID: p.id)
         for run in p.runs {
@@ -121,12 +121,12 @@ final class DOCXWriter {
             var cells = ""
             for column in table.columnWidths.indices {
                 let content = (cellsByPosition[row * table.columnWidths.count + column] ?? []).map(paragraph).joined()
-                let shade = row == 0 && table.firstRowIsHeader ? "<w:shd w:fill=\"\(table.headerBackground.dropFirst())\"/>" : ""
+                let shade = row == 0 && table.firstRowIsHeader ? "<w:shd w:val=\"clear\" w:fill=\"\(table.headerBackground.dropFirst())\"/>" : ""
                 cells += "<w:tc><w:tcPr><w:tcW w:w=\"\(Int(table.columnWidths[column] * 20))\" w:type=\"dxa\"/>\(shade)</w:tcPr>\(content.isEmpty ? "<w:p/>" : content)</w:tc>"
             }
             rows += "<w:tr>\(row == 0 && table.firstRowIsHeader ? "<w:trPr><w:tblHeader/></w:trPr>" : "")\(cells)</w:tr>"
         }
-        return "<w:tbl><w:tblPr><w:tblW w:w=\"\(Int(table.columnWidths.reduce(0, +) * 20))\" w:type=\"dxa\"/><w:tblLayout w:type=\"fixed\"/><w:tblBorders>\(borders)</w:tblBorders><w:tblCellMar>\(margins)</w:tblCellMar></w:tblPr><w:tblGrid>\(grid)</w:tblGrid>\(rows)</w:tbl>"
+        return "<w:tbl><w:tblPr><w:tblW w:w=\"\(Int(table.columnWidths.reduce(0, +) * 20))\" w:type=\"dxa\"/><w:tblBorders>\(borders)</w:tblBorders><w:tblLayout w:type=\"fixed\"/><w:tblCellMar>\(margins)</w:tblCellMar></w:tblPr><w:tblGrid>\(grid)</w:tblGrid>\(rows)</w:tbl>"
     }
     private func imageRun(_ image: InlineImage) -> String {
         let name = "media/\(image.id).\(image.fileExtension)"

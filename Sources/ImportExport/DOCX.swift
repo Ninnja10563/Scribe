@@ -90,18 +90,18 @@ public enum DOCX {
     static func runProperties(_ f: TextFormatting) -> String {
         var s = ""
         if let family = f.fontFamily { s += "<w:rFonts w:ascii=\"\(xml(family))\" w:hAnsi=\"\(xml(family))\"/>" }
-        if let size = f.fontSize { s += "<w:sz w:val=\"\(Int(size * 2))\"/>" }
         if let b = f.bold { s += "<w:b w:val=\"\(b ? 1 : 0)\"/>" }
         if let i = f.italic { s += "<w:i w:val=\"\(i ? 1 : 0)\"/>" }
-        if let u = f.underline { s += "<w:u w:val=\"\(u ? "single" : "none")\"/>" }
         if let strike = f.strikethrough { s += "<w:strike w:val=\"\(strike ? 1 : 0)\"/>" }
         if let color = f.foreground { s += "<w:color w:val=\"\(xml(color.replacingOccurrences(of: "#", with: "")))\"/>" }
-        if let color = f.highlight { s += "<w:shd w:fill=\"\(xml(color.replacingOccurrences(of: "#", with: "")))\"/>" }
+        if let size = f.fontSize { s += "<w:sz w:val=\"\(Int(size * 2))\"/>" }
+        if let u = f.underline { s += "<w:u w:val=\"\(u ? "single" : "none")\"/>" }
+        if let color = f.highlight { s += "<w:shd w:val=\"clear\" w:fill=\"\(xml(color.replacingOccurrences(of: "#", with: "")))\"/>" }
         if let baseline = f.baseline, baseline != 0 { s += "<w:vertAlign w:val=\"\(baseline > 0 ? "superscript" : "subscript")\"/>" }
         return s
     }
     static func paragraphProperties(_ f: ParagraphFormatting) -> String {
-        "<w:jc w:val=\"\(f.alignment == .justified ? "both" : f.alignment.rawValue)\"/><w:spacing w:before=\"\(Int(f.spaceBefore * 20))\" w:after=\"\(Int(f.spaceAfter * 20))\"/><w:ind w:left=\"\(Int(f.headIndent * 20))\" w:right=\"\(Int(f.tailIndent * 20))\" \(f.firstLineIndent >= f.headIndent ? "w:firstLine" : "w:hanging")=\"\(Int(abs(f.firstLineIndent - f.headIndent) * 20))\"/>"
+        "<w:spacing w:before=\"\(Int(f.spaceBefore * 20))\" w:after=\"\(Int(f.spaceAfter * 20))\"/><w:ind w:left=\"\(Int(f.headIndent * 20))\" w:right=\"\(Int(f.tailIndent * 20))\" \(f.firstLineIndent >= f.headIndent ? "w:firstLine" : "w:hanging")=\"\(Int(abs(f.firstLineIndent - f.headIndent) * 20))\"/><w:jc w:val=\"\(f.alignment == .justified ? "both" : f.alignment.rawValue)\"/>"
     }
     static func sectionProperties(_ p: PageSettings) -> String {
         "<w:sectPr><w:pgSz w:w=\"\(Int(p.width * 20))\" w:h=\"\(Int(p.height * 20))\"/><w:pgMar w:top=\"\(Int(p.top * 20))\" w:bottom=\"\(Int(p.bottom * 20))\" w:left=\"\(Int(p.left * 20))\" w:right=\"\(Int(p.right * 20))\"/></w:sectPr>"

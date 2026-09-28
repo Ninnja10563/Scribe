@@ -17,6 +17,8 @@ jobs:
       - name: Toolchain
         run: swift --version
       - name: Test core, interoperability and native editor
+        env:
+          SCRIBE_SCHEMA_OUTPUT: build/schema
         run: swift test
       - name: Check release version
         if: startsWith(github.ref, 'refs/tags/v')
@@ -34,9 +36,26 @@ jobs:
             build/*.dmg
             build/*.sha256
             build/smoke/
+            build/schema/
+  office-validation:
+    needs: macos
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: Scribe-arm64
+          path: build
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Restore independent Office XML validator
+        run: dotnet restore tools/OOXMLValidation --locked-mode
+      - name: Validate the release app's DOCX package
+        run: dotnet run --project tools/OOXMLValidation --no-restore -- build/smoke/Smoke.docx build/schema/*.docx
   release:
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: macos
+    needs: [macos, office-validation]
     runs-on: ubuntu-latest
     permissions:
       contents: write
