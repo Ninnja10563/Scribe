@@ -44,13 +44,19 @@ import DocumentCore
             for range in found { editor.layout.addTemporaryAttribute(.backgroundColor, value: NSColor.systemYellow.withAlphaComponent(0.4), forCharacterRange: range) }
         }
     }
+    private func refreshMatchesForNavigation() {
+        guard let editor else { return }
+        matches = DocumentSearch.matches(in: editor.storage.string, query: query.stringValue, options: SearchOptions(matchCase: matchCase.state == .on, wholeWord: wholeWord.state == .on))
+    }
     @objc func next() {
+        refreshMatchesForNavigation()
         guard let editor, !matches.isEmpty else { return }
         let selection = editor.activeTextView.selectedRange()
         let match = matches.first { $0.location >= NSMaxRange(selection) && $0 != selection } ?? matches[0]
         editor.select(match)
     }
     @objc func previous() {
+        refreshMatchesForNavigation()
         guard let editor, !matches.isEmpty else { return }
         let selection = editor.activeTextView.selectedRange()
         editor.select(matches.last { $0.location < selection.location } ?? matches.last!)

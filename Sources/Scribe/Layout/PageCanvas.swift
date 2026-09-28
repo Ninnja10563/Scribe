@@ -174,7 +174,8 @@ import DocumentCore
         let glyph = layout.glyphIndexForCharacter(at: min(range.location, max(0, storage.length - 1)))
         let container = layout.textContainer(forGlyphAt: glyph, effectiveRange: nil)
         let view = textViews.first { $0.textContainer === container } ?? textViews[0]
-        canvas.window?.makeFirstResponder(view); view.setSelectedRange(range); view.scrollRangeToVisible(range)
+        canvas.window?.makeFirstResponder(view); let safeRange = NSRange(location: range.location, length: min(range.length, storage.length - range.location))
+        view.setSelectedRange(safeRange); view.scrollRangeToVisible(safeRange)
     }
     func jump(to id: UUID) {
         var found: NSRange?

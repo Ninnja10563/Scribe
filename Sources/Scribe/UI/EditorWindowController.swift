@@ -25,7 +25,7 @@ import DocumentCore
         super.init(window: window)
         self.document = document
         buildInterface()
-        editor.onChange = { [weak self] in self?.cachedTextLength = -1; self?.fileDocument.didEdit(); self?.scheduleStatistics() }
+        editor.onChange = { [weak self] in self?.cachedTextLength = -1; self?.fileDocument.didEdit(); self?.scheduleStatistics(); if self?.searchBar.isHidden == false { self?.searchBar.search() } }
         editor.onSelection = { [weak self] in self?.updateStatus() }
         searchBar.editor = editor
         refreshOutline(); updateStatus()

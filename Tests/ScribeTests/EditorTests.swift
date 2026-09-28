@@ -55,6 +55,29 @@ import DocumentCore
         XCTAssertGreaterThan(editor.layout.numberOfGlyphs, 0)
         XCTAssertLessThan(editor.textViews.count, 4)
     }
+    func testNativeDocumentControllerCreatesAndReopensFile() throws {
+        let controller = ScribeDocumentController()
+        let document = try controller.makeUntitledDocument(ofType: ScribeFileDocument.typeName) as! ScribeFileDocument
+        document.model.sections[0].paragraphs = [Paragraph("Saved through NSDocument", style: "heading1")]
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".scribe")
+        defer { try? FileManager.default.removeItem(at: url) }
+        try document.write(to: url, ofType: ScribeFileDocument.typeName)
+        let reopened = try ScribeFileDocument(contentsOf: url, ofType: ScribeFileDocument.typeName)
+        XCTAssertEqual(reopened.model.plainText, "Saved through NSDocument")
+        XCTAssertEqual(reopened.model.outline.count, 1)
+    }
+    func testSearchNavigationAfterDeletingMatchesIsSafe() {
+        let file = ScribeFileDocument(); file.makeWindowControllers()
+        defer { file.close() }
+        let controller = file.editorController!, view = file.editorController!.editor.activeTextView
+        view.insertText("needle needle", replacementRange: NSRange(location: 0, length: 0))
+        controller.searchBar.query.stringValue = "needle"
+        controller.searchBar.next()
+        XCTAssertEqual(view.selectedRange().length, 6)
+        view.insertText("x", replacementRange: NSRange(location: 0, length: controller.editor.storage.length))
+        controller.searchBar.next()
+        XCTAssertLessThanOrEqual(NSMaxRange(view.selectedRange()), controller.editor.storage.length)
+    }
     func testProjectionPreservesStylesAndUnicode() {
         var doc = ScribeDocument()
         doc.sections[0].paragraphs = [Paragraph("Heading 👩🏽‍💻", style: "heading1"), Paragraph("Body café"), Paragraph("")]
