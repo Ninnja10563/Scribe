@@ -3,6 +3,21 @@ import DocumentCore
 @testable import ImportExport
 
 final class TableOfContentsTests: XCTestCase {
+    func testSplitFieldInstructionsStillDiscloseCachedTOCImport() throws {
+        let xml = """
+        <w:document xmlns:w="\(DOCX.wordNS)"><w:body><w:p>
+        <w:r><w:fldChar w:fldCharType="begin"/></w:r>
+        <w:r><w:instrText xml:space="preserve"> TO</w:instrText></w:r>
+        <w:r><w:instrText xml:space="preserve">C \t </w:instrText></w:r>
+        <w:r><w:fldChar w:fldCharType="separate"/></w:r>
+        <w:r><w:t>Cached contents</w:t></w:r>
+        <w:r><w:fldChar w:fldCharType="end"/></w:r>
+        </w:p></w:body></w:document>
+        """
+        let result = try DOCX.decode(ZipArchive.encode(["word/document.xml": Data(xml.utf8)]))
+        XCTAssertEqual(result.document.plainText, "Cached contents")
+        XCTAssertTrue(result.warnings.contains(where: { $0.contains("cached text") }))
+    }
     func testExportContainsActualTOCFieldAndImportRetainsItsCache() throws {
         var document = ScribeDocument()
         let heading = Paragraph("A linked heading", style: "heading2")

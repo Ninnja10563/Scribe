@@ -209,6 +209,7 @@ private class WordReader: NSObject, XMLParserDelegate {
     var listID: String?, listLevel: Int?
     var inRun = false, sawDocument = false
     var collectingInstruction = false, instruction = ""
+    private var fieldInstructions: [String] = []
     var files: [String: Data] = [:], targets: [String: String] = [:]
     var headerID: String?, footerID: String?
     var tableDepth = 0, tableIndex: Int?, row = -1, column = -1
@@ -229,6 +230,15 @@ private class WordReader: NSObject, XMLParserDelegate {
         case "r": run = TextRun("", link: link); inRun = true
         case "t": collecting = true
         case "instrText": collectingInstruction = true; instruction = ""
+        case "fldSimple": inspectFieldInstruction(wordAttribute(a, "instr") ?? "")
+        case "fldChar":
+            switch wordAttribute(a, "fldCharType") {
+            case "begin": fieldInstructions.append("")
+            case "separate":
+                if let code = fieldInstructions.last { inspectFieldInstruction(code); fieldInstructions[fieldInstructions.count - 1] = "" }
+            case "end": if let code = fieldInstructions.popLast() { inspectFieldInstruction(code) }
+            default: break
+            }
         case "tab": run.text += "\t"
         case "br":
             if wordAttribute(a, "type") == "page" { run.text += "\u{c}" }
@@ -297,6 +307,11 @@ private class WordReader: NSObject, XMLParserDelegate {
         default: if inRun { applyRun(name, a, &run.format) }
         }
     }
+    private func inspectFieldInstruction(_ code: String) {
+        if code.split(whereSeparator: \.isWhitespace).first?.uppercased() == "TOC" {
+            warnings.insert("Tables of contents are imported as cached text and heading links. Insert a Scribe table of contents to regenerate entries and page numbers.")
+        }
+    }
     func parser(_ parser: XMLParser, foundCharacters text: String) {
         if collecting { run.text += text }
         if collectingInstruction { instruction += text }
@@ -307,10 +322,8 @@ private class WordReader: NSObject, XMLParserDelegate {
         case "t": collecting = false
         case "instrText":
             collectingInstruction = false
-            let code = instruction.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
-            if code == "TOC" || code.hasPrefix("TOC ") {
-                warnings.insert("Tables of contents are imported as cached text and heading links. Insert a Scribe table of contents to regenerate entries and page numbers.")
-            }
+            if !fieldInstructions.isEmpty { fieldInstructions[fieldInstructions.count - 1] += instruction }
+            else { inspectFieldInstruction(instruction) }
         case "r": if !run.text.isEmpty { paragraph?.runs.append(run) }; inRun = false
         case "drawing":
             inDrawing = false
