@@ -47,12 +47,18 @@ extension NSAttributedString.Key {
         var document = original
         var paragraphs: [Paragraph] = [], usedIDs: Set<UUID> = []
         let text = storage.string as NSString
+        let originalParagraphs = original.paragraphs
         var offset = 0
         // components preserves the final empty paragraph, important after pressing Return.
         for component in storage.string.components(separatedBy: "\n") {
             let length = (component as NSString).length
             let attrs: [NSAttributedString.Key: Any]
             if offset == storage.length, let typingAttributes { attrs = typingAttributes }
+            else if offset == storage.length, component.isEmpty, let last = originalParagraphs.last, last.text.isEmpty {
+                // An empty final paragraph has no character to carry its attributes.
+                // Preserve its model identity/style when focus has moved elsewhere.
+                attrs = attributes(style: original.style(for: last), paragraph: last)
+            }
             else if storage.length > 0 { attrs = storage.attributes(at: min(offset, storage.length - 1), effectiveRange: nil) }
             else { attrs = attributes(style: original.style(for: original.paragraphs[0]), paragraph: original.paragraphs[0]) }
             var p = Paragraph()

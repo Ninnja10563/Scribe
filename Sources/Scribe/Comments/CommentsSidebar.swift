@@ -81,7 +81,8 @@ import DocumentCore
         else if let comment, let paragraph = model?.paragraphs.first(where: { $0.id == comment.anchor.paragraphID }) {
             let text = paragraph.text as NSString
             let offset = min(text.length, max(0, comment.anchor.offset))
-            let excerpt = String(text.substring(from: offset).prefix(100))
+            let length = comment.anchor.endParagraphID == nil ? min(comment.anchor.length, text.length - offset) : text.length - offset
+            let excerpt = String(text.substring(with: NSRange(location: offset, length: length)).prefix(100))
             location.stringValue = excerpt.isEmpty ? "Linked to a paragraph break." : "Linked text: “\(excerpt)”"
         } else { location.stringValue = "" }
         for button in [edit, resolve, delete] { button.isEnabled = comment != nil }

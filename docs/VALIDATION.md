@@ -39,3 +39,9 @@ Developer ID signing, notarization, physical-Mac input/VoiceOver testing, and ma
 - Independent python-docx/lxml inspection opened the produced package and verified table/image retention, upper-Roman/lower-letter definitions and starting values 4 and 9. The independent fixture generator is checked in; none of these checks constitute manual Word certification.
 
 - [Scribe v0.3.0](https://github.com/Ninnja10563/Scribe/releases/tag/v0.3.0) was published after the matching revision passed macOS CI. Its [release workflow](https://github.com/Ninnja10563/Scribe/actions/runs/36487991871) also passed. The published DMG was downloaded and its SHA-256 verified.
+
+## Comment review update in progress (29 September 2026)
+
+- macOS run [36489585858](https://github.com/Ninnja10563/Scribe/actions/runs/36489585858) passed 52 tests, built the arm64 app and DMG, and launched/rendered the review sidebar. Tests cover multi-paragraph and overlapping anchors, native deletion/undo reattachment, insertion-edge affinity, list splits, classic DOCX range markers and an independently generated comment fixture.
+- Actual light/dark window captures were inspected. Independent python-docx recovered the exported comment author and multiline body. PyMuPDF verified that review text did not enter the printed body and that selected-page output still matched the full PDF. These checks are reproducible with `scripts/verify-smoke.py` (development dependencies python-docx 1.2.0 and PyMuPDF 1.28.2).
+- Sidebar Resolve/Reopen/Delete/Undo and commented table-row deletion tests passed in [36490011749](https://github.com/Ninnja10563/Scribe/actions/runs/36490011749) (54 macOS tests). Native Add/Edit/Cancel dialogs and empty-final-paragraph identity regressions were subsequently added for the next run. No physical-Mac input/accessibility or manual Word validation is implied.

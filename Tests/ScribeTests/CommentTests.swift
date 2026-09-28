@@ -58,6 +58,43 @@ import DocumentCore
         XCTAssertEqual(document.snapshot().comments[0].anchor.length, 11)
         XCTAssertNotEqual(document.model.comments[0].isDetached, true)
     }
+    func testAddEditAndCancelThroughNativeCommentDialogs() throws {
+        let document = ScribeFileDocument(); document.model.sections[0].paragraphs[0] = Paragraph("Review this text")
+        document.makeWindowControllers(); defer { document.close() }
+        let controller = document.editorController!
+        controller.editor.select(NSRange(location: 0, length: 6))
+        func respond(text: String, button title: String) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                func descendants(_ view: NSView) -> [NSView] { [view] + view.subviews.flatMap(descendants) }
+                guard let content = NSApp.modalWindow?.contentView else { XCTFail("Comment dialog did not open"); NSApp.abortModal(); return }
+                let views = descendants(content)
+                guard let body = views.compactMap({ $0 as? NSTextView }).first(where: { !$0.isFieldEditor && $0.isEditable }),
+                      let button = views.compactMap({ $0 as? NSButton }).first(where: { $0.title == title }) else {
+                    XCTFail("Missing comment dialog controls"); NSApp.abortModal(); return
+                }
+                body.string = text; button.performClick(nil)
+            }
+        }
+        respond(text: "Created through the dialog", button: "Add"); controller.addComment()
+        XCTAssertEqual(document.snapshot().comments.count, 1)
+        let comment = try XCTUnwrap(document.model.comments.first)
+        XCTAssertEqual(comment.text, "Created through the dialog")
+        XCTAssertEqual(comment.anchor.length, 6)
+        XCTAssertFalse(controller.commentsSidebar.isHidden)
+        respond(text: "Edited through the dialog", button: "Save"); controller.editComment(comment)
+        XCTAssertEqual(document.snapshot().comments[0].text, "Edited through the dialog")
+        respond(text: "Discard this draft", button: "Cancel"); controller.addComment()
+        XCTAssertEqual(document.snapshot().comments.count, 1)
+    }
+    func testTrailingEmptyParagraphRetainsIdentityWhenFocusMovesAway() {
+        var document = ScribeDocument()
+        document.sections[0].paragraphs = [Paragraph("Body"), Paragraph("", style: "heading2")]
+        let id = document.paragraphs[1].id
+        let captured = AttributedDocument.capture(AttributedDocument.render(document), preserving: document)
+        XCTAssertEqual(captured.paragraphs[1].id, id)
+        XCTAssertEqual(captured.paragraphs[1].styleID, "heading2")
+        XCTAssertNil(captured.paragraphs[1].list)
+    }
     func testSidebarResolveReopenDeleteAndUndo() throws {
         let document = ScribeFileDocument(); let p = Paragraph("Review this text")
         document.model.sections[0].paragraphs = [p]
