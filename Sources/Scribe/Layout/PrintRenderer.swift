@@ -51,7 +51,17 @@ import DocumentCore
             NSGraphicsContext.saveGraphicsState()
             NSGraphicsContext.current = NSGraphicsContext(cgContext: context, flipped: true)
             drawPage(index)
-            NSGraphicsContext.restoreGraphicsState(); context.restoreGState(); context.endPDFPage()
+            NSGraphicsContext.restoreGraphicsState(); context.restoreGState()
+            let container = editor.layout.textContainers[index]
+            let glyphs = editor.layout.glyphRange(for: container)
+            let characters = editor.layout.characterRange(forGlyphRange: glyphs, actualGlyphRange: nil)
+            editor.storage.enumerateAttribute(.link, in: characters) { value, range, _ in
+                guard let url = (value as? URL) ?? (value as? String).flatMap(URL.init(string:)), ["http", "https", "mailto"].contains(url.scheme ?? "") else { return }
+                let linkGlyphs = editor.layout.glyphRange(forCharacterRange: range, actualCharacterRange: nil)
+                let rect = editor.layout.boundingRect(forGlyphRange: NSIntersectionRange(linkGlyphs, glyphs), in: container)
+                context.setURL(url as CFURL, for: CGRect(x: p.left + rect.minX, y: p.height - p.top - rect.maxY, width: rect.width, height: rect.height))
+            }
+            context.endPDFPage()
         }
         context.closePDF(); try (data as Data).write(to: url, options: .atomic)
     }

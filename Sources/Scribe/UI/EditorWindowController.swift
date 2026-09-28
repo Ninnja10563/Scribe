@@ -12,6 +12,7 @@ import DocumentCore
     let toolbar = NSStackView()
     let searchBar = SearchBar()
     var entries: [OutlineEntry] = []
+    private let outlineHint = NSTextField(wrappingLabelWithString: "Apply heading styles to build your document outline.")
     var isFocused = false
     private var statsWork: DispatchWorkItem?
     var fileDocument: ScribeFileDocument { document as! ScribeFileDocument }
@@ -81,7 +82,7 @@ import DocumentCore
     }
     private func setupOutline() {
         let title = NSTextField(labelWithString: "OUTLINE"); title.font = .systemFont(ofSize: 10, weight: .semibold); title.textColor = .secondaryLabelColor
-        let hint = NSTextField(wrappingLabelWithString: "Apply heading styles to build your document outline.")
+        let hint = outlineHint
         hint.font = .systemFont(ofSize: 11); hint.textColor = .secondaryLabelColor
         let scroll = NSScrollView(); scroll.hasVerticalScroller = true; scroll.drawsBackground = false
         let column = NSTableColumn(identifier: NSUserInterfaceItemIdentifier("heading")); outline.addTableColumn(column)
@@ -101,7 +102,7 @@ import DocumentCore
     }
     private func divider() -> NSView { let view = NSBox(); view.boxType = .separator; view.widthAnchor.constraint(equalToConstant: 1).isActive = true; view.heightAnchor.constraint(equalToConstant: 18).isActive = true; return view }
     func refreshOutline() {
-        let model = fileDocument.snapshot(); entries = model.outline; outline.reloadData()
+        let model = fileDocument.snapshot(); entries = model.outline; outlineHint.isHidden = !entries.isEmpty; outline.reloadData()
         let selected = stylePicker.titleOfSelectedItem
         stylePicker.removeAllItems(); stylePicker.addItems(withTitles: model.styles.map(\.name))
         if let selected { stylePicker.selectItem(withTitle: selected) }

@@ -8,6 +8,7 @@ public enum ArchiveError: LocalizedError {
 /// Minimal OPC ZIP transport. Stored output; stored/deflated input. Never extracts paths to disk.
 public enum ZipArchive {
     public static func encode(_ files: [String: Data]) throws -> Data {
+        guard files.count <= 4096, files.values.reduce(0, { $0 + $1.count }) <= 120 * 1024 * 1024 else { throw ArchiveError.invalid("archive exceeds supported limits") }
         var output = Data(), central = Data()
         for name in files.keys.sorted() {
             let data = files[name]!, path = Data(name.utf8), offset = output.count

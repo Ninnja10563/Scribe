@@ -61,6 +61,7 @@ import ImportExport
             documents.addDocument(document); document.makeWindowControllers(); document.showWindows()
             guard let controller = document.editorController else { fatalError("Missing editor") }
             controller.editor.paginate()
+            controller.window?.makeFirstResponder(controller.editor.textViews[0])
             let folder = URL(fileURLWithPath: ProcessInfo.processInfo.environment["SCRIBE_SMOKE_OUTPUT"] ?? NSTemporaryDirectory())
             try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
             try NativeFormat.save(document.snapshot(), to: folder.appendingPathComponent("Smoke.scribe"))

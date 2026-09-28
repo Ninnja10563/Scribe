@@ -27,7 +27,10 @@ import ImportExport
             editor.storage.beginEditing()
             for (index, component) in editor.storage.string.components(separatedBy: "\n").enumerated() {
                 let length = min((component as NSString).length + 1, editor.storage.length - offset)
-                if length > 0 { editor.storage.addAttribute(.scribeParagraphID, value: model.paragraphs[index].id.uuidString, range: NSRange(location: offset, length: length)) }
+                let id = model.paragraphs[index].id.uuidString
+                if length > 0, editor.storage.attribute(.scribeParagraphID, at: offset, effectiveRange: nil) as? String != id {
+                    editor.storage.addAttribute(.scribeParagraphID, value: id, range: NSRange(location: offset, length: length))
+                }
                 offset += (component as NSString).length + 1
             }
             editor.storage.endEditing()

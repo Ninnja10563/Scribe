@@ -14,7 +14,18 @@ public struct ScribeDocument: Codable, Equatable, Sendable {
     public var tables: [DocumentTable] = []
     public init() {}
     public var paragraphs: [Paragraph] { sections.flatMap(\.paragraphs) }
-    public var plainText: String { paragraphs.map(\.text).joined(separator: "\n") }
+    public var plainText: String {
+        var result = "", previous: TableCellReference?
+        for (index, paragraph) in paragraphs.enumerated() {
+            if index > 0 {
+                let sameRow = paragraph.tableCell != nil && previous?.tableID == paragraph.tableCell?.tableID && previous?.row == paragraph.tableCell?.row && previous?.column != paragraph.tableCell?.column
+                result += sameRow ? "\t" : "\n"
+            }
+            result += paragraph.runs.map { $0.image.map { $0.altText.isEmpty ? "[Image]" : "[Image: \($0.altText)]" } ?? $0.text }.joined()
+            previous = paragraph.tableCell
+        }
+        return result
+    }
     public var outline: [OutlineEntry] {
         paragraphs.compactMap { p in
             guard let level = styles.first(where: { $0.id == p.styleID })?.headingLevel else { return nil }

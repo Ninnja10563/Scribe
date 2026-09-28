@@ -26,12 +26,12 @@ import DocumentCore
             block.setWidth(definition.padding, type: .absoluteValueType, for: .padding)
             block.setWidth(definition.borderWidth, type: .absoluteValueType, for: .border)
             block.setBorderColor(NSColor(hex: definition.borderColor))
-            block.verticalAlignment = .top
+            block.verticalAlignment = .topAlignment
             if definition.firstRowIsHeader && reference.row == 0 { block.backgroundColor = NSColor(hex: definition.headerBackground) }
             blocks[key] = block
         }
         let style = (attributes[.paragraphStyle] as? NSParagraphStyle ?? .default).mutableCopy() as! NSMutableParagraphStyle
-        style.textBlocks = [block]; style.paragraphSpacing = 3
+        style.textBlocks = [block]
         attributes[.paragraphStyle] = style
         attributes[.scribeCell] = try? JSONEncoder().encode(reference)
     }
