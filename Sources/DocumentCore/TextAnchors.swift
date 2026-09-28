@@ -68,7 +68,10 @@ extension ScribeDocument {
     /// A missing range is visible as a detached comment instead of silently deleting review text.
     public mutating func reconcileCommentAnchors() {
         let index = DocumentTextIndex(paragraphs: paragraphs)
-        for i in comments.indices where index.range(for: comments[i].anchor) == nil { comments[i].isDetached = true }
+        for i in comments.indices {
+            if let range = index.range(for: comments[i].anchor) { comments[i].anchor.length = range.length }
+            else { comments[i].isDetached = true }
+        }
     }
     /// For semantic commands that replace text without passing through attributed-text editing.
     public mutating func transformCommentAnchors(from original: [Paragraph], replacing edit: NSRange, withLength inserted: Int) {

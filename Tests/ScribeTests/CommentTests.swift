@@ -58,6 +58,29 @@ import DocumentCore
         XCTAssertEqual(document.snapshot().comments[0].anchor.length, 11)
         XCTAssertNotEqual(document.model.comments[0].isDetached, true)
     }
+    func testSidebarResolveReopenDeleteAndUndo() throws {
+        let document = ScribeFileDocument(); let p = Paragraph("Review this text")
+        document.model.sections[0].paragraphs = [p]
+        let comment = Comment(anchor: .init(paragraphID: p.id, offset: 0, length: 6), text: "Consider the wording", author: "Alex")
+        document.model.comments = [comment]; document.makeWindowControllers(); defer { document.close() }
+        let sidebar = document.editorController!.commentsSidebar
+        sidebar.isHidden = false; sidebar.reload(document.snapshot(), selecting: comment.id)
+        func descendants(_ view: NSView) -> [NSView] { [view] + view.subviews.flatMap(descendants) }
+        func button(_ title: String) throws -> NSButton { try XCTUnwrap(descendants(sidebar).compactMap { $0 as? NSButton }.first { $0.title == title }) }
+        try button("Resolve").performClick(nil)
+        XCTAssertTrue(document.snapshot().comments[0].resolved)
+        try button("Show resolved").performClick(nil)
+        sidebar.reload(document.snapshot(), selecting: comment.id)
+        try button("Reopen").performClick(nil)
+        XCTAssertFalse(document.snapshot().comments[0].resolved)
+        document.undoManager?.removeAllActions()
+        sidebar.reload(document.snapshot(), selecting: comment.id)
+        try button("Delete").performClick(nil)
+        XCTAssertTrue(document.snapshot().comments.isEmpty)
+        document.undoManager?.undo()
+        XCTAssertEqual(document.snapshot().comments[0].id, comment.id)
+        XCTAssertNotEqual(document.model.comments[0].isDetached, true)
+    }
     func testSemanticListSplitPreservesCommentAssociation() throws {
         let document = ScribeFileDocument(); var paragraph = Paragraph("FirstSecond"); paragraph.list = .init(kind: .decimal)
         document.model.sections[0].paragraphs = [paragraph]

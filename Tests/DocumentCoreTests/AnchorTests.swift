@@ -31,6 +31,18 @@ final class AnchorTests: XCTestCase {
         XCTAssertEqual(document.comments[1].anchor.length, 13)
         XCTAssertEqual(try NativeFormat.decode(NativeFormat.encode(document)), document)
     }
+    func testRemovingCommentedTableContentRetainsReviewText() throws {
+        var document = ScribeDocument()
+        document.insertTable(rows: 2, columns: 2, after: document.paragraphs[0].id)
+        let tableID = document.tables[0].id
+        let cellIndex = document.sections[0].paragraphs.firstIndex { $0.tableCell?.row == 0 && $0.tableCell?.column == 0 }!
+        document.sections[0].paragraphs[cellIndex].runs = [TextRun("Reviewed cell")]
+        let id = document.paragraphs[cellIndex].id
+        document.comments = [Comment(anchor: .init(paragraphID: id, offset: 0, length: 8), text: "Retain review", author: "Alex")]
+        document.deleteTableRow(tableID: tableID, row: 0)
+        XCTAssertEqual(document.comments[0].isDetached, true)
+        XCTAssertEqual(try NativeFormat.decode(NativeFormat.encode(document)).comments[0].text, "Retain review")
+    }
     func testDeletedTextRetainsDetachedCommentAndMigrationRepairsLegacyAnchors() throws {
         var document = ScribeDocument(); let id = document.paragraphs[0].id
         document.comments = [Comment(anchor: .init(paragraphID: id, offset: 10, length: 2), text: "Keep the review", author: "Alex")]

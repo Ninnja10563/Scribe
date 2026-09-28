@@ -86,8 +86,9 @@ import ImportExport
             controller.editor.paginate()
             controller.commentsSidebar.isHidden = false
             controller.commentsSidebar.reload(document.snapshot(), selecting: document.model.comments[0].id)
-            controller.editor.zoom = 0.75
+            controller.zoomPicker.selectItem(withTitle: "75%"); controller.changeZoom()
             controller.window?.makeFirstResponder(controller.editor.textViews[0])
+            controller.selectComment(document.model.comments[0])
             let folder = URL(fileURLWithPath: ProcessInfo.processInfo.environment["SCRIBE_SMOKE_OUTPUT"] ?? NSTemporaryDirectory())
             try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
             try NativeFormat.save(document.snapshot(), to: folder.appendingPathComponent("Smoke.scribe"))

@@ -71,6 +71,7 @@ public extension ScribeDocument {
         tables[t].rows += 1
     }
     mutating func deleteTableRow(tableID: UUID, row: Int) {
+        defer { reconcileCommentAnchors() }
         guard let t = tables.firstIndex(where: { $0.id == tableID }) else { return }
         if tables[t].rows == 1 { deleteTable(id: tableID); return }
         guard (0..<tables[t].rows).contains(row) else { return }
@@ -101,6 +102,7 @@ public extension ScribeDocument {
         tables[t].columnWidths = Array(repeating: total / Double(tables[t].columnWidths.count + 1), count: tables[t].columnWidths.count + 1)
     }
     mutating func deleteTableColumn(tableID: UUID, column: Int) {
+        defer { reconcileCommentAnchors() }
         guard let t = tables.firstIndex(where: { $0.id == tableID }), tables[t].columnWidths.indices.contains(column) else { return }
         if tables[t].columnWidths.count == 1 { deleteTable(id: tableID); return }
         for s in sections.indices {
@@ -113,6 +115,7 @@ public extension ScribeDocument {
         tables[t].columnWidths = Array(repeating: total / Double(tables[t].columnWidths.count - 1), count: tables[t].columnWidths.count - 1)
     }
     mutating func deleteTable(id: UUID) {
+        defer { reconcileCommentAnchors() }
         tables.removeAll { $0.id == id }
         for s in sections.indices {
             sections[s].paragraphs.removeAll { $0.tableCell?.tableID == id }
