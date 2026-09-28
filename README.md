@@ -23,7 +23,8 @@ On Linux, the document-core and import/export tests can run with `swift test`; t
 - Native multi-window documents and macOS tabs, menus, keyboard shortcuts, spelling and rich text input.
 - Shared TextKit storage with real glyph flow across physical pages; A4, Letter, Legal, orientation and margins.
 - Named paragraph styles, style modifications, custom styles, headings and outline navigation.
-- Common character formatting, font panel, alignment, basic lists, page breaks, text headers/footers.
+- Common character formatting, font panel, alignment, spacing/indents, basic lists, page breaks, headers/footers and configurable page numbers.
+- Structured tables with row/column editing and sizing; inline images with proportional resize handles and accessibility descriptions.
 - Find/replace with case and whole-word matching, selected-text word counts, focus mode and zoom.
 - Versioned semantic `.scribe` documents, atomic writes, NSDocument autosave and separate recovery snapshots.
 - Basic DOCX, RTF, Markdown and UTF-8 text import/export. Imports open as new documents and disclose known fidelity losses.
@@ -31,11 +32,11 @@ On Linux, the document-core and import/export tests can run with `swift test`; t
 
 ## Scope and limitations
 
-The full requested product is a multi-milestone engineering program. Tables, images, floating objects, shapes, wrapping, review UI, track changes, notes, equations, TOC, direct-on-page header editing, and independent section layout are **not implemented**. Comment/bookmark data types and a grammar protocol are extension points only.
+The full requested product is a multi-milestone engineering program. Merged/nested tables, floating objects, shapes, wrapping, review UI, track changes, notes, equations, TOC, direct-on-page header editing, and independent section layout are **not implemented**. Comment/bookmark data types and a grammar protocol are extension points only.
 
-DOCX supports the current text/paragraph subset, not full Word interoperability. Table cells flatten into paragraphs; images, notes and running content are omitted with warnings. Numbering and complex styles are approximate. Markdown supports a small subset and is not a CommonMark round-trip implementation. PDF export currently exports the entire document; advanced options and link annotations are pending. Page views are reused but not virtualized. Long-document interactive performance still requires profiling on physical Macs.
+DOCX supports common text, basic tables, inline images and running content, not full Word interoperability. Merged/nested table geometry, review data and advanced fields are not preserved. Numbering and complex styles are approximate; known losses are reported. Markdown supports a small subset and is not a CommonMark round-trip implementation. PDF export currently exports the entire document; advanced export options are pending; external hyperlinks are retained. Page views are reused but not virtualized. Long-document interactive performance still requires profiling on physical Macs.
 
-See [architecture and roadmap](docs/DEVELOPMENT.md), [validation](docs/VALIDATION.md), and [installation](docs/INSTALL.md).
+See the [feature matrix](docs/FEATURES.md), [architecture and roadmap](docs/DEVELOPMENT.md), [validation](docs/VALIDATION.md), and [installation](docs/INSTALL.md).
 
 ## Releases
 

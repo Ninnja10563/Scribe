@@ -1,5 +1,6 @@
 #if canImport(AppKit)
 import AppKit
+import PDFKit
 import XCTest
 import DocumentCore
 @testable import Scribe
@@ -100,7 +101,8 @@ import DocumentCore
     func testPageBreakAndPDFOutput() throws {
         let document = ScribeFileDocument()
         var second = Paragraph("Second page"); second.pageBreakBefore = true
-        document.model.sections[0].paragraphs = [Paragraph("First page"), second]
+        var first = Paragraph("First page"); first.runs[0].link = "https://example.com"
+        document.model.sections[0].paragraphs = [first, second]
         let editor = PaginatedEditor(document: document)
         XCTAssertGreaterThanOrEqual(editor.textViews.count, 2)
         let url = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".pdf")
@@ -109,6 +111,9 @@ import DocumentCore
         let data = try Data(contentsOf: url)
         XCTAssertEqual(String(data: data.prefix(4), encoding: .utf8), "%PDF")
         XCTAssertGreaterThan(data.count, 1000)
+        let pdf = PDFDocument(url: url)
+        XCTAssertEqual(pdf?.pageCount, editor.textViews.count)
+        XCTAssertTrue(pdf?.page(at: 0)?.annotations.contains(where: { $0.action is PDFActionURL }) == true)
     }
 }
 #else

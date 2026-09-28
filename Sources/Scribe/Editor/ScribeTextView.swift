@@ -63,6 +63,18 @@ import DocumentCore
             }
         }
     }
+    @objc func toggleHighlight(_ sender: Any?) {
+        let color = NSColor(srgbRed: 1, green: 0.92, blue: 0.5, alpha: 1)
+        let enabled = typingAttributes[.backgroundColor] == nil
+        if selectedRange().length == 0 {
+            if enabled { typingAttributes[.backgroundColor] = color } else { typingAttributes.removeValue(forKey: .backgroundColor) }
+        } else {
+            transformSelection(action: "Highlight") { value in
+                let range = NSRange(location: 0, length: value.length)
+                if enabled { value.addAttribute(.backgroundColor, value: color, range: range) } else { value.removeAttribute(.backgroundColor, range: range) }
+            }
+        }
+    }
     @objc func toggleStrike(_ sender: Any?) { toggleAttribute(.strikethroughStyle) }
     func toggleAttribute(_ key: NSAttributedString.Key) {
         let enabled = (typingAttributes[key] as? Int ?? 0) == 0

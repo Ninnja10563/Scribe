@@ -56,6 +56,16 @@ import ImportExport
             for index in document.model.sections[0].paragraphs.indices where document.model.sections[0].paragraphs[index].tableCell != nil {
                 document.model.sections[0].paragraphs[index].runs = [TextRun(cellValues[cellIndex])]; cellIndex += 1
             }
+            let chart = NSImage(size: NSSize(width: 240, height: 80), flipped: false) { rect in
+                NSColor(white: 0.96, alpha: 1).setFill(); rect.fill()
+                NSColor(srgbRed: 0.25, green: 0.38, blue: 0.49, alpha: 1).setFill()
+                for (index, width) in [90.0, 150.0, 210.0].enumerated() { NSRect(x: 12, y: 10 + Double(index) * 22, width: width, height: 12).fill() }
+                return true
+            }
+            if let tiff = chart.tiffRepresentation, let rep = NSBitmapImageRep(data: tiff), let png = rep.representation(using: .png, properties: [:]) {
+                var run = TextRun("\u{FFFC}"); run.image = InlineImage(data: png, fileExtension: "png", width: 240, height: 80, altText: "Three horizontal bars of increasing length")
+                document.model.sections[0].paragraphs[document.model.paragraphs.count - 1].runs = [run]
+            }
             document.model.sections[0].pageNumbering = PageNumbering()
             for i in 1...80 { document.model.sections[0].paragraphs.append(Paragraph("Paragraph \(i). " + String(repeating: "Professional documents need clear structure and dependable editing. ", count: 6))) }
             documents.addDocument(document); document.makeWindowControllers(); document.showWindows()
@@ -73,6 +83,13 @@ import ImportExport
             if let view = controller.window?.contentView, let bitmap = view.bitmapImageRepForCachingDisplay(in: view.bounds) {
                 view.cacheDisplay(in: view.bounds, to: bitmap)
                 if let png = bitmap.representation(using: .png, properties: [:]) { try png.write(to: folder.appendingPathComponent("Scribe.png")) }
+            }
+            controller.window?.appearance = NSAppearance(named: .darkAqua)
+            controller.window?.contentView?.needsDisplay = true
+            controller.window?.displayIfNeeded()
+            if let view = controller.window?.contentView, let bitmap = view.bitmapImageRepForCachingDisplay(in: view.bounds) {
+                view.cacheDisplay(in: view.bounds, to: bitmap)
+                if let png = bitmap.representation(using: .png, properties: [:]) { try png.write(to: folder.appendingPathComponent("Scribe-Dark.png")) }
             }
             print("Scribe launch smoke test passed: \(pages) pages, native save, PDF and window rendering")
             NSApp.terminate(nil)
