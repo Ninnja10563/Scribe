@@ -22,7 +22,17 @@ import DocumentCore
                   let button = views.compactMap({ $0 as? NSButton }).first(where: { $0.title == "Insert Link" }) else {
                 XCTFail("Missing link controls"); NSApp.abortModal(); return
             }
-            XCTAssertEqual(target.numberOfItems, 2); target.selectItem(at: 1); button.performClick(nil)
+            XCTAssertEqual(target.numberOfItems, 2); target.selectItem(at: 1)
+            if let directory = ProcessInfo.processInfo.environment["SCRIBE_SCHEMA_OUTPUT"],
+               let bitmap = content.bitmapImageRepForCachingDisplay(in: content.bounds) {
+                content.cacheDisplay(in: content.bounds, to: bitmap)
+                if let png = bitmap.representation(using: .png, properties: [:]) {
+                    let folder = URL(fileURLWithPath: directory, isDirectory: true)
+                    try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+                    try? png.write(to: folder.appendingPathComponent("HeadingLinkDialog.png"))
+                }
+            }
+            button.performClick(nil)
         }
         controller.insertHeadingLink()
         XCTAssertEqual(document.snapshot().paragraphs[0].runs[0].link, DocumentLink.paragraph(second.id))
