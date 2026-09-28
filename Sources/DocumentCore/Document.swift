@@ -28,9 +28,15 @@ public struct ScribeDocument: Codable, Equatable, Sendable {
         return result
     }
     public var outline: [OutlineEntry] {
-        paragraphs.compactMap { p in
+        var numbering = ListNumbering()
+        return paragraphs.compactMap { p in
+            let marker = numbering.marker(for: p.list)
             guard p.toc == nil, let level = styles.first(where: { $0.id == p.styleID })?.headingLevel else { return nil }
-            return OutlineEntry(id: p.id, title: p.text, level: level)
+            let title = p.runs.map { $0.image?.altText ?? $0.text }.joined()
+                .replacingOccurrences(of: "\t", with: " ")
+                .replacingOccurrences(of: "\u{2028}", with: " ")
+                .replacingOccurrences(of: "\u{c}", with: " ")
+            return OutlineEntry(id: p.id, title: (marker.map { $0 + " " } ?? "") + title, level: level)
         }
     }
     public func style(for paragraph: Paragraph) -> ParagraphStyle {

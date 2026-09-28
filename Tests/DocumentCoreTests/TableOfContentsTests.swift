@@ -49,6 +49,18 @@ final class TableOfContentsTests: XCTestCase {
         document.refreshTableOfContents(id: tocID, pages: [:])
         XCTAssertEqual(document.paragraphs.first(where: { $0.id == newID })?.text, paragraph.text)
     }
+    func testNumberedHeadingsUseVisibleMarkersWithoutControlCharactersInEntries() throws {
+        var document = ScribeDocument()
+        let series = UUID()
+        var first = Paragraph("Setup\tand scope", style: "heading1")
+        first.list = ListDescriptor(kind: .upperRoman, start: 4, seriesID: series)
+        var second = Paragraph("Results\u{2028}continued", style: "heading1")
+        second.list = ListDescriptor(kind: .upperRoman, start: 4, seriesID: series)
+        document.sections[0].paragraphs = [Paragraph("Cover"), first, Paragraph("Body"), second]
+        _ = document.insertTableOfContents(after: document.paragraphs[0].id, pages: [first.id: "2", second.id: "3"])
+        XCTAssertEqual(document.outline.map(\.title), ["IV. Setup and scope", "V. Results continued"])
+        XCTAssertEqual(document.paragraphs.filter { $0.toc?.kind == .entry }.map(\.text), ["IV. Setup and scope\t2", "V. Results continued\t3"])
+    }
     func testV5MigrationAndInvalidDefinitions() throws {
         let document = ScribeDocument()
         var json = try JSONSerialization.jsonObject(with: NativeFormat.encode(document)) as! [String: Any]
