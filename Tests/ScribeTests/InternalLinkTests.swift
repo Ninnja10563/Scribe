@@ -28,6 +28,21 @@ import DocumentCore
         XCTAssertEqual(document.snapshot().paragraphs[0].runs[0].link, DocumentLink.paragraph(second.id))
     }
 
+    func testEmptyFinalHeadingHasPDFDestination() throws {
+        let document = ScribeFileDocument()
+        let heading = Paragraph("", style: "heading1")
+        var link = Paragraph("Future section"); link.runs[0].link = DocumentLink.paragraph(heading.id)
+        document.model.sections[0].paragraphs = [link, heading]
+        let editor = PaginatedEditor(document: document)
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".pdf")
+        defer { try? FileManager.default.removeItem(at: url) }
+        try PrintRenderer(editor: editor).exportPDF(to: url, title: "Empty destination", author: "")
+        let pdf = try XCTUnwrap(PDFDocument(url: url))
+        let annotation = try XCTUnwrap(pdf.page(at: 0)?.annotations.first)
+        let destination = annotation.destination ?? (annotation.action as? PDFActionGoTo)?.destination
+        XCTAssertTrue(try XCTUnwrap(destination?.page) === pdf.page(at: 0))
+    }
+
     func testHeadingLinkInsertionNavigationUndoAndPDFDestination() throws {
         let document = ScribeFileDocument()
         var heading = Paragraph("Destination", style: "heading1"); heading.pageBreakBefore = true

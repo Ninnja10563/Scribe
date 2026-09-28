@@ -80,6 +80,13 @@ import DocumentCore
             let rect = editor.layout.boundingRect(forGlyphRange: NSRange(location: glyph, length: 1), in: container)
             result[id] = (page, CGPoint(x: p.left + rect.minX, y: p.height - p.top - rect.minY))
         }
+        if let last = editor.owner?.snapshot().paragraphs.last, last.text.isEmpty,
+           linked.contains(last.id), result[last.id] == nil,
+           let container = editor.layout.extraLineFragmentTextContainer,
+           let page = editor.layout.textContainers.firstIndex(where: { $0 === container }), selected.contains(page) {
+            let rect = editor.layout.extraLineFragmentRect
+            result[last.id] = (page, CGPoint(x: p.left + rect.minX, y: p.height - p.top - rect.minY))
+        }
         return result
     }
     func exportPDF(to url: URL, title: String, author: String, pages: [Int]? = nil, subject: String = "", keywords: [String] = []) throws {
