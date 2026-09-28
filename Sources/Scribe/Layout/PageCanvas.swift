@@ -151,9 +151,11 @@ import DocumentCore
     }
     func textViewDidChangeSelection(_ notification: Notification) { onSelection?() }
     func undoManager(for view: NSTextView) -> UndoManager? { owner?.undoManager }
-    func layoutManager(_ layoutManager: NSLayoutManager, shouldUse action: NSLayoutManager.ControlCharacterAction, forControlCharacterAt charIndex: Int) -> NSLayoutManager.ControlCharacterAction {
-        if (storage.string as NSString).character(at: charIndex) == 12 { return .containerBreak }
-        return action
+    nonisolated func layoutManager(_ layoutManager: NSLayoutManager, shouldUse action: NSLayoutManager.ControlCharacterAction, forControlCharacterAt charIndex: Int) -> NSLayoutManager.ControlCharacterAction {
+        MainActor.assumeIsolated {
+            if (storage.string as NSString).character(at: charIndex) == 12 { return .containerBreak }
+            return action
+        }
     }
     func select(_ range: NSRange) {
         guard range.location <= storage.length else { return }

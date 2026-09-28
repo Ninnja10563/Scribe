@@ -32,10 +32,13 @@ import DocumentCore
     }
     required init?(coder: NSCoder) { fatalError("Programmatic windows only") }
     private func buildInterface() {
-        guard let content = window?.contentView else { return }
+        guard let window else { return }
+        let content = ChromeView(frame: window.contentView?.bounds ?? .zero)
+        window.contentView = content
         let stack = NSStackView(); stack.orientation = .vertical; stack.spacing = 0; stack.alignment = .leading
         stack.translatesAutoresizingMaskIntoConstraints = false; content.addSubview(stack)
         NSLayoutConstraint.activate([stack.leadingAnchor.constraint(equalTo: content.leadingAnchor), stack.trailingAnchor.constraint(equalTo: content.trailingAnchor), stack.topAnchor.constraint(equalTo: content.topAnchor), stack.bottomAnchor.constraint(equalTo: content.bottomAnchor)])
+        toolbar.heightAnchor.constraint(equalToConstant: 44).isActive = true
         toolbar.orientation = .horizontal; toolbar.spacing = 10; toolbar.edgeInsets = NSEdgeInsets(top: 10, left: 16, bottom: 10, right: 16)
         toolbar.addArrangedSubview(button("sidebar.left", "Show or hide outline", #selector(toggleSidebar)))
         stylePicker.target = self; stylePicker.action = #selector(changeStyle); stylePicker.setAccessibilityLabel("Paragraph style")
@@ -59,12 +62,12 @@ import DocumentCore
         let split = NSSplitView(); split.isVertical = true; split.dividerStyle = .thin
         split.addArrangedSubview(sidebar); split.addArrangedSubview(editor.scrollView)
         setupOutline()
-        sidebar.widthAnchor.constraint(greaterThanOrEqualToConstant: 150).isActive = true
+        sidebar.widthAnchor.constraint(greaterThanOrEqualToConstant: 200).isActive = true
         sidebar.widthAnchor.constraint(lessThanOrEqualToConstant: 280).isActive = true
         split.setHoldingPriority(.defaultHigh, forSubviewAt: 0)
         stack.addArrangedSubview(split)
         split.heightAnchor.constraint(greaterThanOrEqualToConstant: 300).isActive = true
-        let footer = NSStackView(); footer.orientation = .horizontal; footer.spacing = 14
+        let footer = NSStackView(); footer.heightAnchor.constraint(equalToConstant: 32).isActive = true; footer.orientation = .horizontal; footer.spacing = 14
         footer.edgeInsets = NSEdgeInsets(top: 7, left: 16, bottom: 7, right: 16)
         status.font = .systemFont(ofSize: 11); status.textColor = .secondaryLabelColor
         status.setAccessibilityLabel("Document statistics"); footer.addArrangedSubview(status)
@@ -145,5 +148,8 @@ import DocumentCore
         else if title == "Fit Page" { editor.zoom = max(0.5, min(2, editor.scrollView.contentSize.height / (editor.canvas.pageSettings.height + 48))) }
         else { editor.zoom = CGFloat(Double(title.replacingOccurrences(of: "%", with: "")) ?? 100) / 100 }
     }
+}
+@MainActor private final class ChromeView: NSView {
+    override func draw(_ dirtyRect: NSRect) { NSColor.windowBackgroundColor.setFill(); dirtyRect.fill() }
 }
 #endif

@@ -118,6 +118,11 @@ import ImportExport
             case "rtf":
                 let value = try NSAttributedString(data: data, options: [.documentType: NSAttributedString.DocumentType.rtf], documentAttributes: nil)
                 if value.containsAttachments { document.importWarnings = ["RTF attachments are not imported in this version."] }
+                value.enumerateAttribute(.paragraphStyle, in: NSRange(location: 0, length: value.length)) { style, _, stop in
+                    if let style = style as? NSParagraphStyle, !style.textBlocks.isEmpty {
+                        document.importWarnings.append("RTF table cells are imported as paragraphs; table geometry is not retained."); stop.pointee = true
+                    }
+                }
                 document.model = AttributedDocument.capture(value, preserving: ScribeDocument())
             default:
                 guard let string = String(data: data, encoding: .utf8) else { throw DocumentError.invalid("text must use UTF-8 encoding") }

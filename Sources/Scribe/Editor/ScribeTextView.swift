@@ -10,7 +10,8 @@ import DocumentCore
         if let data = pasteboard.data(forType: .rtf),
            let value = try? NSAttributedString(data: data, options: [.documentType: NSAttributedString.DocumentType.rtf], documentAttributes: nil),
            !value.containsAttachments {
-            replaceSelection(value, action: "Paste")
+            let normalized = AttributedDocument.capture(value, preserving: ScribeDocument())
+            replaceSelection(AttributedDocument.render(normalized), action: "Paste")
         } else if let string = pasteboard.string(forType: .string) {
             insertText(string.replacingOccurrences(of: "\r\n", with: "\n").replacingOccurrences(of: "\r", with: "\n"), replacementRange: selectedRange())
         }

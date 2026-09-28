@@ -63,6 +63,21 @@ import DocumentCore
         editor.storage.setAttributedString(NSAttributedString(string: "Short")); editor.paginate()
         XCTAssertEqual(editor.textViews.count, 1)
     }
+    func testTwoHundredPageLayoutReusesExistingContainers() {
+        let document = ScribeFileDocument()
+        document.model.sections[0].paragraphs = (0..<1600).map { Paragraph("Paragraph \($0). " + String(repeating: "Document layout must preserve glyph coverage and page continuity. ", count: 6)) }
+        let start = Date()
+        let editor = PaginatedEditor(document: document)
+        XCTAssertGreaterThan(editor.textViews.count, 200)
+        let first = editor.textViews[0]
+        let initialTime = Date().timeIntervalSince(start)
+        let editStart = Date()
+        editor.storage.replaceCharacters(in: NSRange(location: editor.storage.length - 1, length: 0), with: "x")
+        editor.paginate()
+        XCTAssertTrue(editor.textViews[0] === first)
+        XCTAssertEqual(NSMaxRange(editor.layout.glyphRange(for: editor.layout.textContainers.last!)), editor.layout.numberOfGlyphs)
+        print("Large layout: \(editor.textViews.count) pages; initial \(initialTime)s; end edit \(Date().timeIntervalSince(editStart))s")
+    }
     func testPageBreakAndPDFOutput() throws {
         let document = ScribeFileDocument()
         var second = Paragraph("Second page"); second.pageBreakBefore = true
