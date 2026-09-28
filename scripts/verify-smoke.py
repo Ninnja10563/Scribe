@@ -58,7 +58,10 @@ with pymupdf.open(root / 'Smoke.pdf') as full, pymupdf.open(root / 'Selected-pag
     assert selected.metadata['title'] == 'Selected pages'
     assert selected.metadata['subject'] == 'Range export'
     if native.get('formatVersion', 0) >= 5:
-        assert any(link.get('kind') == pymupdf.LINK_GOTO and link.get('page') == 0 for link in full[-1].get_links()), 'Missing PDF internal destination'
+        for pdf in (full, selected):
+            links = pdf[-1].get_links()
+            assert any(link.get('kind') == pymupdf.LINK_GOTO and link.get('page') == 0 for link in links), 'Missing PDF internal destination'
+            assert not any(link.get('uri', '').startswith('scribe:') for link in links), 'Private application URL leaked into PDF'
     text = '\n'.join(page.get_text() for page in full)
     for marker in ('IV.', 'a.', 'V.', 'IX.', 'Paragraph 80.', f'Page {len(full)} of {len(full)}'):
         assert marker in text, f'Missing output: {marker}'

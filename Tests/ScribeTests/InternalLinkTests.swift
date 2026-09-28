@@ -48,6 +48,8 @@ import DocumentCore
         let renderer = PrintRenderer(editor: editor)
         try renderer.exportPDF(to: fullURL, title: "Links", author: "")
         let pdf = try XCTUnwrap(PDFDocument(url: fullURL))
+        XCTAssertEqual(pdf.documentAttributes?[PDFDocumentAttribute.titleAttribute] as? String, "Links")
+        XCTAssertFalse(pdf.page(at: 0)?.annotations.contains(where: { ($0.action as? PDFActionURL)?.url?.scheme == "scribe" }) == true)
         let annotation = try XCTUnwrap(pdf.page(at: 0)?.annotations.first)
         let destination = annotation.destination ?? (annotation.action as? PDFActionGoTo)?.destination
         XCTAssertTrue(try XCTUnwrap(destination?.page) === pdf.page(at: 1))
