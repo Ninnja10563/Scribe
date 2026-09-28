@@ -9,7 +9,7 @@ extension PrintRenderer {
         let glyphs = layout.glyphRange(for: layout.textContainers[index])
         let characters = layout.characterRange(forGlyphRange: glyphs, actualGlyphRange: nil)
         var saved: [(NSRange, [NSAttributedString.Key: Any])] = []
-        let presentation = editor.textViews[index].linkTextAttributes ?? [:]
+        let presentation = editor.textViews[index].linkTextAttributes ?? [.foregroundColor: NSColor.linkColor, .underlineStyle: NSUnderlineStyle.single.rawValue]
         editor.storage.enumerateAttribute(.link, in: characters) { value, range, _ in
             guard value != nil else { return }
             var position = range.location
@@ -22,7 +22,12 @@ extension PrintRenderer {
             }
             layout.addTemporaryAttributes(presentation, forCharacterRange: range)
         }
-        defer { for (range, attributes) in saved { layout.setTemporaryAttributes(attributes, forCharacterRange: range) } }
+        let wasDrawingPrintLinks = editor.drawingPrintLinks
+        editor.drawingPrintLinks = true
+        defer {
+            editor.drawingPrintLinks = wasDrawingPrintLinks
+            for (range, attributes) in saved { layout.setTemporaryAttributes(attributes, forCharacterRange: range) }
+        }
         // Document pages are light in both application appearances.
         if let appearance = NSAppearance(named: .aqua) { appearance.performAsCurrentDrawingAppearance(draw) }
         else { draw() }

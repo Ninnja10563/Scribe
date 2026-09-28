@@ -21,6 +21,7 @@ import DocumentCore
     init(document: ScribeFileDocument) {
         editor = PaginatedEditor(document: document)
         let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 1120, height: 850), styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
         window.minSize = NSSize(width: 760, height: 500); window.title = "Scribe"
         window.tabbingMode = .preferred; window.tabbingIdentifier = "ScribeDocuments"
         window.setFrameAutosaveName("ScribeDocumentWindow"); window.center()

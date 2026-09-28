@@ -61,6 +61,7 @@ import DocumentCore
     private var isLayingOut = false
     private var firstDirtyPage = 0
     private var pageCharacterRanges: [NSRange] = []
+    var drawingPrintLinks = false
     private(set) var revision = 0
     private var semanticCache: (revision: Int, snapshot: SemanticTextSnapshot)?
     var semanticText: SemanticTextSnapshot {
@@ -197,6 +198,13 @@ import DocumentCore
         onSelection?()
     }
     func undoManager(for view: NSTextView) -> UndoManager? { owner?.undoManager }
+    nonisolated func layoutManager(_ layoutManager: NSLayoutManager, shouldUseTemporaryAttributes attributes: [NSAttributedString.Key: Any], forDrawingToScreen toScreen: Bool, atCharacterIndex index: Int, effectiveRange range: NSRangePointer?) -> [NSAttributedString.Key: Any]? {
+        MainActor.assumeIsolated {
+            if toScreen { return attributes }
+            guard drawingPrintLinks else { return nil }
+            return attributes.filter { [.foregroundColor, .underlineStyle, .underlineColor].contains($0.key) }
+        }
+    }
     nonisolated func layoutManager(_ layoutManager: NSLayoutManager, shouldUse action: NSLayoutManager.ControlCharacterAction, forControlCharacterAt charIndex: Int) -> NSLayoutManager.ControlCharacterAction {
         MainActor.assumeIsolated {
             if (storage.string as NSString).character(at: charIndex) == 12 { return .containerBreak }
