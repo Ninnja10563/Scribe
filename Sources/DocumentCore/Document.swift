@@ -1,7 +1,7 @@
 import Foundation
 
 public struct ScribeDocument: Codable, Equatable, Sendable {
-    public static let currentVersion = 3
+    public static let currentVersion = 4
     public var formatVersion = currentVersion
     public var id = UUID()
     public var title = "Untitled"
@@ -119,6 +119,9 @@ public struct TextAnchor: Codable, Equatable, Sendable {
     public var paragraphID: UUID
     public var offset: Int
     public var length: Int
+    /// Multi-paragraph ranges use an explicit end; legacy single-paragraph anchors use length.
+    public var endParagraphID: UUID?
+    public var endOffset: Int?
     public init(paragraphID: UUID, offset: Int, length: Int) {
         self.paragraphID = paragraphID; self.offset = offset; self.length = length
     }
@@ -129,6 +132,8 @@ public struct Comment: Codable, Equatable, Sendable, Identifiable {
     public var text: String
     public var author: String
     public var resolved = false
+    /// Keep the comment if its associated text is removed; native undo can reattach it.
+    public var isDetached: Bool?
     public init(anchor: TextAnchor, text: String, author: String) {
         self.anchor = anchor; self.text = text; self.author = author
     }

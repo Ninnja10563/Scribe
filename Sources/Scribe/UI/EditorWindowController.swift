@@ -6,6 +6,8 @@ import DocumentCore
     let editor: PaginatedEditor
     let outline = NSTableView()
     let sidebar = NSView()
+    let commentsSidebar = CommentsSidebar()
+    private var commentsBeforeFocus = false
     let status = NSTextField(labelWithString: "")
     let stylePicker = NSPopUpButton()
     let zoomPicker = NSPopUpButton()
@@ -62,6 +64,9 @@ import DocumentCore
         stack.addArrangedSubview(searchBar); searchBar.isHidden = true
         let split = NSSplitView(); split.isVertical = true; split.dividerStyle = .thin
         split.addArrangedSubview(sidebar); split.addArrangedSubview(editor.scrollView)
+        commentsSidebar.owner = self; split.addArrangedSubview(commentsSidebar); commentsSidebar.isHidden = true
+        commentsSidebar.widthAnchor.constraint(equalToConstant: 300).isActive = true
+        split.setHoldingPriority(.defaultHigh, forSubviewAt: 2)
         setupOutline()
         sidebar.widthAnchor.constraint(greaterThanOrEqualToConstant: 200).isActive = true
         sidebar.widthAnchor.constraint(lessThanOrEqualToConstant: 280).isActive = true
@@ -102,7 +107,7 @@ import DocumentCore
     }
     private func divider() -> NSView { let view = NSBox(); view.boxType = .separator; view.widthAnchor.constraint(equalToConstant: 1).isActive = true; view.heightAnchor.constraint(equalToConstant: 18).isActive = true; return view }
     func refreshOutline() {
-        let model = fileDocument.snapshot(); entries = model.outline; outlineHint.isHidden = !entries.isEmpty; outline.reloadData()
+        let model = fileDocument.snapshot(); commentsSidebar.reload(model); entries = model.outline; outlineHint.isHidden = !entries.isEmpty; outline.reloadData()
         let selected = stylePicker.titleOfSelectedItem
         stylePicker.removeAllItems(); stylePicker.addItems(withTitles: model.styles.map(\.name))
         if let selected { stylePicker.selectItem(withTitle: selected) }
@@ -147,7 +152,10 @@ import DocumentCore
     @objc func bulletList() { editor.applyList(ListDescriptor()) }
     @objc func numberedList() { editor.applyList(ListDescriptor(kind: .decimal)) }
     @objc func toggleSidebar() { sidebar.isHidden.toggle() }
-    @objc func toggleFocus() { isFocused.toggle(); sidebar.isHidden = isFocused; toolbar.isHidden = isFocused; if isFocused { searchBar.isHidden = true }; window?.makeFirstResponder(editor.activeTextView) }
+    @objc func toggleFocus() {
+        if !isFocused { commentsBeforeFocus = !commentsSidebar.isHidden; commentsSidebar.isHidden = true }
+        else { commentsSidebar.isHidden = !commentsBeforeFocus }
+        isFocused.toggle(); sidebar.isHidden = isFocused; toolbar.isHidden = isFocused; if isFocused { searchBar.isHidden = true }; window?.makeFirstResponder(editor.activeTextView) }
     @objc func showFind() { searchBar.isHidden = false; window?.makeFirstResponder(searchBar.query) }
     @objc func changeZoom() {
         let title = zoomPicker.titleOfSelectedItem ?? "100%"

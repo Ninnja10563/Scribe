@@ -33,3 +33,7 @@ Native v3 adds optional list-series identities and explicit restart markers. v1/
 Return within one list item preserves formatted runs and UTF-16 selection boundaries. Empty items exit/outdent; Backspace at the content start outdents. These operations participate in semantic undo. Selections spanning list paragraphs and physical input methods remain validation work.
 
 PDF export uses a native save-panel accessory for page ranges and title/author/subject/keywords. Selected pages retain source page numbering and vector text. Invalid selections are rejected before replacing an output file. Image-quality presets remain pending; current output retains source assets. The save panel follows [Apple's URL validation delegate](https://developer.apple.com/documentation/appkit/nsopensavepaneldelegate/panel(_:validate:)). Numbering follows the Office XML [concrete-instance and override model](https://learn.microsoft.com/en-us/dotnet/api/documentformat.openxml.wordprocessing.leveloverride?view=openxml-3.0.1).
+
+## Anchored review work in progress
+
+Native v4 extends comment anchors across paragraphs and explicitly retains comments whose source text was deleted. Attributed comment IDs travel with native text edits and native undo; semantic list splits use a UTF-16 anchor transform. Review presentation is separate from text formatting. A native comments sidebar provides navigation, editing, resolution and reopening. macOS projection/undo tests and DOCX comment interchange are the next validation steps; this work is not part of the v0.3.0 release.

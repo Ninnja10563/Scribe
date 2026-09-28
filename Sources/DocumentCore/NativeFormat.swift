@@ -32,10 +32,12 @@ public enum NativeFormat {
             guard var json = try JSONSerialization.jsonObject(with: data) as? [String: Any] else { throw DocumentError.invalid("missing document object") }
             if version == 1 { json["tables"] = [] }
             // v2 → v3: absent seriesID/restart retain legacy contiguous-list semantics.
+            // v3 → v4: legacy comment anchors remain single-paragraph ranges.
             json["formatVersion"] = ScribeDocument.currentVersion
             migrated = try JSONSerialization.data(withJSONObject: json)
         }
-        let document = try JSONDecoder().decode(ScribeDocument.self, from: migrated)
+        var document = try JSONDecoder().decode(ScribeDocument.self, from: migrated)
+        if version < 4 { document.reconcileCommentAnchors() }
         try validate(document)
         return document
     }
@@ -71,6 +73,11 @@ public enum NativeFormat {
         }
         let paragraphs = document.paragraphs
         guard Set(paragraphs.map(\.id)).count == paragraphs.count else { throw DocumentError.invalid("duplicate paragraph identifiers") }
+        guard Set(document.comments.map(\.id)).count == document.comments.count else { throw DocumentError.invalid("duplicate comment identifiers") }
+        let textIndex = DocumentTextIndex(paragraphs: paragraphs)
+        for comment in document.comments where comment.isDetached != true {
+            guard textIndex.range(for: comment.anchor) != nil else { throw DocumentError.invalid("invalid comment anchor") }
+        }
         for p in paragraphs {
             guard document.styles.contains(where: { $0.id == p.styleID }) else { throw DocumentError.invalid("missing paragraph style") }
             guard !p.text.contains("\n"), !p.text.contains("\r") else { throw DocumentError.invalid("paragraph contains a line separator") }

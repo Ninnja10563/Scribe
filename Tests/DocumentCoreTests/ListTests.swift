@@ -40,7 +40,7 @@ final class ListTests: XCTestCase {
         json["formatVersion"] = 2
         let source = try JSONSerialization.data(withJSONObject: json)
         let result = try NativeFormat.decode(source)
-        XCTAssertEqual(result.formatVersion, 3)
+        XCTAssertEqual(result.formatVersion, ScribeDocument.currentVersion)
         XCTAssertNil(result.paragraphs[0].list?.seriesID)
         XCTAssertEqual(result.paragraphs[0].list?.start, 5)
         XCTAssertEqual((try JSONSerialization.jsonObject(with: source) as! [String: Any])["formatVersion"] as? Int, 2)

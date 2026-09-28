@@ -40,6 +40,7 @@ extension NSAttributedString.Key {
                 result.addAttributes([.scribeStyle: paragraph.styleID, .scribeParagraphID: paragraph.id.uuidString], range: NSRange(location: start, length: result.length - start))
             }
         }
+        CommentProjection.apply(to: result, document: document)
         return result
     }
     static func capture(_ storage: NSAttributedString, preserving original: ScribeDocument, typingAttributes: [NSAttributedString.Key: Any]? = nil) -> ScribeDocument {
@@ -110,6 +111,7 @@ extension NSAttributedString.Key {
         document.sections[0].paragraphs = paragraphs
         let usedTables = Set(paragraphs.compactMap { $0.tableCell?.tableID })
         document.tables.removeAll { !usedTables.contains($0.id) }
+        CommentProjection.capture(from: storage, document: &document)
         // The current editing projection supports one section; imports are flattened explicitly.
         return document
     }

@@ -1,11 +1,11 @@
-# Feature status — Scribe 0.3
+# Feature status — Scribe development after 0.3
 
 This is a foundation release. “Implemented” means there is working code and an exposed editing path, not that the feature has the interoperability coverage of a mature word processor.
 
 | Area | Implemented | Still needed |
 | --- | --- | --- |
 | Native application | Swift/AppKit, arm64 bundle, document windows and tabs, menus, native spelling, focus mode, zoom, light/dark chrome | Physical-Mac keyboard/IME/VoiceOver audit, richer preferences |
-| Document model | Versioned semantic paragraphs/runs, sections, styles, tables/cell references, inline images, IDs; v1/v2→v3 migrations | More block types, independent section editing, preservation of future extension payloads |
+| Document model | Versioned semantic paragraphs/runs, sections, styles, tables/cell references, inline images, IDs; v1/v2/v3→v4 migrations | More block types, independent section editing, preservation of future extension payloads |
 | Pagination | Shared TextKit layout across actual page containers; A4/Letter/Legal, orientation, margins, page breaks | Virtualization, widow/orphan controls, configurable hyphenation, typography audit |
 | Formatting | Fonts/size via native panel, common traits, color/highlight, super/subscript, alignment, spacing and indents | Draggable ruler, granular font-weight UI |
 | Styles | Built-in headings/title/body/quote/caption, custom creation/modification/deletion, live definition updates, outline navigation | Style inheritance editor, collapsible heading content |
@@ -14,7 +14,7 @@ This is a foundation release. “Implemented” means there is working code and 
 | Images | PNG/JPEG/HEIC/TIFF insertion, Finder drop, image paste, inline layout, proportional resizing by handles or dialog, alt text | Cropping, rotation, opacity, floating placement/wrapping |
 | Running content | Text headers/footers; top/bottom, left/centre/right page numbers and formats, custom start | Direct-on-page editing, first/odd/even variants, document metadata fields |
 | Navigation | Clickable outline, case/whole-word find/replace, match highlights, statistics | Automatic TOC, bookmark UI, internal-link editing |
-| Review/references | Comment/bookmark schema and modular grammar protocol only | Comment UI and edit-aware anchors, track changes, footnotes/endnotes, equation layout |
+| Review/references | Native anchored comments with multi-paragraph associations, detached-text retention, sidebar edit/delete/resolve/reopen; bookmark schema and modular grammar protocol | macOS comment validation in progress, DOCX comments, track changes, footnotes/endnotes, equation layout |
 | DOCX | Real OPC ZIP/XML; common text, headings, basic lists/tables/images, page geometry, running content, fields on export; import warnings | Word/Pages/LibreOffice fixture coverage, advanced styles, custom compound numbering and restart rules, merged/nested tables, review data, field import, exact line-spacing fidelity |
 | Other formats | Basic RTF, Markdown subset, UTF-8 text; native copies protect originals | RTF table import, complete CommonMark, external Markdown image bundles |
 | Output | PDF vector text/links and native images/tables; page-range selection and metadata; native printing; shared glyph layout | PDF image-quality presets, PDF accessibility tags, color-management audit |
