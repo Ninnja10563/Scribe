@@ -104,7 +104,13 @@ import ImportExport
             controller.selectComment(document.model.comments[0])
             let folder = URL(fileURLWithPath: ProcessInfo.processInfo.environment["SCRIBE_SMOKE_OUTPUT"] ?? NSTemporaryDirectory())
             try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-            try NativeFormat.save(document.snapshot(), to: folder.appendingPathComponent("Smoke.scribe"))
+            try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+                document.save(to: folder.appendingPathComponent("Smoke.scribe"), ofType: ScribeFileDocument.typeName, for: .saveOperation) { error in
+                    if let error { continuation.resume(throwing: error) } else { continuation.resume() }
+                }
+            }
+            guard !document.isDocumentEdited else { throw DocumentError.invalid("native save did not clear the edited state") }
+            print("Native document save completed"); fflush(stdout)
             try PrintRenderer(editor: controller.editor).exportPDF(to: folder.appendingPathComponent("Smoke.pdf"), title: "Scribe Smoke Test", author: "Scribe")
             let exportModel = document.snapshot(), wordBytes = try DOCX.encode(document.snapshot())
             try wordBytes.write(to: folder.appendingPathComponent("Smoke.docx"))

@@ -69,5 +69,7 @@ final class TableOfContentsTests: XCTestCase {
         XCTAssertEqual(migrated.formatVersion, ScribeDocument.currentVersion); XCTAssertTrue(migrated.tablesOfContents.isEmpty)
         var invalid = document; invalid.tablesOfContents = [DocumentTOC(maximumLevel: 10)]
         XCTAssertThrowsError(try NativeFormat.encode(invalid))
+        invalid.tablesOfContents = [DocumentTOC()]
+        XCTAssertThrowsError(try NativeFormat.encode(invalid))
     }
 }

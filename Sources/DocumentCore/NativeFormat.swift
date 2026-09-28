@@ -77,6 +77,7 @@ public enum NativeFormat {
             if let level = style.headingLevel, !(1...9).contains(level) { throw DocumentError.invalid("invalid heading level") }
         }
         let paragraphs = document.paragraphs
+        guard Set(paragraphs.compactMap { $0.toc?.tableID }) == tocIDs else { throw DocumentError.invalid("orphaned table of contents definition") }
         guard Set(paragraphs.map(\.id)).count == paragraphs.count else { throw DocumentError.invalid("duplicate paragraph identifiers") }
         guard Set(document.comments.map(\.id)).count == document.comments.count else { throw DocumentError.invalid("duplicate comment identifiers") }
         let textIndex = DocumentTextIndex(paragraphs: paragraphs)
