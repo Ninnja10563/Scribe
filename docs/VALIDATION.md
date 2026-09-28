@@ -67,3 +67,9 @@ Native v5 adds optional PostScript face identities, preserving weights/widths be
 
 - Font-face persistence passed [macOS run 36494732575](https://github.com/Ninnja10563/Scribe/actions/runs/36494732575), including native Medium/Light/Condensed round trips, style inheritance and missing-font retention. The independent DOCX schema check also passed.
 - Inline DOCX page-break import previously moved preceding text to the next page by incorrectly setting paragraph.pageBreakBefore. The fix retains native inline flow controls and exports actual Office break elements. New native tests check projection, caret insertion/undo and PDF page placement; validation is pending.
+
+- Inline page-break projection, caret insertion/undo and actual PDF page placement passed [macOS run 36495065947](https://github.com/Ninnja10563/Scribe/actions/runs/36495065947). The regression DOCX containing an inline page break also passed the independent schema validator.
+
+### Internal heading links (v0.5 development)
+
+The native Insert → Link to Heading dialog uses stable paragraph IDs. DOCX exports real bookmark/anchor links and resolves imported bookmark destinations to paragraph starts (mid-paragraph destinations produce an approximation warning). PDF exports named internal destinations; page-range exports omit clickable annotations whose destinations were excluded. Portable tests and independent Office XML validation pass for the exported internal-link package. Native dialog/navigation/undo and PDF destination tests are awaiting CI.

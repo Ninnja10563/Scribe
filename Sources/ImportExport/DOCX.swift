@@ -34,6 +34,17 @@ public enum DOCX {
         delegate.warnings.formUnion(delegate.numbering.warnings)
         guard delegate.sawDocument else { throw DocumentError.invalid("missing Word document root") }
         if delegate.paragraphs.isEmpty { delegate.paragraphs = [Paragraph()] }
+        for p in delegate.paragraphs.indices {
+            for r in delegate.paragraphs[p].runs.indices {
+                guard let link = delegate.paragraphs[p].runs[r].link, link.hasPrefix("#") else { continue }
+                if let target = delegate.bookmarkParagraphs[String(link.dropFirst())] {
+                    delegate.paragraphs[p].runs[r].link = DocumentLink.paragraph(target)
+                } else {
+                    delegate.paragraphs[p].runs[r].link = nil
+                    delegate.warnings.insert("An internal hyperlink has a missing bookmark destination; its text was retained.")
+                }
+            }
+        }
         delegate.document.sections[0].paragraphs = delegate.paragraphs
         for p in delegate.paragraphs where !delegate.document.styles.contains(where: { $0.id == p.styleID }) {
             delegate.document.updateStyle(ParagraphStyle(id: p.styleID, name: p.styleID))
@@ -194,6 +205,7 @@ private class WordReader: NSObject, XMLParserDelegate {
     let numbering = DOCXNumberingReader()
     var commentStarts: [String: TextAnchor] = [:], commentEnds: [String: TextAnchor] = [:], commentReferences: [String: TextAnchor] = [:]
     var styleLists: [String: StyleList] = [:]
+    var bookmarkParagraphs: [String: UUID] = [:]
     var listID: String?, listLevel: Int?
     var inRun = false, sawDocument = false
     var files: [String: Data] = [:], targets: [String: String] = [:]
@@ -236,7 +248,16 @@ private class WordReader: NSObject, XMLParserDelegate {
                 else if name == "commentRangeEnd" { commentEnds[id] = anchor }
                 else { commentReferences[id] = anchor }
             }
-        case "hyperlink": link = (a["r:id"] ?? a["id"]).flatMap { links[$0] }
+        case "bookmarkStart":
+            if let name = wordAttribute(a, "name"), let paragraph {
+                bookmarkParagraphs[name] = paragraph.id
+                if paragraph.runs.contains(where: { !$0.text.isEmpty }) || (inRun && !run.text.isEmpty) {
+                    warnings.insert("Internal links to positions within paragraphs navigate to the paragraph start in this version.")
+                }
+            }
+        case "hyperlink":
+            link = (a["r:id"] ?? a["id"]).flatMap { links[$0] }
+            if link == nil, let anchor = wordAttribute(a, "anchor") { link = "#" + anchor }
         case "pgSz":
             if let w = wordAttribute(a, "w").flatMap(Double.init), let h = wordAttribute(a, "h").flatMap(Double.init) {
                 document.sections[0].page.width = w / 20; document.sections[0].page.height = h / 20

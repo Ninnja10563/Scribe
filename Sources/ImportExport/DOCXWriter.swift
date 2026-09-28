@@ -10,6 +10,7 @@ final class DOCXWriter {
     private let document: ScribeDocument
     private let numbering: DOCXNumberingWriter
     private let comments: DOCXCommentsWriter
+    private var bookmarkIDs: [UUID: Int] = [:]
     init(_ document: ScribeDocument) { self.document = document; numbering = DOCXNumberingWriter(paragraphs: document.paragraphs); comments = DOCXCommentsWriter(document: document) }
     private func put(_ path: String, _ xml: String) { parts[path] = Data(xml.utf8) }
     private func relationship(type: String, target: String, external: Bool = false, namespace: String = DOCX.relationNS) -> String {
@@ -19,6 +20,8 @@ final class DOCXWriter {
     }
     func encode() throws -> Data {
         try NativeFormat.validate(document)
+        let linked = Set(document.paragraphs.flatMap(\.runs).compactMap { $0.link.flatMap(DocumentLink.paragraphID) })
+        for paragraph in document.paragraphs where linked.contains(paragraph.id) { bookmarkIDs[paragraph.id] = bookmarkIDs.count }
         var body = ""
         for (index, section) in document.sections.enumerated() {
             var emitted: Set<UUID> = []
@@ -100,7 +103,8 @@ final class DOCXWriter {
             offset += length
         }
         text += comments.markers(paragraphID: p.id, offset: offset)
-        return "<w:p><w:pPr>\(properties)</w:pPr>\(text)</w:p>"
+        let bookmark = bookmarkIDs[p.id].map { "<w:bookmarkStart w:id=\"\($0)\" w:name=\"\(DocumentLink.officeBookmark(p.id))\"/><w:bookmarkEnd w:id=\"\($0)\"/>" } ?? ""
+        return "<w:p><w:pPr>\(properties)</w:pPr>\(bookmark)\(text)</w:p>"
     }
     private func runXML(_ run: TextRun) -> String {
             if let image = run.image { return imageRun(image) }
@@ -108,6 +112,10 @@ final class DOCXWriter {
             let pageText = text.replacingOccurrences(of: "\u{c}", with: "</w:t><w:br w:type=\"page\"/><w:t xml:space=\"preserve\">")
             let content = "<w:r><w:rPr>\(DOCX.runProperties(run.format))</w:rPr><w:t xml:space=\"preserve\">\(pageText)</w:t></w:r>"
             guard let link = run.link else { return content }
+            if let id = DocumentLink.paragraphID(link) {
+                guard bookmarkIDs[id] != nil else { return content }
+                return "<w:hyperlink w:anchor=\"\(DocumentLink.officeBookmark(id))\">\(content)</w:hyperlink>"
+            }
             return "<w:hyperlink r:id=\"\(relationship(type: "hyperlink", target: link, external: true))\">\(content)</w:hyperlink>"
     }
     private func table(_ table: DocumentTable, paragraphs: [Paragraph]) -> String {

@@ -220,12 +220,25 @@ import DocumentCore
         view.setSelectedRange(safeRange); view.scrollRangeToVisible(safeRange)
         selectionView = view; onSelection?()
     }
-    func jump(to id: UUID) {
+    func textView(_ textView: NSTextView, clickedOnLink link: Any, at charIndex: Int) -> Bool {
+        let value = (link as? URL)?.absoluteString ?? link as? String ?? ""
+        guard let id = DocumentLink.paragraphID(value) else { return false }
+        if !jump(to: id) { owner?.editorController?.showStatus("The linked heading has been deleted."); NSSound.beep() }; return true
+    }
+    func navigationLocation(in range: NSRange) -> Int {
+        let text = storage.string as NSString
+        var location = range.location
+        while location < min(NSMaxRange(range), text.length), text.character(at: location) == 12 { location += 1 }
+        return location
+    }
+    @discardableResult func jump(to id: UUID) -> Bool {
         var found: NSRange?
         storage.enumerateAttribute(.scribeParagraphID, in: NSRange(location: 0, length: storage.length)) { value, range, stop in
             if value as? String == id.uuidString { found = range; stop.pointee = true }
         }
-        if let found { select(NSRange(location: found.location, length: 0)) }
+        if let found { select(NSRange(location: navigationLocation(in: found), length: 0)); return true }
+        if owner?.snapshot().paragraphs.last?.id == id { select(NSRange(location: storage.length, length: 0)); return true }
+        return false
     }
 }
 #endif

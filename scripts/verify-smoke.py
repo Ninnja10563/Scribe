@@ -30,6 +30,10 @@ with ZipFile(root / 'Smoke.docx') as package:
     assert {'4', '9'} <= starts
     assert {'upperRoman', 'lowerLetter'} <= formats
     body = ElementTree.fromstring(package.read('word/document.xml'))
+    if native.get('formatVersion', 0) >= 5:
+        bookmark_names = {node.get('{' + namespace['w'] + '}name') for node in body.findall('.//w:bookmarkStart', namespace)}
+        internal_links = [node.get('{' + namespace['w'] + '}anchor') for node in body.findall('.//w:hyperlink', namespace)]
+        assert any(anchor in bookmark_names for anchor in internal_links), 'Missing Word internal destination'
     comments = native.get('comments', [])
     assert len(word.comments) == len(comments), 'Missing review text'
     for actual, expected in zip(word.comments, comments):
@@ -53,6 +57,8 @@ with pymupdf.open(root / 'Smoke.pdf') as full, pymupdf.open(root / 'Selected-pag
     assert selected[1].get_text() == full[-1].get_text()
     assert selected.metadata['title'] == 'Selected pages'
     assert selected.metadata['subject'] == 'Range export'
+    if native.get('formatVersion', 0) >= 5:
+        assert any(link.get('kind') == pymupdf.LINK_GOTO and link.get('page') == 0 for link in full[-1].get_links()), 'Missing PDF internal destination'
     text = '\n'.join(page.get_text() for page in full)
     for marker in ('IV.', 'a.', 'V.', 'IX.', 'Paragraph 80.', f'Page {len(full)} of {len(full)}'):
         assert marker in text, f'Missing output: {marker}'

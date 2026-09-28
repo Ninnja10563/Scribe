@@ -28,6 +28,9 @@ import ImportExport
                     let document = ScribeFileDocument(); document.model = snapshot.document
                     document.model.title += " — Recovered"
                     let reviewed = document.model.paragraphs[2]
+            let lastIndex = document.model.sections[0].paragraphs.count - 1
+            let finalText = document.model.sections[0].paragraphs[lastIndex].text
+            document.model.sections[0].paragraphs[lastIndex].runs = [TextRun(finalText, link: DocumentLink.paragraph(reviewed.id))]
             document.model.comments = [Comment(anchor: TextAnchor(paragraphID: reviewed.id, offset: 0, length: (reviewed.text as NSString).length), text: "Check the section structure before sharing this draft.\nThe outline and page layout should agree.", author: "Scribe reviewer")]
             var resolvedComment = Comment(anchor: TextAnchor(paragraphID: document.model.paragraphs[3].id, offset: 0, length: 6), text: "Checked in an earlier review.", author: "Copy editor")
             resolvedComment.resolved = true; document.model.comments.append(resolvedComment)
@@ -83,6 +86,9 @@ import ImportExport
             document.model.sections[0].pageNumbering = PageNumbering()
             for i in 1...80 { document.model.sections[0].paragraphs.append(Paragraph("Paragraph \(i). " + String(repeating: "Professional documents need clear structure and dependable editing. ", count: 6))) }
             let reviewed = document.model.paragraphs[2]
+            let lastIndex = document.model.sections[0].paragraphs.count - 1
+            let finalText = document.model.sections[0].paragraphs[lastIndex].text
+            document.model.sections[0].paragraphs[lastIndex].runs = [TextRun(finalText, link: DocumentLink.paragraph(reviewed.id))]
             document.model.comments = [Comment(anchor: TextAnchor(paragraphID: reviewed.id, offset: 0, length: (reviewed.text as NSString).length), text: "Check the section structure before sharing this draft.\nThe outline and page layout should agree.", author: "Scribe reviewer")]
             var resolvedComment = Comment(anchor: TextAnchor(paragraphID: document.model.paragraphs[3].id, offset: 0, length: 6), text: "Checked in an earlier review.", author: "Copy editor")
             resolvedComment.resolved = true; document.model.comments.append(resolvedComment)

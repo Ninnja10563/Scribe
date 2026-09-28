@@ -51,6 +51,7 @@ import AppKit
         item(insert, "Page Break", #selector(ScribeTextView.insertPageBreak(_:)), "\r")
         item(insert, "Page Numbers…", #selector(EditorWindowController.pageNumbers))
         item(insert, "Hyperlink…", #selector(EditorWindowController.insertLink), "k")
+        item(insert, "Link to Heading…", #selector(EditorWindowController.insertHeadingLink))
         item(insert, "Headers and Footers…", #selector(EditorWindowController.editHeaderFooter))
         item(insert, "Symbols and Characters…", #selector(ScribeTextView.insertSpecialCharacter(_:)))
         let format = menu("Format")

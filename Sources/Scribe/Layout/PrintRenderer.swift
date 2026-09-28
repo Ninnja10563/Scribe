@@ -38,6 +38,28 @@ import DocumentCore
         editor.canvas.drawPageNumber(index: index, origin: .zero)
         (editor.canvas.footer as NSString).draw(at: NSPoint(x: p.left, y: p.height - 38), withAttributes: attrs)
     }
+    private func internalDestinations(in selected: Set<Int>) -> [UUID: (page: Int, point: CGPoint)] {
+        let full = NSRange(location: 0, length: editor.storage.length)
+        var linked: Set<UUID> = []
+        editor.storage.enumerateAttribute(.link, in: full) { value, _, _ in
+            let text = (value as? URL)?.absoluteString ?? value as? String ?? ""
+            if let id = DocumentLink.paragraphID(text) { linked.insert(id) }
+        }
+        var result: [UUID: (page: Int, point: CGPoint)] = [:]
+        let p = editor.canvas.pageSettings
+        editor.storage.enumerateAttribute(.scribeParagraphID, in: full) { value, range, _ in
+            guard let value = value as? String, let id = UUID(uuidString: value), linked.contains(id), result[id] == nil else { return }
+            let location = editor.navigationLocation(in: range)
+            guard location < editor.storage.length else { return }
+            let glyph = editor.layout.glyphIndexForCharacter(at: location)
+            guard glyph < editor.layout.numberOfGlyphs,
+                  let container = editor.layout.textContainer(forGlyphAt: glyph, effectiveRange: nil),
+                  let page = editor.layout.textContainers.firstIndex(where: { $0 === container }), selected.contains(page) else { return }
+            let rect = editor.layout.boundingRect(forGlyphRange: NSRange(location: glyph, length: 1), in: container)
+            result[id] = (page, CGPoint(x: p.left + rect.minX, y: p.height - p.top - rect.minY))
+        }
+        return result
+    }
     func exportPDF(to url: URL, title: String, author: String, pages: [Int]? = nil, subject: String = "", keywords: [String] = []) throws {
         let selected = pages ?? Array(editor.textViews.indices)
         guard !selected.isEmpty, selected.allSatisfy({ editor.textViews.indices.contains($0) }), selected == Array(Set(selected)).sorted() else {
@@ -50,6 +72,7 @@ import DocumentCore
         guard let consumer = CGDataConsumer(data: data), let context = CGContext(consumer: consumer, mediaBox: &media, [kCGPDFContextTitle: title, kCGPDFContextAuthor: author, kCGPDFContextSubject: subject, kCGPDFContextKeywords: keywords, kCGPDFContextCreator: "Scribe"] as CFDictionary) else {
             throw DocumentError.invalid("could not create PDF output")
         }
+        let destinations = internalDestinations(in: Set(selected))
         for index in selected {
             context.beginPDFPage(nil); context.saveGState()
             context.translateBy(x: 0, y: p.height); context.scaleBy(x: 1, y: -1)
@@ -57,14 +80,22 @@ import DocumentCore
             NSGraphicsContext.current = NSGraphicsContext(cgContext: context, flipped: true)
             drawPage(index)
             NSGraphicsContext.restoreGraphicsState(); context.restoreGState()
+            for (id, destination) in destinations where destination.page == index {
+                context.addDestination(DocumentLink.officeBookmark(id) as CFString, at: destination.point)
+            }
             let container = editor.layout.textContainers[index]
             let glyphs = editor.layout.glyphRange(for: container)
             let characters = editor.layout.characterRange(forGlyphRange: glyphs, actualGlyphRange: nil)
             editor.storage.enumerateAttribute(.link, in: characters) { value, range, _ in
-                guard let url = (value as? URL) ?? (value as? String).flatMap(URL.init(string:)), ["http", "https", "mailto"].contains(url.scheme ?? "") else { return }
+                guard let url = (value as? URL) ?? (value as? String).flatMap(URL.init(string:)) else { return }
                 let linkGlyphs = editor.layout.glyphRange(forCharacterRange: range, actualCharacterRange: nil)
                 let rect = editor.layout.boundingRect(forGlyphRange: NSIntersectionRange(linkGlyphs, glyphs), in: container)
-                context.setURL(url as CFURL, for: CGRect(x: p.left + rect.minX, y: p.height - p.top - rect.maxY, width: rect.width, height: rect.height))
+                let targetRect = CGRect(x: p.left + rect.minX, y: p.height - p.top - rect.maxY, width: rect.width, height: rect.height)
+                if let id = DocumentLink.paragraphID(url.absoluteString), destinations[id] != nil {
+                    context.setDestination(DocumentLink.officeBookmark(id) as CFString, for: targetRect)
+                } else if ["http", "https", "mailto"].contains(url.scheme ?? "") {
+                    context.setURL(url as CFURL, for: targetRect)
+                }
             }
             context.endPDFPage()
         }
