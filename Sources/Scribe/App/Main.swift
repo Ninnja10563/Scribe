@@ -29,6 +29,8 @@ import ImportExport
                     document.model.title += " — Recovered"
                     let reviewed = document.model.paragraphs[2]
             document.model.comments = [Comment(anchor: TextAnchor(paragraphID: reviewed.id, offset: 0, length: (reviewed.text as NSString).length), text: "Check the section structure before sharing this draft.\nThe outline and page layout should agree.", author: "Scribe reviewer")]
+            var resolvedComment = Comment(anchor: TextAnchor(paragraphID: document.model.paragraphs[3].id, offset: 0, length: 6), text: "Checked in an earlier review.", author: "Copy editor")
+            resolvedComment.resolved = true; document.model.comments.append(resolvedComment)
             documents.addDocument(document); document.makeWindowControllers(); document.showWindows(); document.updateChangeCount(.changeDone)
                 }
             }
@@ -81,6 +83,8 @@ import ImportExport
             for i in 1...80 { document.model.sections[0].paragraphs.append(Paragraph("Paragraph \(i). " + String(repeating: "Professional documents need clear structure and dependable editing. ", count: 6))) }
             let reviewed = document.model.paragraphs[2]
             document.model.comments = [Comment(anchor: TextAnchor(paragraphID: reviewed.id, offset: 0, length: (reviewed.text as NSString).length), text: "Check the section structure before sharing this draft.\nThe outline and page layout should agree.", author: "Scribe reviewer")]
+            var resolvedComment = Comment(anchor: TextAnchor(paragraphID: document.model.paragraphs[3].id, offset: 0, length: 6), text: "Checked in an earlier review.", author: "Copy editor")
+            resolvedComment.resolved = true; document.model.comments.append(resolvedComment)
             documents.addDocument(document); document.makeWindowControllers(); document.showWindows()
             guard let controller = document.editorController else { fatalError("Missing editor") }
             controller.editor.paginate()

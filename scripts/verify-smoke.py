@@ -34,6 +34,15 @@ with ZipFile(root / 'Smoke.docx') as package:
     assert len(word.comments) == len(comments), 'Missing review text'
     for actual, expected in zip(word.comments, comments):
         assert actual.text == expected['text'] and actual.author == expected['author']
+    if comments:
+        comment_xml = ElementTree.fromstring(package.read('word/comments.xml'))
+        extended = ElementTree.fromstring(package.read('word/commentsExtended.xml'))
+        w14 = '{http://schemas.microsoft.com/office/word/2010/wordml}'
+        w15 = '{http://schemas.microsoft.com/office/word/2012/wordml}'
+        states = {item.get(w15 + 'paraId'): item.get(w15 + 'done') in ('1', 'true', 'on') for item in extended}
+        for element, expected in zip(comment_xml, comments):
+            final_paragraph = element.findall('w:p', namespace)[-1]
+            assert states[final_paragraph.get(w14 + 'paraId')] == expected['resolved']
     attached_count = sum(not comment.get('isDetached', False) for comment in comments)
     for tag in ('commentRangeStart', 'commentRangeEnd', 'commentReference'):
         assert len(body.findall('.//w:' + tag, namespace)) == attached_count

@@ -53,6 +53,7 @@ import DocumentCore
     let scrollView = NSScrollView()
     private(set) var textViews: [ScribeTextView] = []
     private(set) var layoutWarning: String?
+    private weak var selectionView: ScribeTextView?
     var onChange: (() -> Void)?
     var onSelection: (() -> Void)?
     weak var owner: ScribeFileDocument?
@@ -63,7 +64,9 @@ import DocumentCore
     private(set) var revision = 0
     var zoom: CGFloat = 1 { didSet { scrollView.setMagnification(zoom, centeredAt: scrollView.documentVisibleRect.origin); resizeCanvas() } }
     var activeTextView: ScribeTextView {
-        (canvas.window?.firstResponder as? ScribeTextView) ?? textViews.first!
+        if let focused = canvas.window?.firstResponder as? ScribeTextView { return focused }
+        if let selected = selectionView, selected.superview === canvas { return selected }
+        return textViews.first!
     }
     init(document: ScribeFileDocument) {
         owner = document
@@ -179,7 +182,10 @@ import DocumentCore
         relayout = job; DispatchQueue.main.asyncAfter(deadline: .now() + 0.04, execute: job)
         onChange?()
     }
-    func textViewDidChangeSelection(_ notification: Notification) { onSelection?() }
+    func textViewDidChangeSelection(_ notification: Notification) {
+        if let view = notification.object as? ScribeTextView { selectionView = view }
+        onSelection?()
+    }
     func undoManager(for view: NSTextView) -> UndoManager? { owner?.undoManager }
     nonisolated func layoutManager(_ layoutManager: NSLayoutManager, shouldUse action: NSLayoutManager.ControlCharacterAction, forControlCharacterAt charIndex: Int) -> NSLayoutManager.ControlCharacterAction {
         MainActor.assumeIsolated {
@@ -187,14 +193,20 @@ import DocumentCore
             return action
         }
     }
-    func select(_ range: NSRange) {
-        guard range.location <= storage.length else { return }
+    func select(_ range: NSRange, focus: Bool = true) {
+        guard range.location >= 0, range.length >= 0, range.location <= storage.length else { return }
         paginate()
-        if storage.length == 0 { canvas.window?.makeFirstResponder(textViews[0]); textViews[0].setSelectedRange(NSRange(location: 0, length: 0)); return }
+        if storage.length == 0 {
+            selectionView = textViews[0]
+            if focus { canvas.window?.makeFirstResponder(textViews[0]) }
+            textViews[0].setSelectedRange(NSRange(location: 0, length: 0)); return
+        }
         let glyph = layout.glyphIndexForCharacter(at: min(range.location, max(0, storage.length - 1)))
         let container = layout.textContainer(forGlyphAt: glyph, effectiveRange: nil)
         let view = textViews.first { $0.textContainer === container } ?? textViews[0]
-        canvas.window?.makeFirstResponder(view); let safeRange = NSRange(location: range.location, length: min(range.length, storage.length - range.location))
+        selectionView = view
+        if focus { canvas.window?.makeFirstResponder(view) }
+        let safeRange = NSRange(location: range.location, length: min(range.length, storage.length - range.location))
         view.setSelectedRange(safeRange); view.scrollRangeToVisible(safeRange)
     }
     func jump(to id: UUID) {

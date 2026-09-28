@@ -95,6 +95,25 @@ import DocumentCore
         XCTAssertEqual(captured.paragraphs[1].styleID, "heading2")
         XCTAssertNil(captured.paragraphs[1].list)
     }
+    func testCommentNavigationKeepsKeyboardFocusInSidebar() throws {
+        let document = ScribeFileDocument(); var reviewed = Paragraph("Review this on page two"); reviewed.pageBreakBefore = true
+        document.model.sections[0].paragraphs = [Paragraph("First page"), reviewed]
+        document.model.comments = [Comment(anchor: .init(paragraphID: reviewed.id, offset: 0, length: 6), text: "Review", author: "Alex")]
+        document.makeWindowControllers(); defer { document.close() }
+        let controller = document.editorController!, sidebar = controller.commentsSidebar
+        sidebar.isHidden = false; sidebar.reload(document.snapshot())
+        func descendants(_ view: NSView) -> [NSView] { [view] + view.subviews.flatMap(descendants) }
+        let table = try XCTUnwrap(descendants(sidebar).compactMap { $0 as? NSTableView }.first)
+        controller.window?.makeFirstResponder(table)
+        table.selectRowIndexes(IndexSet(integer: 0), byExtendingSelection: false)
+        XCTAssertTrue(controller.window?.firstResponder === table)
+        XCTAssertTrue(controller.editor.activeTextView === controller.editor.textViews[1])
+        XCTAssertEqual(controller.editor.activeTextView.selectedRange().length, 6)
+        let resolve = try XCTUnwrap(descendants(sidebar).compactMap { $0 as? NSButton }.first { $0.title == "Resolve" })
+        resolve.performClick(nil)
+        XCTAssertTrue(controller.window?.firstResponder === table)
+        XCTAssertTrue(document.snapshot().comments[0].resolved)
+    }
     func testSidebarResolveReopenDeleteAndUndo() throws {
         let document = ScribeFileDocument(); let p = Paragraph("Review this text")
         document.model.sections[0].paragraphs = [p]

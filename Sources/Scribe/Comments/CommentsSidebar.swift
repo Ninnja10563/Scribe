@@ -73,7 +73,7 @@ import DocumentCore
         updateDetail()
         revealComment()
     }
-    @objc private func revealComment() { if let comment = selectedComment { owner?.selectComment(comment) } }
+    @objc private func revealComment() { if let comment = selectedComment { owner?.selectComment(comment, keepSidebarFocus: true) } }
     private func updateDetail() {
         let comment = selectedComment
         detail.string = comment?.text ?? "Select text in your document, then choose Add Comment."
@@ -94,14 +94,19 @@ import DocumentCore
     @objc private func editComment() { if let comment = selectedComment { owner?.editComment(comment) } }
     @objc private func resolveComment() {
         guard let comment = selectedComment else { return }
-        owner?.fileDocument.performEdit(comment.resolved ? "Reopen Comment" : "Resolve Comment") { document in
+        performReviewEdit(comment.resolved ? "Reopen Comment" : "Resolve Comment") { document in
             guard let index = document.comments.firstIndex(where: { $0.id == comment.id }) else { return }
             document.comments[index].resolved.toggle()
         }
     }
+    private func performReviewEdit(_ name: String, change: (inout ScribeDocument) -> Void) {
+        let restoreFocus = (window?.firstResponder as? NSView)?.isDescendant(of: self) == true
+        owner?.fileDocument.performEdit(name, change: change)
+        if restoreFocus { window?.makeFirstResponder(table) }
+    }
     @objc private func deleteComment() {
         guard let id = selectedComment?.id else { return }
-        owner?.fileDocument.performEdit("Delete Comment") { $0.comments.removeAll { $0.id == id } }
+        performReviewEdit("Delete Comment") { $0.comments.removeAll { $0.id == id } }
     }
 }
 #endif

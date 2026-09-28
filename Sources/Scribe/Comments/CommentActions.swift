@@ -19,17 +19,20 @@ extension EditorWindowController {
         selectComment(comment)
     }
     func editComment(_ comment: Comment) {
+        let previous = window?.firstResponder as? NSView
+        let restoreFocus = previous?.isDescendant(of: commentsSidebar) == true
         guard let value = commentDialog(text: comment.text, author: comment.author, adding: false) else { return }
         fileDocument.performEdit("Edit Comment") { document in
             guard let index = document.comments.firstIndex(where: { $0.id == comment.id }) else { return }
             document.comments[index].text = value.text; document.comments[index].author = value.author
         }
+        if restoreFocus { window?.makeFirstResponder(previous) }
     }
-    func selectComment(_ comment: Comment) {
+    func selectComment(_ comment: Comment, keepSidebarFocus: Bool = false) {
         guard comment.isDetached != true, let range = CommentProjection.range(for: comment.anchor, in: editor.storage, document: fileDocument.snapshot()) else {
             showStatus("This comment's associated text was deleted."); return
         }
-        editor.select(range)
+        editor.select(range, focus: !keepSidebarFocus)
     }
     private func commentDialog(text: String, author: String, adding: Bool) -> (text: String, author: String)? {
         let alert = NSAlert(); alert.messageText = adding ? "Add Comment" : "Edit Comment"
