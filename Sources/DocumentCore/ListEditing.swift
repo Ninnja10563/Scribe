@@ -9,7 +9,12 @@ extension ScribeDocument {
               var list = sections[section].paragraphs[index].list else { return nil }
         let original = sections[section].paragraphs[index]
         let length = (original.text as NSString).length
-        guard range.location >= 0, range.length >= 0, range.location <= length, range.length <= length - range.location, Range(range, in: original.text) != nil else { return nil }
+        guard range.location >= 0, range.length >= 0, range.location <= length, range.length <= length - range.location else { return nil }
+        // Foundation's NSRange→Range bridge accepts surrogate interiors on some macOS
+        // strings. Check extended grapheme boundaries explicitly before slicing UTF-16.
+        var boundaries: Set<Int> = [0], offset = 0
+        for character in original.text { offset += String(character).utf16.count; boundaries.insert(offset) }
+        guard boundaries.contains(range.location), boundaries.contains(NSMaxRange(range)) else { return nil }
         if length == 0 {
             if list.level > 0 { list.level -= 1; list.restart = nil; sections[section].paragraphs[index].list = list }
             else { sections[section].paragraphs[index].list = nil }

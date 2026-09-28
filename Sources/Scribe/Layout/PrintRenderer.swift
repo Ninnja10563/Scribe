@@ -38,15 +38,19 @@ import DocumentCore
         editor.canvas.drawPageNumber(index: index, origin: .zero)
         (editor.canvas.footer as NSString).draw(at: NSPoint(x: p.left, y: p.height - 38), withAttributes: attrs)
     }
-    func exportPDF(to url: URL, title: String, author: String) throws {
+    func exportPDF(to url: URL, title: String, author: String, pages: [Int]? = nil, subject: String = "", keywords: [String] = []) throws {
+        let selected = pages ?? Array(editor.textViews.indices)
+        guard !selected.isEmpty, selected.allSatisfy({ editor.textViews.indices.contains($0) }), selected == Array(Set(selected)).sorted() else {
+            throw DocumentError.invalid("invalid PDF page selection")
+        }
         if let warning = editor.layoutWarning { throw DocumentError.invalid(warning) }
         let p = editor.canvas.pageSettings
         var media = CGRect(x: 0, y: 0, width: p.width, height: p.height)
         let data = NSMutableData()
-        guard let consumer = CGDataConsumer(data: data), let context = CGContext(consumer: consumer, mediaBox: &media, [kCGPDFContextTitle: title, kCGPDFContextAuthor: author] as CFDictionary) else {
+        guard let consumer = CGDataConsumer(data: data), let context = CGContext(consumer: consumer, mediaBox: &media, [kCGPDFContextTitle: title, kCGPDFContextAuthor: author, kCGPDFContextSubject: subject, kCGPDFContextKeywords: keywords, kCGPDFContextCreator: "Scribe"] as CFDictionary) else {
             throw DocumentError.invalid("could not create PDF output")
         }
-        for index in editor.textViews.indices {
+        for index in selected {
             context.beginPDFPage(nil); context.saveGState()
             context.translateBy(x: 0, y: p.height); context.scaleBy(x: 1, y: -1)
             NSGraphicsContext.saveGraphicsState()

@@ -16,13 +16,22 @@ extension EditorWindowController {
         }
         let panel = NSSavePanel(); panel.allowedContentTypes = [.init(filenameExtension: format) ?? .data]
         panel.nameFieldStringValue = (fileDocument.fileURL?.deletingPathExtension().lastPathComponent ?? model.title) + "." + format
+        let pdfOptions: PDFExportAccessory?
+        if format == "pdf" {
+            editor.paginate()
+            let options = PDFExportAccessory(pageCount: editor.textViews.count, title: model.title, author: model.author)
+            panel.accessoryView = options; panel.delegate = options; pdfOptions = options
+        } else { pdfOptions = nil }
         panel.beginSheetModal(for: window) { response in
             guard response == .OK, let url = panel.url else { return }
             do {
                 switch format {
                 case "pdf":
                     self.searchBar.close()
-                    try PrintRenderer(editor: self.editor).exportPDF(to: url, title: model.title, author: model.author)
+                    guard let options = pdfOptions else { return }
+                    try PrintRenderer(editor: self.editor).exportPDF(to: url, title: options.title.stringValue, author: options.author.stringValue,
+                        pages: options.selectedPages(), subject: options.subject.stringValue,
+                        keywords: options.keywords.stringValue.components(separatedBy: ",").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty })
                 case "docx": try DOCX.encode(model).write(to: url, options: .atomic)
                 case "md": try TextFormats.exportMarkdown(model).write(to: url, atomically: true, encoding: .utf8)
                 case "rtf":

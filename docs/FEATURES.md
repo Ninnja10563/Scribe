@@ -17,7 +17,7 @@ This is a foundation release. “Implemented” means there is working code and 
 | Review/references | Comment/bookmark schema and modular grammar protocol only | Comment UI and edit-aware anchors, track changes, footnotes/endnotes, equation layout |
 | DOCX | Real OPC ZIP/XML; common text, headings, basic lists/tables/images, page geometry, running content, fields on export; import warnings | Word/Pages/LibreOffice fixture coverage, advanced styles, custom compound numbering and restart rules, merged/nested tables, review data, field import, exact line-spacing fidelity |
 | Other formats | Basic RTF, Markdown subset, UTF-8 text; native copies protect originals | RTF table import, complete CommonMark, external Markdown image bundles |
-| Output | PDF vector text/links and native images/tables; native printing; shared glyph layout | PDF page-range/quality UI, PDF accessibility tags, color-management audit |
+| Output | PDF vector text/links and native images/tables; page-range selection and metadata; native printing; shared glyph layout | PDF image-quality presets, PDF accessibility tags, color-management audit |
 | Reliability | NSDocument lifecycle/autosave, native undo plus document transactions, atomic saves, separate recoverable snapshots, archive validation | Crash/power-loss/disk-full fault injection, long-session memory testing |
 | Distribution | macOS CI, launch/render smoke artifacts, verified DMGs, versioned pre-releases and checksums | Developer ID signing, notarization, automatic updater |
 

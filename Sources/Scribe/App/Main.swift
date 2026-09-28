@@ -86,6 +86,7 @@ import ImportExport
             try NativeFormat.save(document.snapshot(), to: folder.appendingPathComponent("Smoke.scribe"))
             try PrintRenderer(editor: controller.editor).exportPDF(to: folder.appendingPathComponent("Smoke.pdf"), title: "Scribe Smoke Test", author: "Scribe")
             try DOCX.encode(document.snapshot()).write(to: folder.appendingPathComponent("Smoke.docx"))
+            try PrintRenderer(editor: controller.editor).exportPDF(to: folder.appendingPathComponent("Selected-pages.pdf"), title: "Selected pages", author: "Scribe", pages: [0, controller.editor.textViews.count - 1], subject: "Range export", keywords: ["Scribe", "validation"])
             let pages = controller.editor.textViews.count
             guard pages > 1 else { fatalError("Text did not paginate") }
             try await Task.sleep(nanoseconds: 500_000_000)

@@ -154,6 +154,30 @@ import DocumentCore
         XCTAssertEqual(NSMaxRange(editor.layout.glyphRange(for: editor.layout.textContainers.last!)), editor.layout.numberOfGlyphs)
         print("Large layout: \(editor.textViews.count) pages; initial \(initialTime)s; end edit \(Date().timeIntervalSince(editStart))s")
     }
+    func testPDFPageSelectionAndMetadata() throws {
+        let document = ScribeFileDocument()
+        document.model.sections[0].paragraphs = (1...3).map { number in
+            var p = Paragraph("Source page \(number)"); p.pageBreakBefore = number > 1; return p
+        }
+        document.model.sections[0].pageNumbering = PageNumbering()
+        let editor = PaginatedEditor(document: document), renderer = PrintRenderer(editor: PaginatedEditor(document: document))
+        XCTAssertEqual(editor.textViews.count, 3)
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".pdf")
+        defer { try? FileManager.default.removeItem(at: url) }
+        try renderer.exportPDF(to: url, title: "Selected pages", author: "Author", pages: [0, 2], subject: "Research", keywords: ["Scribe", "selection"])
+        let pdf = try XCTUnwrap(PDFDocument(url: url))
+        XCTAssertEqual(pdf.pageCount, 2)
+        XCTAssertTrue(pdf.page(at: 0)!.string!.contains("Source page 1"))
+        XCTAssertTrue(pdf.page(at: 1)!.string!.contains("Source page 3"))
+        XCTAssertFalse(pdf.string!.contains("Source page 2"))
+        XCTAssertEqual(pdf.documentAttributes?[PDFDocumentAttribute.titleAttribute] as? String, "Selected pages")
+        XCTAssertEqual(pdf.documentAttributes?[PDFDocumentAttribute.authorAttribute] as? String, "Author")
+        XCTAssertEqual(pdf.documentAttributes?[PDFDocumentAttribute.subjectAttribute] as? String, "Research")
+        let original = try Data(contentsOf: url)
+        XCTAssertThrowsError(try renderer.exportPDF(to: url, title: "Invalid", author: "", pages: [3]))
+        XCTAssertThrowsError(try renderer.exportPDF(to: url, title: "Invalid", author: "", pages: []))
+        XCTAssertEqual(try Data(contentsOf: url), original)
+    }
     func testPageBreakAndPDFOutput() throws {
         let document = ScribeFileDocument()
         var second = Paragraph("Second page"); second.pageBreakBefore = true
