@@ -4,6 +4,7 @@ import DocumentCore
 
 extension NSAttributedString.Key {
     static let scribePageBreakMarker = NSAttributedString.Key("org.scribe.pageBreakMarker")
+    static let scribeTOC = NSAttributedString.Key("org.scribe.tableOfContents")
     static let scribeStyle = NSAttributedString.Key("org.scribe.paragraphStyle")
     static let scribeParagraphID = NSAttributedString.Key("org.scribe.paragraphID")
     static let scribeCell = NSAttributedString.Key("org.scribe.tableCell")
@@ -22,7 +23,7 @@ extension NSAttributedString.Key {
         let paragraphs = document.paragraphs
         for (index, paragraph) in paragraphs.enumerated() {
             let style = document.style(for: paragraph)
-            var base = attributes(style: style, paragraph: paragraph)
+            var base = attributes(style: style, paragraph: paragraph, contentWidth: document.sections[0].page.contentWidth)
             if let cell = paragraph.tableCell { tables.apply(cell, to: &base) }
             let start = result.length
             if paragraph.pageBreakBefore {
@@ -54,6 +55,7 @@ extension NSAttributedString.Key {
         var paragraphs: [Paragraph] = [], usedIDs: Set<UUID> = []
         let text = storage.string as NSString
         let originalParagraphs = original.paragraphs
+        let originalTOCIDs = Set(originalParagraphs.filter { $0.toc != nil }.map(\.id))
         var offset = 0
         // components preserves the final empty paragraph, important after pressing Return.
         for component in storage.string.components(separatedBy: "\n") {
@@ -71,6 +73,9 @@ extension NSAttributedString.Key {
             if storage.length == 0 { p.id = original.paragraphs[0].id }
             if let idString = attrs[.scribeParagraphID] as? String, let id = UUID(uuidString: idString), !usedIDs.contains(id) { p.id = id }
             usedIDs.insert(p.id)
+            if originalTOCIDs.contains(p.id) {
+                p.toc = (attrs[.scribeTOC] as? Data).flatMap { try? JSONDecoder().decode(TOCParagraph.self, from: $0) }
+            }
             p.styleID = attrs[.scribeStyle] as? String ?? "normal"
             if !document.styles.contains(where: { $0.id == p.styleID }) { p.styleID = "normal" }
             let style = document.style(for: p)
@@ -131,13 +136,15 @@ extension NSAttributedString.Key {
             paragraphs.append(p); offset += length + 1
         }
         document.sections[0].paragraphs = paragraphs
+        let usedTOCs = Set(paragraphs.compactMap { $0.toc?.tableID })
+        document.tablesOfContents.removeAll { !usedTOCs.contains($0.id) }
         let usedTables = Set(paragraphs.compactMap { $0.tableCell?.tableID })
         document.tables.removeAll { !usedTables.contains($0.id) }
         CommentProjection.capture(from: storage, document: &document)
         // The current editing projection supports one section; imports are flattened explicitly.
         return document
     }
-    static func attributes(style: ParagraphStyle, paragraph: Paragraph? = nil) -> [NSAttributedString.Key: Any] {
+    static func attributes(style: ParagraphStyle, paragraph: Paragraph? = nil, contentWidth: Double? = nil) -> [NSAttributedString.Key: Any] {
         let ns = NSMutableParagraphStyle()
         let f = paragraph?.formatting ?? style.paragraph
         ns.alignment = [.left: .left, .center: .center, .right: .right, .justified: .justified][f.alignment]!
@@ -152,6 +159,13 @@ extension NSAttributedString.Key {
             ns.headIndent = CGFloat(list.level + 1) * 24; ns.firstLineHeadIndent = ns.headIndent - 18
             ns.tabStops = [NSTextTab(textAlignment: .right, location: ns.headIndent - 6), NSTextTab(textAlignment: .left, location: ns.headIndent)]
             attrs[.scribeList] = try? JSONEncoder().encode(list)
+        }
+        if let toc = paragraph?.toc {
+            attrs[.scribeTOC] = try? JSONEncoder().encode(toc)
+            if toc.kind == .entry {
+                ns.headIndent = CGFloat(max(0, (toc.level ?? 1) - 1)) * 14; ns.firstLineHeadIndent = ns.headIndent
+                ns.tabStops = [NSTextTab(textAlignment: .right, location: (contentWidth ?? 451.276) - f.tailIndent)]
+            }
         }
         apply(TextFormatting(), over: style.text, to: &attrs)
         return attrs

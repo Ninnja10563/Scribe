@@ -9,7 +9,7 @@ final class FontFaceTests: XCTestCase {
         json["formatVersion"] = 4
         let original = try JSONSerialization.data(withJSONObject: json)
         let migrated = try NativeFormat.decode(original)
-        XCTAssertEqual(migrated.formatVersion, 5)
+        XCTAssertEqual(migrated.formatVersion, ScribeDocument.currentVersion)
         XCTAssertNil(migrated.paragraphs[0].runs[0].format.fontFace)
         XCTAssertEqual(migrated.paragraphs[0].runs[0].format.fontFamily, "Helvetica Neue")
         XCTAssertEqual((try JSONSerialization.jsonObject(with: original) as! [String: Any])["formatVersion"] as? Int, 4)

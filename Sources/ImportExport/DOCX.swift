@@ -208,6 +208,7 @@ private class WordReader: NSObject, XMLParserDelegate {
     var bookmarkParagraphs: [String: UUID] = [:]
     var listID: String?, listLevel: Int?
     var inRun = false, sawDocument = false
+    var collectingInstruction = false, instruction = ""
     var files: [String: Data] = [:], targets: [String: String] = [:]
     var headerID: String?, footerID: String?
     var tableDepth = 0, tableIndex: Int?, row = -1, column = -1
@@ -227,6 +228,7 @@ private class WordReader: NSObject, XMLParserDelegate {
             if let t = tableIndex, row >= 0, column >= 0 { paragraph?.tableCell = TableCellReference(tableID: document.tables[t].id, row: row, column: column) }
         case "r": run = TextRun("", link: link); inRun = true
         case "t": collecting = true
+        case "instrText": collectingInstruction = true; instruction = ""
         case "tab": run.text += "\t"
         case "br":
             if wordAttribute(a, "type") == "page" { run.text += "\u{c}" }
@@ -295,11 +297,20 @@ private class WordReader: NSObject, XMLParserDelegate {
         default: if inRun { applyRun(name, a, &run.format) }
         }
     }
-    func parser(_ parser: XMLParser, foundCharacters text: String) { if collecting { run.text += text } }
+    func parser(_ parser: XMLParser, foundCharacters text: String) {
+        if collecting { run.text += text }
+        if collectingInstruction { instruction += text }
+    }
     func parser(_ parser: XMLParser, didEndElement name: String, namespaceURI: String?, qualifiedName: String?) {
         guard namespaceURI == DOCX.wordNS else { return }
         switch name {
         case "t": collecting = false
+        case "instrText":
+            collectingInstruction = false
+            let code = instruction.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
+            if code == "TOC" || code.hasPrefix("TOC ") {
+                warnings.insert("Tables of contents are imported as cached text and heading links. Insert a Scribe table of contents to regenerate entries and page numbers.")
+            }
         case "r": if !run.text.isEmpty { paragraph?.runs.append(run) }; inRun = false
         case "drawing":
             inDrawing = false

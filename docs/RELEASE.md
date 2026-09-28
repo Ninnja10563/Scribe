@@ -1,12 +1,11 @@
-Scribe 0.5.0 improves typography, page-break fidelity and internal document navigation.
+Scribe 0.6.0 development adds automatic tables of contents.
 
-- Native saves retain concrete font faces such as Medium, Light and Condensed, alongside family, size and bold/italic overrides. Missing faces render with a fallback while preserving their original identity. Style faces remain inherited unless directly overridden.
-- Native format v5 adds optional font-face identities. Earlier v1–v4 documents migrate in memory; their original files are not rewritten on opening. Files saved in v5 require Scribe 0.5 or newer.
-- Find, Replace and statistics exclude generated list/page-break prefixes. Literal text resembling list numbers remains searchable. Unicode and multi-paragraph results map back to native selections.
-- Page breaks inside Word paragraphs retain their position. Insert Page Break uses the current caret and native undo without adding an extra paragraph.
-- Insert → Link to Heading creates stable internal destinations, including real Word bookmark links and PDF navigation. Duplicate heading names remain separate destinations.
-- Includes anchored comments, flowing pages, styles, tables, inline images, recovery, native tabs, PDF/printing and DOCX interchange. Independent Office XML schema validation remains a release requirement.
+- Insert → Table of Contents creates entries from heading styles, with hierarchy, internal links and page labels from the actual document layout. Choose how many heading levels to include.
+- Update Table of Contents refreshes names, entries and page numbers. Layout repeats until page labels settle, and the whole command is one undo operation. Ordinary paragraphs placed between generated entries are retained.
+- Remove Table of Contents removes generated entries while preserving surrounding document text. Comments associated with regenerated text remain available as detached comments.
+- Native format v6 stores TOC definitions and generated-entry associations; v1–v5 documents migrate in memory.
+- DOCX exports a real Word TOC field with cached entries and bookmark links. Import currently retains the cached text/links and explains that a Scribe TOC must be inserted to regenerate it.
 
-This remains a development release. Specific font faces/intermediate weights may be approximated during DOCX export; the export dialog discloses this. Track changes, TOC, bookmarks, notes, shapes, equations, floating objects and advanced table/section layout remain unfinished. See docs/FEATURES.md and docs/VALIDATION.md for scope and measured results.
+This update is under development. Generated TOC entry text is replaced on Update; keep notes in separate ordinary paragraphs and modify the Contents styles for consistent formatting. Independent section layout, track changes, named bookmark editing, notes, equations, shapes, floating objects and advanced tables remain unfinished. See docs/FEATURES.md and docs/VALIDATION.md.
 
-For Apple Silicon, macOS 14+. Development builds are ad-hoc signed, not notarized. No manual Word/Pages/LibreOffice or physical-Mac accessibility certification is claimed.
+For Apple Silicon, macOS 14+. Development builds are ad-hoc signed, not notarized. Physical-Mac input/accessibility and manual Word/Pages/LibreOffice validation remain pending.

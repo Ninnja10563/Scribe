@@ -10,8 +10,10 @@ final class DOCXWriter {
     private let document: ScribeDocument
     private let numbering: DOCXNumberingWriter
     private let comments: DOCXCommentsWriter
+    private let contents: DOCXTableOfContents
+    private var contentWidth = 451.276
     private var bookmarkIDs: [UUID: Int] = [:]
-    init(_ document: ScribeDocument) { self.document = document; numbering = DOCXNumberingWriter(paragraphs: document.paragraphs); comments = DOCXCommentsWriter(document: document) }
+    init(_ document: ScribeDocument) { self.document = document; numbering = DOCXNumberingWriter(paragraphs: document.paragraphs); comments = DOCXCommentsWriter(document: document); contents = DOCXTableOfContents(document: document) }
     private func put(_ path: String, _ xml: String) { parts[path] = Data(xml.utf8) }
     private func relationship(type: String, target: String, external: Bool = false, namespace: String = DOCX.relationNS) -> String {
         let id = "rId\(nextID)"; nextID += 1
@@ -24,6 +26,7 @@ final class DOCXWriter {
         for paragraph in document.paragraphs where linked.contains(paragraph.id) { bookmarkIDs[paragraph.id] = bookmarkIDs.count }
         var body = ""
         for (index, section) in document.sections.enumerated() {
+            contentWidth = section.page.contentWidth
             var emitted: Set<UUID> = []
             for p in section.paragraphs {
                 if let cell = p.tableCell, let definition = document.tables.first(where: { $0.id == cell.tableID }) {
@@ -89,7 +92,12 @@ final class DOCXWriter {
             let id = numbering.paragraphIDs[p.id]!
             properties += "<w:numPr><w:ilvl w:val=\"\(list.level)\"/><w:numId w:val=\"\(id)\"/></w:numPr>"
         }
-        if let f = p.formatting { properties += DOCX.paragraphProperties(f) }
+        if let toc = p.toc, toc.kind == .entry {
+            var formatting = p.formatting ?? document.style(for: p).paragraph
+            formatting.headIndent = Double(max(0, (toc.level ?? 1) - 1)) * 14; formatting.firstLineIndent = formatting.headIndent
+            properties += "<w:tabs><w:tab w:val=\"right\" w:pos=\"\(Int((contentWidth - formatting.tailIndent) * 20))\"/></w:tabs>"
+            properties += DOCX.paragraphProperties(formatting)
+        } else if let f = p.formatting { properties += DOCX.paragraphProperties(f) }
         var text = "", offset = 0
         let boundaries = comments.boundaries(paragraphID: p.id)
         for run in p.runs {
@@ -104,7 +112,7 @@ final class DOCXWriter {
         }
         text += comments.markers(paragraphID: p.id, offset: offset)
         let bookmark = bookmarkIDs[p.id].map { "<w:bookmarkStart w:id=\"\($0)\" w:name=\"\(DocumentLink.officeBookmark(p.id))\"/><w:bookmarkEnd w:id=\"\($0)\"/>" } ?? ""
-        return "<w:p><w:pPr>\(properties)</w:pPr>\(bookmark)\(text)</w:p>"
+        return "<w:p><w:pPr>\(properties)</w:pPr>\(bookmark)\(contents.start(p.id))\(text)\(contents.end(p.id))</w:p>"
     }
     private func runXML(_ run: TextRun) -> String {
             if let image = run.image { return imageRun(image) }

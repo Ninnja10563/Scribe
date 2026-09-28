@@ -79,3 +79,7 @@ The first heading-link CI exposed an ambiguous menu selector, then PDF assertion
 - Final v0.5 candidate [36496454750](https://github.com/Ninnja10563/Scribe/actions/runs/36496454750) passed **77 macOS tests**, the native launch/render/export smoke check and independent Office XML validation. Its native heading-link dialog capture was inspected. PyMuPDF/python-docx checks verified 14 full pages, selected first/last pages, metadata, table/image, comments and working internal links without private application URLs. The 256-page hosted debug benchmark measured **0.599 seconds initial layout and 4.1 ms for an end edit**, not an end-to-end input latency guarantee.
 - [Scribe v0.5.0](https://github.com/Ninnja10563/Scribe/releases/tag/v0.5.0) was published by successful [release run 36496698300](https://github.com/Ninnja10563/Scribe/actions/runs/36496698300), from the validated `fca9427` revision.
 - The published v0.5.0 arm64 DMG was downloaded again and verified against its published SHA-256 checksum.
+
+## Automatic contents work (v0.6 development)
+
+Portable tests cover generated title/page updates, stable entry IDs, preservation of ordinary notes, removed headings, detached review text and v5→v6 migration. DOCX tests inspect actual field markers, right-aligned tab stops and cached-text import. Native tests exercise a 30-heading document, actual page labels with Roman numbering, grouped undo/redo, renamed headings and user text inserted after generated entries. Native validation is pending.

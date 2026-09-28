@@ -94,6 +94,8 @@ import ImportExport
             resolvedComment.resolved = true; document.model.comments.append(resolvedComment)
             documents.addDocument(document); document.makeWindowControllers(); document.showWindows()
             guard let controller = document.editorController else { fatalError("Missing editor") }
+            controller.editor.jump(to: document.model.paragraphs[1].id)
+            controller.addTableOfContents(title: "Contents", maximumLevel: 3)
             controller.editor.paginate()
             controller.commentsSidebar.isHidden = false
             controller.commentsSidebar.reload(document.snapshot(), selecting: document.model.comments[0].id)

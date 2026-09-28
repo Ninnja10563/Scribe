@@ -34,6 +34,7 @@ public enum NativeFormat {
             // v2 → v3: absent seriesID/restart retain legacy contiguous-list semantics.
             // v3 → v4: legacy comment anchors remain single-paragraph ranges.
             // v4 → v5: absent fontFace retains family/trait-based font selection.
+            if version < 6 { json["tablesOfContents"] = [] }
             json["formatVersion"] = ScribeDocument.currentVersion
             migrated = try JSONSerialization.data(withJSONObject: json)
         }
@@ -55,6 +56,9 @@ public enum NativeFormat {
               document.styles.contains(where: { $0.id == "normal" }) else {
             throw DocumentError.invalid("invalid style catalog")
         }
+        guard Set(document.tablesOfContents.map(\.id)).count == document.tablesOfContents.count,
+              document.tablesOfContents.allSatisfy({ (1...9).contains($0.maximumLevel) }) else { throw DocumentError.invalid("invalid table of contents") }
+        let tocIDs = Set(document.tablesOfContents.map(\.id))
         for section in document.sections {
             if let numbering = section.pageNumbering, !(1...1_000_000).contains(numbering.start) { throw DocumentError.invalid("invalid starting page number") }
         }
@@ -80,6 +84,12 @@ public enum NativeFormat {
             guard textIndex.range(for: comment.anchor) != nil else { throw DocumentError.invalid("invalid comment anchor") }
         }
         for p in paragraphs {
+            if let toc = p.toc {
+                guard tocIDs.contains(toc.tableID), p.tableCell == nil else { throw DocumentError.invalid("missing table of contents definition") }
+                if toc.kind == .entry {
+                    guard toc.headingID != nil, let level = toc.level, (1...9).contains(level) else { throw DocumentError.invalid("invalid contents entry") }
+                } else if toc.headingID != nil || toc.level != nil { throw DocumentError.invalid("invalid contents paragraph") }
+            }
             guard document.styles.contains(where: { $0.id == p.styleID }) else { throw DocumentError.invalid("missing paragraph style") }
             guard !p.text.contains("\n"), !p.text.contains("\r") else { throw DocumentError.invalid("paragraph contains a line separator") }
             if let list = p.list, !(0...8).contains(list.level) || !(1...1_000_000).contains(list.start) { throw DocumentError.invalid("invalid list") }

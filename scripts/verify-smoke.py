@@ -34,6 +34,12 @@ with ZipFile(root / 'Smoke.docx') as package:
         bookmark_names = {node.get('{' + namespace['w'] + '}name') for node in body.findall('.//w:bookmarkStart', namespace)}
         internal_links = [node.get('{' + namespace['w'] + '}anchor') for node in body.findall('.//w:hyperlink', namespace)]
         assert any(anchor in bookmark_names for anchor in internal_links), 'Missing Word internal destination'
+    if native.get('formatVersion', 0) >= 6:
+        assert len(native.get('tablesOfContents', [])) == 1
+        instructions = [node.text or '' for node in body.findall('.//w:instrText', namespace)]
+        assert any(code.strip().startswith('TOC ') for code in instructions), 'Missing actual Word TOC field'
+        entries = [p for section in native['sections'] for p in section['paragraphs'] if p.get('toc', {}).get('kind') == 'entry']
+        assert entries and all('—' not in ''.join(run['text'] for run in entry['runs']) for entry in entries), 'Unresolved TOC page labels'
     comments = native.get('comments', [])
     assert len(word.comments) == len(comments), 'Missing review text'
     for actual, expected in zip(word.comments, comments):

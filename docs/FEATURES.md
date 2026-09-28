@@ -1,19 +1,19 @@
-# Feature status — Scribe 0.5 development (latest release: 0.4)
+# Feature status — Scribe 0.6 development (latest release: 0.5)
 
 This is a foundation release. “Implemented” means there is working code and an exposed editing path, not that the feature has the interoperability coverage of a mature word processor.
 
 | Area | Implemented | Still needed |
 | --- | --- | --- |
 | Native application | Swift/AppKit, arm64 bundle, document windows and tabs, menus, native spelling, focus mode, zoom, light/dark chrome | Physical-Mac keyboard/IME/VoiceOver audit, richer preferences |
-| Document model | Versioned semantic paragraphs/runs, sections, styles, tables/cell references, inline images, IDs; v1–v4→v5 migrations | More block types, independent section editing, preservation of future extension payloads |
+| Document model | Versioned semantic paragraphs/runs, sections, styles, tables/cell references, inline images, IDs; v1–v5→v6 migrations; TOC definitions and entries | More block types, independent section editing, preservation of future extension payloads |
 | Pagination | Shared TextKit layout across actual page containers; A4/Letter/Legal, orientation, margins, page breaks | Virtualization, widow/orphan controls, configurable hyphenation, typography audit |
-| Formatting | Fonts/size and concrete faces/weights via native panel (v0.5 development), common traits, color/highlight, super/subscript, alignment, spacing and indents | Draggable ruler, dedicated inline font-weight controls |
+| Formatting | Fonts/size and concrete faces/weights via native panel, common traits, color/highlight, super/subscript, alignment, spacing and indents | Draggable ruler, dedicated inline font-weight controls |
 | Styles | Built-in headings/title/body/quote/caption, custom creation/modification/deletion, live definition updates, outline navigation | Style inheritance editor, collapsible heading content |
 | Lists | Bullets, decimal/letter/Roman numbering, independent series, restart/continuation commands, nesting, Return split/empty-item exit, Backspace outdent | Physical-Mac input audit, custom compound markers, selection spanning multiple list items |
 | Tables | Editable cells, insertion, add/delete rows/columns, Tab navigation, column widths, padding/borders, header shading; TextKit layout | Merge/split, drag sizing, row-height control, cell-range selection, nested tables, merged-cell import |
 | Images | PNG/JPEG/HEIC/TIFF insertion, Finder drop, image paste, inline layout, proportional resizing by handles or dialog, alt text | Cropping, rotation, opacity, floating placement/wrapping |
 | Running content | Text headers/footers; top/bottom, left/centre/right page numbers and formats, custom start | Direct-on-page editing, first/odd/even variants, document metadata fields |
-| Navigation | Clickable outline, case/whole-word find/replace, match highlights, semantic statistics; heading links with DOCX/PDF destinations (v0.5 development) | Automatic TOC, named bookmark UI, editing existing link targets |
+| Navigation | Clickable outline, case/whole-word find/replace, match highlights, semantic statistics; heading links with DOCX/PDF destinations; automatic TOC/update from layout (v0.6 development) | Named bookmark UI, editing existing link targets, imported live TOC reconstruction |
 | Review/references | Native anchored comments with multi-paragraph associations, detached-text retention, sidebar edit/delete/resolve/reopen; bookmark schema and modular grammar protocol | Modern Word reply threads and collaboration metadata, track changes, footnotes/endnotes, equation layout |
 | DOCX | Real OPC ZIP/XML; common text, headings, lists/tables/images, anchored comments and resolved state, page geometry, running content, fields on export; import warnings | Word/Pages/LibreOffice fixture coverage, advanced styles, custom compound numbering and restart rules, merged/nested tables, tracked changes/notes, newer review metadata, field import, exact line-spacing fidelity |
 | Other formats | Basic RTF, Markdown subset, UTF-8 text; native copies protect originals | RTF table import, complete CommonMark, external Markdown image bundles |

@@ -1,7 +1,7 @@
 import Foundation
 
 public struct ScribeDocument: Codable, Equatable, Sendable {
-    public static let currentVersion = 5
+    public static let currentVersion = 6
     public var formatVersion = currentVersion
     public var id = UUID()
     public var title = "Untitled"
@@ -12,6 +12,7 @@ public struct ScribeDocument: Codable, Equatable, Sendable {
     public var comments: [Comment] = []
     public var bookmarks: [Bookmark] = []
     public var tables: [DocumentTable] = []
+    public var tablesOfContents: [DocumentTOC] = []
     public init() {}
     public var paragraphs: [Paragraph] { sections.flatMap(\.paragraphs) }
     public var plainText: String {
@@ -28,7 +29,7 @@ public struct ScribeDocument: Codable, Equatable, Sendable {
     }
     public var outline: [OutlineEntry] {
         paragraphs.compactMap { p in
-            guard let level = styles.first(where: { $0.id == p.styleID })?.headingLevel else { return nil }
+            guard p.toc == nil, let level = styles.first(where: { $0.id == p.styleID })?.headingLevel else { return nil }
             return OutlineEntry(id: p.id, title: p.text, level: level)
         }
     }
@@ -55,6 +56,7 @@ public struct Paragraph: Codable, Equatable, Sendable, Identifiable {
     public var list: ListDescriptor?
     public var pageBreakBefore = false
     public var tableCell: TableCellReference?
+    public var toc: TOCParagraph?
     public init(_ text: String = "", style: String = "normal") {
         runs = [TextRun(text)]; styleID = style
     }
