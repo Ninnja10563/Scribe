@@ -8,6 +8,30 @@ import DocumentCore
 @MainActor final class TableOfContentsTests: XCTestCase {
     override func setUp() { super.setUp(); _ = NSApplication.shared }
 
+    func testNativeInsertDialogAppliesTitleAndHeadingDepth() {
+        let document = ScribeFileDocument()
+        document.model.sections[0].paragraphs = [Paragraph("Cover"), Paragraph("Top", style: "heading1"), Paragraph("Detail", style: "heading2")]
+        document.makeWindowControllers(); defer { document.close() }
+        let controller = document.editorController!
+        controller.editor.select(NSRange(location: 0, length: 0))
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            func descendants(_ view: NSView) -> [NSView] { [view] + view.subviews.flatMap(descendants) }
+            guard let content = NSApp.modalWindow?.contentView else { XCTFail("Missing contents dialog"); NSApp.abortModal(); return }
+            let views = descendants(content)
+            guard let title = views.compactMap({ $0 as? NSTextField }).first(where: { $0.isEditable }),
+                  let levels = views.compactMap({ $0 as? NSPopUpButton }).first,
+                  let button = views.compactMap({ $0 as? NSButton }).first(where: { $0.title == "Insert" }) else {
+                XCTFail("Missing contents controls"); NSApp.abortModal(); return
+            }
+            title.stringValue = "Index"; levels.selectItem(at: 0); button.performClick(nil)
+        }
+        controller.insertTableOfContents()
+        let model = document.snapshot()
+        XCTAssertEqual(model.tablesOfContents.first?.title, "Index")
+        XCTAssertEqual(model.tablesOfContents.first?.maximumLevel, 1)
+        XCTAssertEqual(model.paragraphs.filter { $0.toc?.kind == .entry }.count, 1)
+    }
+
     func testContentsUsesActualPagesAndUpdatesWithSingleUndo() throws {
         let document = ScribeFileDocument()
         var paragraphs = [Paragraph("Cover")]
