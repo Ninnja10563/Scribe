@@ -25,7 +25,7 @@ import DocumentCore
         super.init(window: window)
         self.document = document
         buildInterface()
-        editor.onChange = { [weak self] in self?.cachedTextLength = -1; self?.fileDocument.didEdit(); self?.scheduleStatistics(); if self?.searchBar.isHidden == false { self?.searchBar.search() } }
+        editor.onChange = { [weak self] in self?.fileDocument.didEdit(); self?.scheduleStatistics(); if self?.searchBar.isHidden == false { self?.searchBar.search() } }
         editor.onSelection = { [weak self] in self?.updateStatus() }
         searchBar.editor = editor
         refreshOutline(); updateStatus()
@@ -106,22 +106,27 @@ import DocumentCore
         let selected = stylePicker.titleOfSelectedItem
         stylePicker.removeAllItems(); stylePicker.addItems(withTitles: model.styles.map(\.name))
         if let selected { stylePicker.selectItem(withTitle: selected) }
+        scheduleStatistics()
         updateStatus()
     }
     func scheduleStatistics() {
-        statsWork?.cancel(); let job = DispatchWorkItem { [weak self] in self?.updateStatus() }
+        statsWork?.cancel(); let job = DispatchWorkItem { [weak self] in
+            guard let self else { return }
+            let text = self.editor.storage.string, revision = self.editor.revision
+            Task {
+                let words = await Task.detached { DocumentStatistics(text: text).words }.value
+                guard revision == self.editor.revision else { return }
+                self.cachedWords = words; self.updateStatus()
+            }
+        }
         statsWork = job; DispatchQueue.main.asyncAfter(deadline: .now() + 0.25, execute: job)
     }
-    private var cachedTextLength = -1
     private var cachedWords = 0
     func updateStatus() {
         if let warning = editor.layoutWarning { status.stringValue = warning; return }
         let view = editor.activeTextView
         let selection = view.selectedRange()
         let page = editor.textViews.firstIndex(where: { $0 === view }).map { $0 + 1 } ?? 1
-        if cachedTextLength != editor.storage.length {
-            cachedTextLength = editor.storage.length; cachedWords = DocumentStatistics(text: editor.storage.string).words
-        }
         let selectedWords = selection.length > 0 && NSMaxRange(selection) <= editor.storage.length ? DocumentStatistics(text: (editor.storage.string as NSString).substring(with: selection)).words : nil
         status.stringValue = "Page \(page) of \(editor.textViews.count)    ·    \(cachedWords.formatted()) words\(selectedWords.map { " (\($0) selected)" } ?? "")    ·    English (Australia)"
         if let id = view.typingAttributes[.scribeStyle] as? String, let style = fileDocument.model.styles.first(where: { $0.id == id }) { stylePicker.selectItem(withTitle: style.name) }

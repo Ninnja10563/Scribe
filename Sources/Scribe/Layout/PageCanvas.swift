@@ -46,7 +46,7 @@ import DocumentCore
     }
 }
 
-@MainActor final class PaginatedEditor: NSObject, NSTextViewDelegate, NSLayoutManagerDelegate {
+@MainActor final class PaginatedEditor: NSObject, NSTextViewDelegate, NSLayoutManagerDelegate, NSTextStorageDelegate {
     let storage = NSTextStorage()
     let layout = NSLayoutManager()
     let canvas = PageCanvas()
@@ -58,6 +58,9 @@ import DocumentCore
     weak var owner: ScribeFileDocument?
     private var relayout: DispatchWorkItem?
     private var isLayingOut = false
+    private var firstDirtyPage = 0
+    private var pageCharacterRanges: [NSRange] = []
+    private(set) var revision = 0
     var zoom: CGFloat = 1 { didSet { scrollView.setMagnification(zoom, centeredAt: scrollView.documentVisibleRect.origin); resizeCanvas() } }
     var activeTextView: ScribeTextView {
         (canvas.window?.firstResponder as? ScribeTextView) ?? textViews.first!
@@ -68,6 +71,7 @@ import DocumentCore
         canvas.pageSettings = document.model.sections[0].page
         canvas.pageNumbering = document.model.sections[0].pageNumbering
         canvas.header = document.model.sections[0].header; canvas.footer = document.model.sections[0].footer
+        storage.delegate = self
         storage.addLayoutManager(layout); layout.delegate = self
         layout.allowsNonContiguousLayout = true
         storage.setAttributedString(AttributedDocument.render(document.model))
@@ -103,17 +107,21 @@ import DocumentCore
         textViews.append(view); canvas.addSubview(view)
     }
     func paginate() {
-        guard !isLayingOut else { return }
+        guard !isLayingOut, firstDirtyPage != Int.max else { return }
         isLayingOut = true; defer { isLayingOut = false }
         // TextKit invalidates from the edited glyph; existing page containers are reused.
         layoutWarning = nil
-        var required = 1
+        let start = max(0, min(firstDirtyPage, textViews.count - 1))
+        var required = start + 1
         var lastEnd = -1
-        for index in 0..<2000 {
+        for index in start..<2000 {
             if index >= textViews.count { addPage() }
             let container = layout.textContainers[index]
             layout.ensureLayout(for: container)
             let range = layout.glyphRange(for: container)
+            let characters = layout.characterRange(forGlyphRange: range, actualGlyphRange: nil)
+            if pageCharacterRanges.indices.contains(index) { pageCharacterRanges[index] = characters }
+            else { pageCharacterRanges.append(characters) }
             required = index + 1
             if range.length == 0 && NSMaxRange(range) < layout.numberOfGlyphs && lastEnd == range.location {
                 layoutWarning = "Content cannot fit on this page. Reduce its size or increase the writing area."
@@ -134,6 +142,8 @@ import DocumentCore
             if canvas.window?.firstResponder === last { canvas.window?.makeFirstResponder(textViews.last) }
             last.removeFromSuperview(); layout.removeTextContainer(at: layout.textContainers.count - 1)
         }
+        if pageCharacterRanges.count > required { pageCharacterRanges.removeLast(pageCharacterRanges.count - required) }
+        firstDirtyPage = Int.max
         canvas.pageCount = textViews.count; resizeCanvas()
         onSelection?()
     }
@@ -141,17 +151,27 @@ import DocumentCore
     func resizeCanvas() {
         let p = canvas.pageSettings
         let width = max(p.width + 48, scrollView.contentSize.width / scrollView.magnification)
-        canvas.setFrameSize(NSSize(width: width, height: CGFloat(textViews.count) * (p.height + canvas.gap) + canvas.gap))
+        let size = NSSize(width: width, height: CGFloat(textViews.count) * (p.height + canvas.gap) + canvas.gap)
+        if canvas.frame.size != size { canvas.setFrameSize(size) }
         for (index, view) in textViews.enumerated() {
             let rect = canvas.pageRect(index)
-            view.frame = NSRect(x: rect.minX + p.left, y: rect.minY + p.top, width: p.contentWidth, height: p.contentHeight)
+            let frame = NSRect(x: rect.minX + p.left, y: rect.minY + p.top, width: p.contentWidth, height: p.contentHeight)
+            if view.frame != frame { view.frame = frame }
         }
         canvas.needsDisplay = true
     }
     func setPageSettings(_ settings: PageSettings) {
         canvas.pageSettings = settings
+        firstDirtyPage = 0
         for container in layout.textContainers { container.containerSize = NSSize(width: settings.contentWidth, height: settings.contentHeight) }
         paginate()
+    }
+    nonisolated func textStorage(_ textStorage: NSTextStorage, didProcessEditing editedMask: NSTextStorage.EditActions, range editedRange: NSRange, changeInLength delta: Int) {
+        MainActor.assumeIsolated {
+            let page = pageCharacterRanges.firstIndex { NSMaxRange($0) >= editedRange.location } ?? max(0, textViews.count - 1)
+            firstDirtyPage = min(firstDirtyPage, max(0, page - 1))
+            revision += 1
+        }
     }
     func textDidChange(_ notification: Notification) {
         relayout?.cancel()
