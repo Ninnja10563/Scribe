@@ -4,6 +4,8 @@ import DocumentCore
 
 @MainActor final class ScribeTextView: NSTextView {
     weak var editor: PaginatedEditor?
+    override func draw(_ dirtyRect: NSRect) { super.draw(dirtyRect); drawImageSelection() }
+    override func mouseDown(with event: NSEvent) { if !resizeImageIfNeeded(with: event) { super.mouseDown(with: event) } }
     override func paste(_ sender: Any?) {
         // Normalize clipboard paragraphs and exclude unsupported attachments before they enter the model.
         let pasteboard = NSPasteboard.general

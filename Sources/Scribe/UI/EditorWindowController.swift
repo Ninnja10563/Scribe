@@ -115,6 +115,7 @@ import DocumentCore
     private var cachedTextLength = -1
     private var cachedWords = 0
     func updateStatus() {
+        if let warning = editor.layoutWarning { status.stringValue = warning; return }
         let view = editor.activeTextView
         let selection = view.selectedRange()
         let page = editor.textViews.firstIndex(where: { $0 === view }).map { $0 + 1 } ?? 1

@@ -39,6 +39,7 @@ import DocumentCore
         (editor.canvas.footer as NSString).draw(at: NSPoint(x: p.left, y: p.height - 38), withAttributes: attrs)
     }
     func exportPDF(to url: URL, title: String, author: String) throws {
+        if let warning = editor.layoutWarning { throw DocumentError.invalid(warning) }
         let p = editor.canvas.pageSettings
         var media = CGRect(x: 0, y: 0, width: p.width, height: p.height)
         let data = NSMutableData()

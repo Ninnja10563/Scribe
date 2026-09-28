@@ -52,6 +52,7 @@ import DocumentCore
     let canvas = PageCanvas()
     let scrollView = NSScrollView()
     private(set) var textViews: [ScribeTextView] = []
+    private(set) var layoutWarning: String?
     var onChange: (() -> Void)?
     var onSelection: (() -> Void)?
     weak var owner: ScribeFileDocument?
@@ -105,13 +106,20 @@ import DocumentCore
         guard !isLayingOut else { return }
         isLayingOut = true; defer { isLayingOut = false }
         // TextKit invalidates from the edited glyph; existing page containers are reused.
+        layoutWarning = nil
         var required = 1
+        var lastEnd = -1
         for index in 0..<2000 {
             if index >= textViews.count { addPage() }
             let container = layout.textContainers[index]
             layout.ensureLayout(for: container)
             let range = layout.glyphRange(for: container)
             required = index + 1
+            if range.length == 0 && NSMaxRange(range) < layout.numberOfGlyphs && lastEnd == range.location {
+                layoutWarning = "Content cannot fit on this page. Reduce its size or increase the writing area."
+                break
+            }
+            lastEnd = NSMaxRange(range)
             if NSMaxRange(range) >= layout.numberOfGlyphs {
                 // A trailing newline may need a final empty page for its insertion point.
                 if storage.string.hasSuffix("\n"), layout.extraLineFragmentTextContainer == nil, range.length > 0 {
@@ -120,6 +128,7 @@ import DocumentCore
                 break
             }
         }
+        if lastEnd < layout.numberOfGlyphs && layoutWarning == nil { layoutWarning = "This document exceeds the current 2,000-page layout limit." }
         while textViews.count > required {
             let last = textViews.removeLast()
             if canvas.window?.firstResponder === last { canvas.window?.makeFirstResponder(textViews.last) }

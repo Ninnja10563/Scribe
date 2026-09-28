@@ -35,6 +35,8 @@ extension EditorWindowController {
         }
     }
     func printDocument() {
+        editor.paginate()
+        if let warning = editor.layoutWarning { presentError(DocumentError.invalid(warning)); return }
         searchBar.close()
         let p = editor.canvas.pageSettings
         let info = NSPrintInfo.shared.copy() as! NSPrintInfo
