@@ -3,6 +3,16 @@ import DocumentCore
 @testable import ImportExport
 
 final class ImportExportTests: XCTestCase {
+    func testIndependentDeflatedFixture() throws {
+        let url = Bundle.module.url(forResource: "WordprocessingML", withExtension: "docx", subdirectory: "Fixtures")!
+        let result = try DOCX.decode(Data(contentsOf: url))
+        XCTAssertEqual(result.document.paragraphs[0].text, "Interoperability fixture")
+        XCTAssertEqual(result.document.outline.first?.level, 1)
+        XCTAssertTrue(result.document.plainText.contains("café 東京"))
+        XCTAssertTrue(result.document.plainText.contains("42"))
+        XCTAssertTrue(result.warnings.contains(where: { $0.contains("Table") }))
+        XCTAssertTrue(result.warnings.contains(where: { $0.contains("Headers") }))
+    }
     func testDOCXIsAnActualOPCPackage() throws {
         var doc = ScribeDocument()
         var p = Paragraph("Research & <evidence>", style: "heading1")

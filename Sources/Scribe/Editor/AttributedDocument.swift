@@ -12,11 +12,13 @@ extension NSAttributedString.Key {
 @MainActor enum AttributedDocument {
     static func render(_ document: ScribeDocument) -> NSAttributedString {
         let result = NSMutableAttributedString(string: "")
+        var numbering = ListNumbering()
         for (index, paragraph) in document.paragraphs.enumerated() {
             let style = document.style(for: paragraph)
             let base = attributes(style: style, paragraph: paragraph)
             let start = result.length
             if paragraph.pageBreakBefore { result.append(NSAttributedString(string: "\u{c}", attributes: base)) }
+            if let marker = numbering.marker(for: paragraph.list) { result.append(NSAttributedString(string: "\t" + marker + "\t", attributes: base)) }
             for run in paragraph.runs {
                 var attrs = base
                 apply(run.format, over: style.text, to: &attrs)
@@ -54,8 +56,13 @@ extension NSAttributedString.Key {
                 if f != style.paragraph { p.formatting = f }
             }
             p.runs = []
-            if length > 0 {
-                storage.enumerateAttributes(in: NSRange(location: offset, length: length)) { attributes, range, _ in
+            var prefix = p.pageBreakBefore ? 1 : 0
+            let withoutBreak = String(component.dropFirst(prefix))
+            if p.list != nil, withoutBreak.hasPrefix("\t"), let end = withoutBreak.dropFirst().firstIndex(of: "\t") {
+                prefix += (String(withoutBreak[...end]) as NSString).length
+            }
+            if length > prefix {
+                storage.enumerateAttributes(in: NSRange(location: offset + prefix, length: length - prefix)) { attributes, range, _ in
                     let value = text.substring(with: range).replacingOccurrences(of: "\u{c}", with: "")
                     guard !value.isEmpty else { return }
                     var format = TextFormatting()
@@ -95,7 +102,8 @@ extension NSAttributedString.Key {
             let marker: NSTextList.MarkerFormat
             switch list.kind { case .bullet: marker = .disc; case .decimal: marker = .decimal; case .lowerAlpha: marker = .lowercaseAlpha; case .lowerRoman: marker = .lowercaseRoman }
             ns.textLists = (0...list.level).map { _ in NSTextList(markerFormat: marker, options: 0) }
-            ns.headIndent = CGFloat(list.level + 1) * 24; ns.firstLineHeadIndent = ns.headIndent - 14
+            ns.headIndent = CGFloat(list.level + 1) * 24; ns.firstLineHeadIndent = ns.headIndent - 18
+            ns.tabStops = [NSTextTab(textAlignment: .right, location: ns.headIndent - 6), NSTextTab(textAlignment: .left, location: ns.headIndent)]
             attrs[.scribeList] = try? JSONEncoder().encode(list)
         }
         apply(TextFormatting(), over: style.text, to: &attrs)

@@ -134,13 +134,14 @@ import DocumentCore
     }
     func textViewDidChangeSelection(_ notification: Notification) { onSelection?() }
     func undoManager(for view: NSTextView) -> UndoManager? { owner?.undoManager }
-    func layoutManager(_ layoutManager: NSLayoutManager, shouldUse action: NSTypesetter.ControlCharacterAction, forControlCharacterAt charIndex: Int) -> NSTypesetter.ControlCharacterAction {
+    func layoutManager(_ layoutManager: NSLayoutManager, shouldUse action: NSLayoutManager.ControlCharacterAction, forControlCharacterAt charIndex: Int) -> NSLayoutManager.ControlCharacterAction {
         if (storage.string as NSString).character(at: charIndex) == 12 { return .containerBreak }
         return action
     }
     func select(_ range: NSRange) {
         guard range.location <= storage.length else { return }
         paginate()
+        if storage.length == 0 { canvas.window?.makeFirstResponder(textViews[0]); textViews[0].setSelectedRange(NSRange(location: 0, length: 0)); return }
         let glyph = layout.glyphIndexForCharacter(at: min(range.location, max(0, storage.length - 1)))
         let container = layout.textContainer(forGlyphAt: glyph, effectiveRange: nil)
         let view = textViews.first { $0.textContainer === container } ?? textViews[0]

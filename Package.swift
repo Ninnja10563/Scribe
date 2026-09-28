@@ -15,7 +15,7 @@ let package = Package(
         .target(name: "ImportExport", dependencies: ["DocumentCore", "CZlib"]),
         .executableTarget(name: "Scribe", dependencies: ["DocumentCore", "ImportExport"]),
         .testTarget(name: "DocumentCoreTests", dependencies: ["DocumentCore"]),
-        .testTarget(name: "ImportExportTests", dependencies: ["ImportExport"]),
+        .testTarget(name: "ImportExportTests", dependencies: ["ImportExport"], resources: [.copy("Fixtures")]),
         .testTarget(name: "ScribeTests", dependencies: ["Scribe"])
     ],
     swiftLanguageModes: [.v5]

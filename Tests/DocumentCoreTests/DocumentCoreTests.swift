@@ -44,6 +44,15 @@ final class DocumentCoreTests: XCTestCase {
         XCTAssertEqual(DocumentSearch.matches(in: text, query: "[cat]").count, 1)
         XCTAssertTrue(DocumentSearch.matches(in: text, query: "").isEmpty)
     }
+    func testNestedNumberingResumesAndResets() {
+        var numbering = ListNumbering()
+        XCTAssertEqual(numbering.marker(for: ListDescriptor(kind: .decimal)), "1.")
+        XCTAssertEqual(numbering.marker(for: ListDescriptor(kind: .lowerAlpha, level: 1)), "a.")
+        XCTAssertEqual(numbering.marker(for: ListDescriptor(kind: .lowerAlpha, level: 1)), "b.")
+        XCTAssertEqual(numbering.marker(for: ListDescriptor(kind: .decimal)), "2.")
+        XCTAssertNil(numbering.marker(for: nil))
+        XCTAssertEqual(numbering.marker(for: ListDescriptor(kind: .lowerRoman, start: 4)), "iv.")
+    }
     func testStatistics() {
         let stats = DocumentStatistics(text: "Don't stop.\nCafé 東京 👩🏽‍💻")
         XCTAssertEqual(stats.words, 4); XCTAssertEqual(stats.paragraphs, 2)

@@ -3,33 +3,31 @@ import AppKit
 import DocumentCore
 
 extension PaginatedEditor {
-    func applyStyle(_ id: String) {
-        guard let owner else { return }
+    private func selectedParagraphIndices() -> Set<Int> {
         let selection = activeTextView.selectedRange()
-        let range = (storage.string as NSString).paragraphRange(for: selection)
-        owner.performEdit("Apply Style") { model in
-            var offset = 0
-            for i in model.sections[0].paragraphs.indices {
-                let count = (model.sections[0].paragraphs[i].text as NSString).length + 1 + (model.sections[0].paragraphs[i].pageBreakBefore ? 1 : 0)
-                if NSIntersectionRange(NSRange(location: offset, length: count), range).length > 0 || (selection.length == 0 && selection.location >= offset && selection.location < offset + count) {
-                    model.sections[0].paragraphs[i].styleID = id
-                    model.sections[0].paragraphs[i].formatting = nil
-                }
-                offset += count
+        var offset = 0, selected: Set<Int> = []
+        for (index, component) in storage.string.components(separatedBy: "\n").enumerated() {
+            let length = (component as NSString).length + 1
+            let range = NSRange(location: offset, length: length)
+            if selection.length == 0 ? NSLocationInRange(selection.location, range) : NSIntersectionRange(selection, range).length > 0 { selected.insert(index) }
+            offset += length
+        }
+        return selected
+    }
+    func applyStyle(_ id: String) {
+        let indices = selectedParagraphIndices()
+        owner?.performEdit("Apply Style") { model in
+            for index in indices where model.sections[0].paragraphs.indices.contains(index) {
+                model.sections[0].paragraphs[index].styleID = id
+                model.sections[0].paragraphs[index].formatting = nil
             }
         }
     }
     func applyList(_ list: ListDescriptor?) {
-        let selection = activeTextView.selectedRange()
+        let indices = selectedParagraphIndices()
         owner?.performEdit("List") { model in
-            var offset = 0
-            for i in model.sections[0].paragraphs.indices {
-                let count = (model.sections[0].paragraphs[i].text as NSString).length + 1
-                if (selection.length == 0 && selection.location >= offset && selection.location < offset + count)
-                    || NSIntersectionRange(NSRange(location: offset, length: count), selection).length > 0 {
-                    model.sections[0].paragraphs[i].list = list
-                }
-                offset += count
+            for index in indices where model.sections[0].paragraphs.indices.contains(index) {
+                model.sections[0].paragraphs[index].list = list
             }
         }
     }

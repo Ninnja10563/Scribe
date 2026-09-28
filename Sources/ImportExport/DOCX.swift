@@ -70,6 +70,7 @@ public enum DOCX {
             for style in reader.styles { delegate.document.updateStyle(style) }
         }
         try parse(content, delegate: delegate)
+        guard delegate.sawDocument else { throw DocumentError.invalid("missing Word document root") }
         if delegate.paragraphs.isEmpty { delegate.paragraphs = [Paragraph()] }
         delegate.document.sections[0].paragraphs = delegate.paragraphs
         for p in delegate.paragraphs where !delegate.document.styles.contains(where: { $0.id == p.styleID }) {
@@ -82,9 +83,10 @@ public enum DOCX {
         return ImportResult(document: delegate.document, warnings: delegate.warnings.sorted())
     }
     static func parse(_ data: Data, delegate: XMLParserDelegate) throws {
+        guard let xml = String(data: data, encoding: .utf8), !xml.localizedCaseInsensitiveContains("<!DOCTYPE") else { throw DocumentError.invalid("unsupported XML encoding or document type declaration") }
         let parser = XMLParser(data: data); parser.shouldProcessNamespaces = true
         parser.shouldResolveExternalEntities = false; parser.delegate = delegate
-        guard parser.parse() else { throw DocumentError.invalid("malformed Office XML") }
+        guard parser.parse(), parser.parserError == nil else { throw DocumentError.invalid("malformed Office XML") }
     }
     static func xml(_ s: String) -> String {
         s.replacingOccurrences(of: "&", with: "&amp;").replacingOccurrences(of: "<", with: "&lt;")
@@ -152,10 +154,11 @@ private class StyleReader: NSObject, XMLParserDelegate {
 private class WordReader: NSObject, XMLParserDelegate {
     var document = ScribeDocument(), paragraphs: [Paragraph] = [], warnings: Set<String> = []
     var paragraph: Paragraph?, run = TextRun(""), collecting = false, links: [String: String] = [:], link: String?
-    var inRun = false
+    var inRun = false, sawDocument = false
     func parser(_ parser: XMLParser, didStartElement name: String, namespaceURI: String?, qualifiedName: String?, attributes a: [String: String]) {
         guard namespaceURI == DOCX.wordNS else { return }
         switch name {
+        case "document": sawDocument = true
         case "p": paragraph = Paragraph(); paragraph?.runs = []
         case "r": run = TextRun("", link: link); inRun = true
         case "t": collecting = true

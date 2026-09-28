@@ -2,7 +2,7 @@
 import AppKit
 import DocumentCore
 
-@MainActor final class SearchBar: NSStackView, NSTextFieldDelegate {
+@MainActor final class SearchBar: NSStackView, NSSearchFieldDelegate {
     let query = NSSearchField()
     let replacement = NSTextField()
     private let count = NSTextField(labelWithString: "")

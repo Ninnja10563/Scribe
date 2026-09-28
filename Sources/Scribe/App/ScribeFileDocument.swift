@@ -36,7 +36,7 @@ import ImportExport
     override func read(from data: Data, ofType typeName: String) throws {
         let decoded = try NativeFormat.decode(data)
         guard decoded.sections.count == 1 else { throw DocumentError.invalid("this version cannot edit multiple native sections without losing their layout") }
-        model = decoded
+        MainActor.assumeIsolated { model = decoded }
     }
     func didEdit() {
         guard !isRestoring else { return }
@@ -59,7 +59,7 @@ import ImportExport
         restore(after, undo: before, name: name)
     }
     private func restore(_ value: ScribeDocument, undo previous: ScribeDocument, name: String) {
-        undoManager?.registerUndo(withTarget: self) { target in target.restore(previous, undo: value, name: name) }
+        undoManager?.registerUndo(withTarget: self) { target in MainActor.assumeIsolated { target.restore(previous, undo: value, name: name) } }
         undoManager?.setActionName(name)
         isRestoring = true
         let selection = editorController?.editor.activeTextView.selectedRange() ?? NSRange(location: 0, length: 0)
