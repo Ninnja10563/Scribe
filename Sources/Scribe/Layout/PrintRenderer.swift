@@ -52,7 +52,7 @@ import DocumentCore
             guard let page = pdf.page(at: index) else { continue }
             // AppKit emits URL annotations while drawing linked glyphs. The private
             // native scheme is replaced by the actual PDF destinations authored below.
-            for annotation in page.annotations where (annotation.action as? PDFActionURL)?.url.scheme?.lowercased() == "scribe" {
+            for annotation in page.annotations where (annotation.action as? PDFActionURL)?.url?.scheme?.lowercased() == "scribe" {
                 page.removeAnnotation(annotation); changed = true
             }
         }
