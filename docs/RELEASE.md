@@ -1,12 +1,12 @@
-Scribe 0.2.0 adds structured tables and inline images to the native macOS document workspace.
+Scribe 0.3.0 improves native list editing, Word numbering interoperability, and PDF export.
 
-- Insert tables, edit cell text, use Tab/Shift-Tab between cells, add/delete rows and columns, and change widths, padding, borders, and header-row shading.
-- Insert PNG/JPEG/HEIC/TIFF images, paste images, or drop image files from Finder. Resize images proportionally with selection handles or a dialog and edit accessibility descriptions.
-- Save/reopen table and image structure in native format v2. Version 1 documents migrate in memory without overwriting their source.
-- DOCX now contains genuine table, image, header/footer, and page-field parts. Basic tables and inline images also import.
-- PDF export retains link annotations and uses the same glyph/table/image layout as the editor.
-- Includes the v0.1 foundations: linked pages, named styles, outline, rich text, search/replace, page settings/numbers, native document lifecycle, recovery, focus mode, tabs, printing, and text interchange.
+- Continue independent numbered lists across body paragraphs, restart at a chosen value, and use upper/lower letter or Roman numbering. Format → List Options exposes nesting, starts and removal; Continue Previous List reconnects a separated item.
+- Return splits a list item while preserving formatted Unicode text. Return on an empty item exits/outdents; Backspace at the content start outdents. These commands support undo/redo.
+- DOCX import resolves actual numbering definitions, level/start overrides and numbering inherited through paragraph styles. Export preserves independent lists and restarts instead of sharing one numbering instance across every list.
+- PDF export now accepts page ranges such as 1, 3–5 and title, author, subject and keywords. Selected pages retain original page numbers, vector text and image quality. Invalid ranges cannot overwrite an existing output file.
+- Native format v3 preserves list identities and restarts. Earlier v1/v2 documents migrate in memory; opening does not overwrite their original bytes. Saving in v3 requires Scribe 0.3 or newer to reopen.
+- Includes the existing native pagination, styles, tables, inline images, outline, search, recovery, tabs, printing and interchange features.
 
-For Apple Silicon and macOS 14+. This is an early development release, not a finished Word/Pages replacement. Merged/nested-table fidelity, image cropping/rotation, floating objects, wrapping, shapes, review UI, track changes, footnotes, equations, and automatic TOC remain unimplemented. DOCX still approximates advanced styles/numbering and fields. Manual interoperability and accessibility validation are pending.
+For Apple Silicon and macOS 14+. This is an early development release. Review UI, tracked changes, notes, equations, automatic TOC, merged/nested tables, floating objects and wrapping remain unfinished. DOCX custom compound markers, custom nested restart rules and advanced styles remain limited; known import losses are disclosed. PDF image-quality presets remain pending. Physical-Mac input/accessibility testing and manual Word/Pages/LibreOffice interoperability have not been completed.
 
-The DMG is ad-hoc signed and not notarized. See its installation instructions and the repository's validation notes. Use the supplied SHA-256 checksum to verify the downloaded installer.
+The DMG is ad-hoc signed and not notarized. A SHA-256 checksum is provided with the installer. See docs/VALIDATION.md for automated and independent artifact checks.

@@ -1,1 +1,3 @@
 WordprocessingML.docx is an original test fixture generated using python-docx 1.2.0, not Microsoft Word. It exercises an independently produced, DEFLATE-compressed OPC archive with named headings, Unicode, bold/size formatting, table cells and a header. Unsupported-content warnings are expected. No third-party document content is included. Word-generated fixtures and manual Word validation remain future work.
+
+Numbering.docx is another original python-docx fixture. It uses arbitrary concrete IDs, two nesting levels, uppercase Roman/lowercase letter formats, a start override, an intervening body paragraph and an independent restart. Regenerate with `scripts/fixtures/make-numbering.py` using python-docx 1.2.0. It is not a Word-produced or manually Word-validated file.

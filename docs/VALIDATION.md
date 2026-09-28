@@ -29,3 +29,11 @@ Automated tests do not establish interactive usability. Before a production rele
 - The 256-page native benchmark initially measured ~0.9 seconds for initial layout and ~190 ms for an edit near the end. After restarting layout near the edited page and eliminating repeated paragraph flattening, the cited run measured **0.791 seconds initial layout and 4.6 ms for the end edit**. These are debug-build timings on a hosted macOS runner, not an end-to-end input-latency guarantee. Editing near the beginning, complex objects, and physical-Mac memory/scrolling behavior need further profiling.
 
 Developer ID signing, notarization, physical-Mac input/VoiceOver testing, and manual Word/Pages/LibreOffice round trips have not been completed.
+
+## List and PDF update (29 September 2026)
+
+- Linux ARM64: 30 portable tests passed, with the AppKit test target explicitly skipped. Coverage includes native v2→v3 migration, list instances/restarts, Unicode splitting, independent compressed numbering fixtures, nested restart defaults and invalid PDF page ranges.
+- macOS run [36487326588](https://github.com/Ninnja10563/Scribe/actions/runs/36487326588) passed 40 tests and the arm64 build/DMG/launch/export smoke checks. Native list Return, Backspace and undo/redo passed; PDFKit verified selected pages, metadata and non-destructive rejection of invalid selections. Two further numbering regressions are included in the release candidate and require its own CI run.
+- The first macOS run exposed an NSString/Swift range-bridging difference that accepted a split inside an emoji. Explicit grapheme-boundary validation fixed it; the corrected regression passes on macOS and Linux.
+- Independent PyMuPDF inspection verified 14 full-document pages, a two-page selection matching the first and last source pages exactly, original page labels and PDF metadata. The first rendered PDF page and actual native window were visually inspected.
+- Independent python-docx/lxml inspection opened the produced package and verified table/image retention, upper-Roman/lower-letter definitions and starting values 4 and 9. The independent fixture generator is checked in; none of these checks constitute manual Word certification.

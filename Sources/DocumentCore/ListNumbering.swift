@@ -11,12 +11,13 @@ public struct ListNumbering {
     public init() {}
     public mutating func number(for descriptor: ListDescriptor?) -> Int? {
         guard let descriptor else { anonymous = State(); return nil }
+        if descriptor.seriesID != nil { anonymous = State() }
         let level = max(0, min(8, descriptor.level))
         var state = descriptor.seriesID.flatMap { series[$0] } ?? (descriptor.seriesID == nil ? anonymous : State())
         if state.kinds[level] != descriptor.kind || descriptor.restart == true {
             state.counters[level] = 0; state.kinds[level] = descriptor.kind
         }
-        state.counters[level] = state.counters[level] == 0 ? max(1, descriptor.start) : state.counters[level] + 1
+        state.counters[level] = state.counters[level] == 0 ? max(1, descriptor.start) : (state.counters[level] < Int.max ? state.counters[level] + 1 : Int.max)
         for i in (level + 1)..<9 { state.counters[i] = 0; state.kinds[i] = nil }
         if let id = descriptor.seriesID { series[id] = state } else { anonymous = state }
         return state.counters[level]

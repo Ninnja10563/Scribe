@@ -86,17 +86,30 @@ struct DOCXNumberingWriter {
     private(set) var paragraphIDs: [UUID: Int] = [:]
     init(paragraphs: [Paragraph]) {
         var counter = ListNumbering(), active: [UUID: Int] = [:], anonymous: Int?
+        var exportedCounters: [ListNumbering] = []
         for paragraph in paragraphs {
             let number = counter.number(for: paragraph.list)
             guard var list = paragraph.list, let number else { anonymous = nil; continue }
+            if list.seriesID != nil { anonymous = nil }
             var index = list.seriesID.flatMap { active[$0] } ?? (list.seriesID == nil ? anonymous : nil)
             if list.restart == true { index = nil }
             if let existing = index, let level = definitions[existing].levels[list.level], level.kind != list.kind { index = nil }
-            if index == nil { index = definitions.count; definitions.append(Definition()) }
+            // A level's start can change after an ancestor resumes. Split the concrete
+            // instance if a fixed OOXML definition would generate a different number.
+            if let existing = index {
+                var trial = exportedCounters[existing], expected = list
+                expected.seriesID = nil; expected.restart = nil
+                expected.start = definitions[existing].levels[list.level]?.start ?? number
+                if trial.number(for: expected) != number { index = nil }
+            }
+            if index == nil { index = definitions.count; definitions.append(Definition()); exportedCounters.append(ListNumbering()) }
             let resolved = index!
             if definitions[resolved].levels[list.level] == nil {
                 list.start = number; definitions[resolved].levels[list.level] = list
             }
+            var exported = list; exported.seriesID = nil; exported.restart = nil
+            exported.start = definitions[resolved].levels[list.level]!.start
+            _ = exportedCounters[resolved].number(for: exported)
             if let id = list.seriesID { active[id] = resolved } else { anonymous = resolved }
             paragraphIDs[paragraph.id] = resolved + 1
         }

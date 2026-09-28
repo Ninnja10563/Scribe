@@ -7,6 +7,12 @@ final class NumberingTests: XCTestCase {
         var counter = ListNumbering()
         return document.paragraphs.map { counter.marker(for: $0.list) }
     }
+    func testIndependentCompressedNumberingFixture() throws {
+        let url = Bundle.module.url(forResource: "Numbering", withExtension: "docx", subdirectory: "Fixtures")!
+        let imported = try DOCX.decode(Data(contentsOf: url))
+        XCTAssertEqual(markers(imported.document), ["IV.", "a.", nil, "V.", "IX."])
+        XCTAssertEqual(markers(try DOCX.decode(DOCX.encode(imported.document)).document), ["IV.", "a.", nil, "V.", "IX."])
+    }
     func testArbitraryIDsOverridesStylesAndContinuation() throws {
         let definitions = """
         <w:numbering xmlns:w="\(DOCX.wordNS)">
@@ -58,6 +64,15 @@ final class NumberingTests: XCTestCase {
         let xml = String(decoding: parts["word/numbering.xml"]!, as: UTF8.self)
         XCTAssertTrue(xml.contains("w:start w:val=\"8\""))
         XCTAssertLessThan(xml.range(of: "</w:abstractNum>", options: .backwards)!.lowerBound, xml.range(of: "<w:num ")!.lowerBound)
+    }
+    func testNestedRestartDoesNotChangeLaterDefaultStart() throws {
+        let id = UUID(); var document = ScribeDocument()
+        let levels: [(Int, Int, Bool?)] = [(0, 1, nil), (1, 1, nil), (1, 5, true), (0, 1, nil), (1, 1, nil)]
+        document.sections[0].paragraphs = levels.map { level, start, restart in
+            var p = Paragraph("Item"); p.list = .init(kind: .decimal, level: level, start: start, seriesID: id, restart: restart); return p
+        }
+        XCTAssertEqual(markers(document), ["1.", "1.", "5.", "2.", "1."])
+        XCTAssertEqual(markers(try DOCX.decode(DOCX.encode(document)).document), markers(document))
     }
     func testUnsupportedMarkerPatternDisclosesLoss() throws {
         let xml = "<w:numbering xmlns:w=\"\(DOCX.wordNS)\"><w:abstractNum w:abstractNumId=\"1\"><w:lvl w:ilvl=\"1\"><w:numFmt w:val=\"decimal\"/><w:lvlText w:val=\"%1.%2)\"/></w:lvl></w:abstractNum></w:numbering>"
