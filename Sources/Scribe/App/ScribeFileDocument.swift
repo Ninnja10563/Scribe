@@ -24,10 +24,11 @@ import ImportExport
             let insertion = view.selectedRange().location == editor.storage.length ? view.typingAttributes : nil
             model = AttributedDocument.capture(editor.storage, preserving: model, typingAttributes: insertion)
             var offset = 0
+            let paragraphs = model.sections[0].paragraphs
             editor.storage.beginEditing()
             for (index, component) in editor.storage.string.components(separatedBy: "\n").enumerated() {
                 let length = min((component as NSString).length + 1, editor.storage.length - offset)
-                let id = model.paragraphs[index].id.uuidString
+                let id = paragraphs[index].id.uuidString
                 if length > 0, editor.storage.attribute(.scribeParagraphID, at: offset, effectiveRange: nil) as? String != id {
                     editor.storage.addAttribute(.scribeParagraphID, value: id, range: NSRange(location: offset, length: length))
                 }

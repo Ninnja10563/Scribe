@@ -16,7 +16,8 @@ extension NSAttributedString.Key {
         let result = NSMutableAttributedString(string: "")
         var numbering = ListNumbering()
         let tables = TableProjection(document: document)
-        for (index, paragraph) in document.paragraphs.enumerated() {
+        let paragraphs = document.paragraphs
+        for (index, paragraph) in paragraphs.enumerated() {
             let style = document.style(for: paragraph)
             var base = attributes(style: style, paragraph: paragraph)
             if let cell = paragraph.tableCell { tables.apply(cell, to: &base) }
@@ -32,7 +33,7 @@ extension NSAttributedString.Key {
                 }
                 result.append(NSAttributedString(string: run.text, attributes: attrs))
             }
-            if index < document.paragraphs.count - 1 {
+            if index < paragraphs.count - 1 {
                 result.append(NSAttributedString(string: "\n", attributes: base))
             }
             if result.length > start {

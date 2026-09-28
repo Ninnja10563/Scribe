@@ -95,11 +95,14 @@ final class DOCXWriter {
         let borders = ["top", "left", "bottom", "right", "insideH", "insideV"].map { "<w:\($0) w:val=\"single\" w:sz=\"\(Int(table.borderWidth * 8))\" w:color=\"\(table.borderColor.dropFirst())\"/>" }.joined()
         let grid = table.columnWidths.map { "<w:gridCol w:w=\"\(Int($0 * 20))\"/>" }.joined()
         let margins = ["top", "left", "bottom", "right"].map { "<w:\($0) w:w=\"\(Int(table.padding * 20))\" w:type=\"dxa\"/>" }.joined()
+        let cellsByPosition = Dictionary(grouping: paragraphs.filter { $0.tableCell?.tableID == table.id }) { p in
+            p.tableCell!.row * table.columnWidths.count + p.tableCell!.column
+        }
         var rows = ""
         for row in 0..<table.rows {
             var cells = ""
             for column in table.columnWidths.indices {
-                let content = paragraphs.filter { $0.tableCell == TableCellReference(tableID: table.id, row: row, column: column) }.map(paragraph).joined()
+                let content = (cellsByPosition[row * table.columnWidths.count + column] ?? []).map(paragraph).joined()
                 let shade = row == 0 && table.firstRowIsHeader ? "<w:shd w:fill=\"\(table.headerBackground.dropFirst())\"/>" : ""
                 cells += "<w:tc><w:tcPr><w:tcW w:w=\"\(Int(table.columnWidths[column] * 20))\" w:type=\"dxa\"/>\(shade)</w:tcPr>\(content.isEmpty ? "<w:p/>" : content)</w:tc>"
             }
