@@ -146,7 +146,7 @@ extension EditorWindowController {
         fileDocument.performEdit("Delete Style") { $0.deleteStyle(id: style.id) }
     }
     @objc func documentStatistics() {
-        let stats = DocumentStatistics(text: editor.storage.string)
+        let stats = DocumentStatistics(text: editor.semanticText.text)
         let alert = NSAlert(); alert.messageText = "Document Statistics"
         alert.informativeText = "\(stats.words.formatted()) words\n\(stats.characters.formatted()) characters\n\(stats.charactersWithoutSpaces.formatted()) characters excluding spaces\n\(stats.paragraphs.formatted()) paragraphs\n\(editor.textViews.count) pages"
         alert.runModal()

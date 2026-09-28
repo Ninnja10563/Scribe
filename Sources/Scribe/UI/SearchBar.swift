@@ -38,13 +38,15 @@ import DocumentCore
     @objc func search() {
         task?.cancel()
         guard let editor else { return }
-        let text = editor.storage.string, query = query.stringValue
+        let revision = editor.revision, query = query.stringValue
         let options = SearchOptions(matchCase: matchCase.state == .on, wholeWord: wholeWord.state == .on)
         task = Task {
             try? await Task.sleep(nanoseconds: 100_000_000)
             guard !Task.isCancelled else { return }
-            let found = await Task.detached { DocumentSearch.matches(in: text, query: query, options: options) }.value
-            guard !Task.isCancelled, editor.storage.string == text else { return }
+            guard editor.revision == revision else { return }
+            let snapshot = editor.semanticText
+            let found = await Task.detached { snapshot.matches(query: query, options: options) }.value
+            guard !Task.isCancelled, editor.revision == revision else { return }
             matches = found; count.stringValue = "\(found.count) found"
             editor.layout.removeTemporaryAttribute(.backgroundColor, forCharacterRange: NSRange(location: 0, length: editor.storage.length))
             for range in found { editor.layout.addTemporaryAttribute(.backgroundColor, value: NSColor.systemYellow.withAlphaComponent(0.4), forCharacterRange: range) }
@@ -52,7 +54,7 @@ import DocumentCore
     }
     private func refreshMatchesForNavigation() {
         guard let editor else { return }
-        matches = DocumentSearch.matches(in: editor.storage.string, query: query.stringValue, options: SearchOptions(matchCase: matchCase.state == .on, wholeWord: wholeWord.state == .on))
+        matches = editor.semanticText.matches(query: query.stringValue, options: SearchOptions(matchCase: matchCase.state == .on, wholeWord: wholeWord.state == .on))
     }
     @objc func next() {
         refreshMatchesForNavigation()
@@ -70,13 +72,13 @@ import DocumentCore
     @objc func replace() {
         guard let editor else { return }
         let selection = editor.activeTextView.selectedRange()
-        let fresh = DocumentSearch.matches(in: editor.storage.string, query: query.stringValue, options: SearchOptions(matchCase: matchCase.state == .on, wholeWord: wholeWord.state == .on))
+        let fresh = editor.semanticText.matches(query: query.stringValue, options: SearchOptions(matchCase: matchCase.state == .on, wholeWord: wholeWord.state == .on))
         guard fresh.contains(selection) else { next(); return }
         editor.activeTextView.insertText(replacement.stringValue, replacementRange: selection); search()
     }
     @objc func replaceAll() {
         guard let editor else { return }
-        let found = DocumentSearch.matches(in: editor.storage.string, query: query.stringValue, options: SearchOptions(matchCase: matchCase.state == .on, wholeWord: wholeWord.state == .on))
+        let found = editor.semanticText.matches(query: query.stringValue, options: SearchOptions(matchCase: matchCase.state == .on, wholeWord: wholeWord.state == .on))
         let view = editor.activeTextView
         view.breakUndoCoalescing(); view.undoManager?.beginUndoGrouping()
         for range in found.reversed() { view.insertText(replacement.stringValue, replacementRange: range) }

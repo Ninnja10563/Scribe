@@ -62,6 +62,13 @@ import DocumentCore
     private var firstDirtyPage = 0
     private var pageCharacterRanges: [NSRange] = []
     private(set) var revision = 0
+    private var semanticCache: (revision: Int, snapshot: SemanticTextSnapshot)?
+    var semanticText: SemanticTextSnapshot {
+        if let cache = semanticCache, cache.revision == revision { return cache.snapshot }
+        let snapshot = SemanticTextSnapshot(storage)
+        semanticCache = (revision, snapshot)
+        return snapshot
+    }
     var zoom: CGFloat = 1 { didSet { scrollView.setMagnification(zoom, centeredAt: scrollView.documentVisibleRect.origin); resizeCanvas() } }
     var activeTextView: ScribeTextView {
         if let focused = canvas.window?.firstResponder as? ScribeTextView, focused.editor === self { return focused }

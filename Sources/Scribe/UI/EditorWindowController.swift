@@ -117,7 +117,7 @@ import DocumentCore
     func scheduleStatistics() {
         statsWork?.cancel(); let job = DispatchWorkItem { [weak self] in
             guard let self else { return }
-            let text = self.editor.storage.string, revision = self.editor.revision
+            let text = self.editor.semanticText.text, revision = self.editor.revision
             Task {
                 let words = await Task.detached { DocumentStatistics(text: text).words }.value
                 guard revision == self.editor.revision else { return }
@@ -132,7 +132,7 @@ import DocumentCore
         let view = editor.activeTextView
         let selection = view.selectedRange()
         let page = editor.textViews.firstIndex(where: { $0 === view }).map { $0 + 1 } ?? 1
-        let selectedWords = selection.length > 0 && NSMaxRange(selection) <= editor.storage.length ? DocumentStatistics(text: (editor.storage.string as NSString).substring(with: selection)).words : nil
+        let selectedWords = selection.length > 0 && NSMaxRange(selection) <= editor.storage.length ? DocumentStatistics(text: editor.semanticText.text(inSourceRange: selection)).words : nil
         status.stringValue = "Page \(page) of \(editor.textViews.count)    ·    \(cachedWords.formatted()) words\(selectedWords.map { " (\($0) selected)" } ?? "")    ·    English (Australia)"
         if let id = view.typingAttributes[.scribeStyle] as? String, let style = fileDocument.model.styles.first(where: { $0.id == id }) { stylePicker.selectItem(withTitle: style.name) }
     }

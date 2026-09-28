@@ -52,3 +52,9 @@ Developer ID signing, notarization, physical-Mac input/VoiceOver testing, and ma
 ### Independent Office XML schema validation
 
 Microsoft Open XML SDK 3.5.1 found 24 schema errors in the pre-release 0.4 smoke DOCX: paragraph/style/run/table property ordering and missing shading values. The writer now emits schema-ordered properties and explicit clear shading. A combined-formatting/list/table regression export passes Office 2013 validation locally, and 40 portable tests pass (one additional AppKit-only skip). CI now validates both that regression package and the optimized macOS app's smoke DOCX before allowing publication. This adds schema/semantic checks, not manual Word visual certification. The development-only validator and locked dependencies are in `tools/OOXMLValidation`; no .NET runtime ships in the app.
+
+- Corrected export revision `df49e30` passed [macOS and independent schema CI](https://github.com/Ninnja10563/Scribe/actions/runs/36494097509). Both the optimized app's smoke DOCX and the combined-formatting regression package report zero Office 2013 schema/semantic errors. Independent PDF/package inspection again verified 14 source pages, a matching two-page selection, lists, tables, images and both comments. Tag `v0.4.0` points to that validated revision.
+
+### Search/statistics follow-up
+
+A semantic text snapshot now excludes generated list/page-break prefixes from Find and statistics while mapping Unicode matches back to AppKit UTF-16 selections. The snapshot is cached by editor revision; ordinary literal text resembling a list marker remains searchable. Native tests cover generated-versus-literal Roman numbers, multi-paragraph mapping and replacement/undo. This follow-up is after the v0.4.0 tag; macOS validation is pending.
