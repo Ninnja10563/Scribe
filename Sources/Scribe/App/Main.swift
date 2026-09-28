@@ -66,6 +66,15 @@ import ImportExport
                 var run = TextRun("\u{FFFC}"); run.image = InlineImage(data: png, fileExtension: "png", width: 240, height: 80, altText: "Three horizontal bars of increasing length")
                 document.model.sections[0].paragraphs[document.model.paragraphs.count - 1].runs = [run]
             }
+            let series = UUID()
+            let listSamples: [(String, ListDescriptor?)] = [
+                ("Numbered item", .init(kind: .upperRoman, start: 4, seriesID: series)),
+                ("Supporting detail", .init(kind: .lowerAlpha, level: 1, seriesID: series)),
+                ("Body text between list items.", nil),
+                ("Continued item", .init(kind: .upperRoman, start: 4, seriesID: series)),
+                ("Restarted item", .init(kind: .upperRoman, start: 9, seriesID: series, restart: true))
+            ]
+            for (text, list) in listSamples { var p = Paragraph(text); p.list = list; document.model.sections[0].paragraphs.append(p) }
             document.model.sections[0].pageNumbering = PageNumbering()
             for i in 1...80 { document.model.sections[0].paragraphs.append(Paragraph("Paragraph \(i). " + String(repeating: "Professional documents need clear structure and dependable editing. ", count: 6))) }
             documents.addDocument(document); document.makeWindowControllers(); document.showWindows()

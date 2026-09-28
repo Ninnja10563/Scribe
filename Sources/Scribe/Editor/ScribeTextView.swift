@@ -90,6 +90,8 @@ import DocumentCore
     }
     @objc func insertPageBreak(_ sender: Any?) { insertText("\n\u{c}", replacementRange: selectedRange()) }
     @objc func insertSpecialCharacter(_ sender: Any?) { NSApp.orderFrontCharacterPalette(sender) }
+    override func insertNewline(_ sender: Any?) { if !insertListNewline() { super.insertNewline(sender) } }
+    override func deleteBackward(_ sender: Any?) { if !removeListAtStart() { super.deleteBackward(sender) } }
     override func insertTab(_ sender: Any?) {
         if moveTableCell(by: 1) { return }
         if changeListLevel(by: 1) { return }; super.insertTab(sender)

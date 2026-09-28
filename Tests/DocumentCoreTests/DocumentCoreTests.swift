@@ -67,7 +67,7 @@ final class DocumentCoreTests: XCTestCase {
         json["formatVersion"] = 1; json.removeValue(forKey: "tables")
         let source = try JSONSerialization.data(withJSONObject: json)
         let loaded = try NativeFormat.decode(source)
-        XCTAssertEqual(loaded.formatVersion, 2); XCTAssertTrue(loaded.tables.isEmpty)
+        XCTAssertEqual(loaded.formatVersion, ScribeDocument.currentVersion); XCTAssertTrue(loaded.tables.isEmpty)
         XCTAssertEqual((try JSONSerialization.jsonObject(with: source) as! [String: Any])["formatVersion"] as? Int, 1)
     }
     func testTableMutationsPreserveCellContentAndReferences() throws {

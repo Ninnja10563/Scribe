@@ -25,3 +25,9 @@ Inspected on 28 September 2026. HEAD was `6591ce4` (Initial commit). The entire 
 7. **Distribution:** Developer ID signing and notarization once credentials are available, update strategy, crash reporting with consent and privacy controls.
 
 Each substantial, validated update should advance the version and publish a tagged DMG release. Do not publish a release merely because source files were generated. The CI release job depends on tests, an arm64 bundle, launch, pagination, native save, PDF output and rendering checks.
+
+## List interoperability and editing update
+
+Native v3 adds optional list-series identities and explicit restart markers. v1/v2 files migrate in memory, retaining legacy contiguous-list numbering. DOCX import resolves abstract definitions, concrete numbering instances, level/start overrides and numbering inherited from paragraph styles. Export gives independent lists separate instances and uses editor counters to preserve starts. Common decimal, upper/lower letter and Roman lists are supported; compound marker text and custom level-restart rules produce explicit import warnings.
+
+Return within one list item preserves formatted runs and UTF-16 selection boundaries. Empty items exit/outdent; Backspace at the content start outdents. These operations participate in semantic undo. Selections spanning list paragraphs and physical input methods remain validation work.

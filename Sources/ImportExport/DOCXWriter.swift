@@ -8,7 +8,8 @@ final class DOCXWriter {
     private var overrides: [String] = []
     private var nextID = 1
     private let document: ScribeDocument
-    init(_ document: ScribeDocument) { self.document = document }
+    private let numbering: DOCXNumberingWriter
+    init(_ document: ScribeDocument) { self.document = document; numbering = DOCXNumberingWriter(paragraphs: document.paragraphs) }
     private func put(_ path: String, _ xml: String) { parts[path] = Data(xml.utf8) }
     private func relationship(type: String, target: String, external: Bool = false) -> String {
         let id = "rId\(nextID)"; nextID += 1
@@ -58,13 +59,7 @@ final class DOCXWriter {
         }.joined()
         put("word/styles.xml", "<w:styles xmlns:w=\"\(DOCX.wordNS)\">\(styles)</w:styles>")
         _ = relationship(type: "styles", target: "styles.xml")
-        let formats = ["bullet", "decimal", "lowerLetter", "lowerRoman"]
-        let numbering = formats.enumerated().map { index, format in
-            let id = index + 1
-            let levels = (0...8).map { level in "<w:lvl w:ilvl=\"\(level)\"><w:start w:val=\"1\"/><w:numFmt w:val=\"\(format)\"/><w:lvlText w:val=\"\(index == 0 ? "•" : "%\(level + 1).")\"/><w:pPr><w:ind w:left=\"\((level + 1) * 480)\" w:hanging=\"240\"/></w:pPr></w:lvl>" }.joined()
-            return "<w:abstractNum w:abstractNumId=\"\(id)\">\(levels)</w:abstractNum><w:num w:numId=\"\(id)\"><w:abstractNumId w:val=\"\(id)\"/></w:num>"
-        }.joined()
-        put("word/numbering.xml", "<w:numbering xmlns:w=\"\(DOCX.wordNS)\">\(numbering)</w:numbering>")
+        put("word/numbering.xml", numbering.xml)
         _ = relationship(type: "numbering", target: "numbering.xml")
         put("word/settings.xml", "<w:settings xmlns:w=\"\(DOCX.wordNS)\"><w:updateFields w:val=\"true\"/></w:settings>")
         _ = relationship(type: "settings", target: "settings.xml")
@@ -80,8 +75,7 @@ final class DOCXWriter {
         if p.pageBreakBefore { properties += "<w:pageBreakBefore/>" }
         if let f = p.formatting { properties += DOCX.paragraphProperties(f) }
         if let list = p.list {
-            let id: Int
-            switch list.kind { case .bullet: id = 1; case .decimal: id = 2; case .lowerAlpha: id = 3; case .lowerRoman: id = 4 }
+            let id = numbering.paragraphIDs[p.id]!
             properties += "<w:numPr><w:ilvl w:val=\"\(list.level)\"/><w:numId w:val=\"\(id)\"/></w:numPr>"
         }
         let runs = p.runs.map { run -> String in

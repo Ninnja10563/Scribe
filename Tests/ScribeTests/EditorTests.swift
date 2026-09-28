@@ -36,6 +36,26 @@ import DocumentCore
         XCTAssertEqual(captured.plainText, "First\nSecond")
         XCTAssertEqual(captured.paragraphs[1].list?.kind, .decimal)
     }
+    func testListReturnBackspaceAndUndo() throws {
+        let document = ScribeFileDocument(); document.model.sections[0].paragraphs[0] = Paragraph("FirstSecond")
+        document.model.sections[0].paragraphs[0].list = .init(kind: .decimal, start: 4, restart: true)
+        document.makeWindowControllers(); defer { document.close() }
+        let editor = document.editorController!.editor
+        editor.select(NSRange(location: 9, length: 0)) // tab + 4. + tab + First
+        document.undoManager?.removeAllActions()
+        editor.activeTextView.insertNewline(nil)
+        XCTAssertEqual(document.snapshot().paragraphs.map(\.text), ["First", "Second"])
+        XCTAssertTrue(editor.storage.string.contains("5.\tSecond"))
+        XCTAssertEqual(editor.activeTextView.selectedRange().location, 14)
+        document.undoManager?.undo()
+        XCTAssertEqual(document.snapshot().plainText, "FirstSecond")
+        document.undoManager?.redo()
+        XCTAssertEqual(document.snapshot().paragraphs.count, 2)
+        editor.selectListContent(id: document.model.paragraphs[1].id)
+        editor.activeTextView.deleteBackward(nil)
+        XCTAssertNil(document.snapshot().paragraphs[1].list)
+        XCTAssertEqual(document.snapshot().paragraphs[1].text, "Second")
+    }
     func testTableAndImageProjectionPreservesNativeObjects() throws {
         var document = ScribeDocument()
         document.insertTable(rows: 3, columns: 3, after: document.paragraphs[0].id)

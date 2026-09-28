@@ -1,7 +1,7 @@
 import Foundation
 
 public struct ScribeDocument: Codable, Equatable, Sendable {
-    public static let currentVersion = 2
+    public static let currentVersion = 3
     public var formatVersion = currentVersion
     public var id = UUID()
     public var title = "Untitled"
@@ -97,12 +97,17 @@ public struct ParagraphFormatting: Codable, Equatable, Sendable {
     public init() {}
 }
 public struct ListDescriptor: Codable, Equatable, Sendable {
-    public enum Kind: String, Codable, Sendable { case bullet, decimal, lowerAlpha, lowerRoman }
+    public enum Kind: String, Codable, Sendable { case bullet, decimal, lowerAlpha, lowerRoman, upperAlpha, upperRoman }
     public var kind: Kind
     public var level: Int
     public var start: Int
-    public init(kind: Kind = .bullet, level: Int = 0, start: Int = 1) {
+    /// A series continues across intervening body text. Nil preserves legacy contiguous lists.
+    public var seriesID: UUID?
+    /// Explicit restart at this paragraph; nil/false continues the current series.
+    public var restart: Bool?
+    public init(kind: Kind = .bullet, level: Int = 0, start: Int = 1, seriesID: UUID? = nil, restart: Bool? = nil) {
         self.kind = kind; self.level = level; self.start = start
+        self.seriesID = seriesID; self.restart = restart
     }
 }
 public struct OutlineEntry: Equatable, Sendable, Identifiable {

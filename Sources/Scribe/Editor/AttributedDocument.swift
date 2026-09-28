@@ -122,7 +122,7 @@ extension NSAttributedString.Key {
         var attrs: [NSAttributedString.Key: Any] = [.paragraphStyle: ns, .scribeStyle: style.id]
         if let list = paragraph?.list {
             let marker: NSTextList.MarkerFormat
-            switch list.kind { case .bullet: marker = .disc; case .decimal: marker = .decimal; case .lowerAlpha: marker = .lowercaseAlpha; case .lowerRoman: marker = .lowercaseRoman }
+            switch list.kind { case .bullet: marker = .disc; case .decimal: marker = .decimal; case .lowerAlpha: marker = .lowercaseAlpha; case .lowerRoman: marker = .lowercaseRoman; case .upperAlpha: marker = .uppercaseAlpha; case .upperRoman: marker = .uppercaseRoman }
             ns.textLists = (0...list.level).map { _ in NSTextList(markerFormat: marker, options: 0) }
             ns.headIndent = CGFloat(list.level + 1) * 24; ns.firstLineHeadIndent = ns.headIndent - 18
             ns.tabStops = [NSTextTab(textAlignment: .right, location: ns.headIndent - 6), NSTextTab(textAlignment: .left, location: ns.headIndent)]

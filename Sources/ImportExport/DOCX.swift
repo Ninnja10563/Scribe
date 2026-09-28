@@ -11,7 +11,10 @@ public struct ImportResult {
 public enum DOCX {
     static let wordNS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
     static let relationNS = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
-    public static func encode(_ document: ScribeDocument) throws -> Data { try DOCXWriter(document).encode() }
+    public static func encode(_ document: ScribeDocument) throws -> Data {
+        try NativeFormat.validate(document)
+        return try DOCXWriter(document).encode()
+    }
     public static func decode(_ data: Data) throws -> ImportResult {
         let files = try ZipArchive.decode(data)
         guard let content = files["word/document.xml"] else { throw DocumentError.invalid("DOCX has no main document part") }
@@ -22,8 +25,11 @@ public enum DOCX {
         if let styles = files["word/styles.xml"] {
             let reader = StyleReader(); try parse(styles, delegate: reader)
             for style in reader.styles { delegate.document.updateStyle(style) }
+            delegate.styleLists = reader.resolvedLists
         }
+        if let numbering = files["word/numbering.xml"] { try parse(numbering, delegate: delegate.numbering) }
         try parse(content, delegate: delegate)
+        delegate.warnings.formUnion(delegate.numbering.warnings)
         guard delegate.sawDocument else { throw DocumentError.invalid("missing Word document root") }
         if delegate.paragraphs.isEmpty { delegate.paragraphs = [Paragraph()] }
         delegate.document.sections[0].paragraphs = delegate.paragraphs
@@ -114,13 +120,35 @@ private class RelationshipReader: NSObject, XMLParserDelegate {
         }
     }
 }
+private struct StyleList {
+    var id: String?
+    var level: Int?
+}
 private class StyleReader: NSObject, XMLParserDelegate {
+    private var lists: [String: StyleList] = [:], parents: [String: String] = [:]
+    var resolvedLists: [String: StyleList] {
+        var result: [String: StyleList] = [:]
+        for style in styles {
+            var chain: [String] = [], visited: Set<String> = [], id: String? = style.id
+            while let next = id, visited.insert(next).inserted { chain.append(next); id = parents[next] }
+            var list = StyleList()
+            for item in chain.reversed() {
+                if let value = lists[item]?.id { list.id = value }
+                if let value = lists[item]?.level { list.level = value }
+            }
+            if list.id != nil { result[style.id] = list }
+        }
+        return result
+    }
     var styles: [ParagraphStyle] = []; var current: ParagraphStyle?
     func parser(_ parser: XMLParser, didStartElement name: String, namespaceURI: String?, qualifiedName: String?, attributes a: [String: String]) {
         if name == "style", wordAttribute(a, "type") == "paragraph", let id = wordAttribute(a, "styleId") {
             current = ParagraphStyle(id: id, name: id)
         }
         guard current != nil else { return }
+        if name == "basedOn" { parents[current!.id] = wordAttribute(a) }
+        if name == "numId" { var list = lists[current!.id] ?? StyleList(); list.id = wordAttribute(a); lists[current!.id] = list }
+        if name == "ilvl" { var list = lists[current!.id] ?? StyleList(); list.level = wordAttribute(a).flatMap(Int.init); lists[current!.id] = list }
         if name == "name" { current?.name = wordAttribute(a) ?? current!.name }
         if name == "outlineLvl", let level = wordAttribute(a).flatMap(Int.init), level < 9 { current?.headingLevel = level + 1 }
         applyRun(name, a, &current!.text)
@@ -133,6 +161,9 @@ private class StyleReader: NSObject, XMLParserDelegate {
 private class WordReader: NSObject, XMLParserDelegate {
     var document = ScribeDocument(), paragraphs: [Paragraph] = [], warnings: Set<String> = []
     var paragraph: Paragraph?, run = TextRun(""), collecting = false, links: [String: String] = [:], link: String?
+    let numbering = DOCXNumberingReader()
+    var styleLists: [String: StyleList] = [:]
+    var listID: String?, listLevel: Int?
     var inRun = false, sawDocument = false
     var files: [String: Data] = [:], targets: [String: String] = [:]
     var headerID: String?, footerID: String?
@@ -149,7 +180,7 @@ private class WordReader: NSObject, XMLParserDelegate {
         switch name {
         case "document": sawDocument = true
         case "p":
-            paragraph = Paragraph(); paragraph?.runs = []
+            paragraph = Paragraph(); paragraph?.runs = []; listID = nil; listLevel = nil
             if let t = tableIndex, row >= 0, column >= 0 { paragraph?.tableCell = TableCellReference(tableID: document.tables[t].id, row: row, column: column) }
         case "r": run = TextRun("", link: link); inRun = true
         case "t": collecting = true
@@ -159,9 +190,8 @@ private class WordReader: NSObject, XMLParserDelegate {
             else { run.text += "\u{2028}" }
         case "pStyle": paragraph?.styleID = wordAttribute(a) ?? "normal"
         case "pageBreakBefore": paragraph?.pageBreakBefore = flag(a)
-        case "numPr": paragraph?.list = ListDescriptor(kind: .decimal); warnings.insert("List numbering is approximated; custom numbering definitions are not imported.")
-        case "ilvl": paragraph?.list?.level = min(8, max(0, wordAttribute(a).flatMap(Int.init) ?? 0))
-        case "numId": if wordAttribute(a) == "1" { paragraph?.list?.kind = .bullet }
+        case "ilvl": listLevel = min(8, max(0, wordAttribute(a).flatMap(Int.init) ?? 0))
+        case "numId": listID = wordAttribute(a)
         case "jc", "spacing", "ind":
             if let p = paragraph {
                 var formatting = p.formatting ?? document.style(for: p).paragraph
@@ -227,7 +257,10 @@ private class WordReader: NSObject, XMLParserDelegate {
                 tableIndex = nil; row = -1; column = -1
             }
             tableDepth = max(0, tableDepth - 1)
-        case "p": if let p = paragraph { paragraphs.append(p) }; paragraph = nil
+        case "p":
+            let inherited = paragraph.flatMap { styleLists[$0.styleID] }
+            if let id = listID ?? inherited?.id { paragraph?.list = numbering.descriptor(id: id, level: listLevel ?? inherited?.level ?? 0) }
+            if let p = paragraph { paragraphs.append(p) }; paragraph = nil
         case "hyperlink": link = nil
         default: break
         }

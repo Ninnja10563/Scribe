@@ -65,6 +65,8 @@ import AppKit
         item(format, "Align Left", #selector(NSTextView.alignLeft(_:))); item(format, "Centre", #selector(NSTextView.alignCenter(_:))); item(format, "Align Right", #selector(NSTextView.alignRight(_:))); item(format, "Justify", #selector(NSTextView.alignJustified(_:)))
         format.addItem(.separator())
         item(format, "Bullet List", #selector(EditorWindowController.bulletList)); item(format, "Numbered List", #selector(EditorWindowController.numberedList))
+        item(format, "List Options…", #selector(EditorWindowController.listSettings))
+        item(format, "Continue Previous List", #selector(EditorWindowController.continueList))
         item(format, "Paragraph Spacing and Indents…", #selector(EditorWindowController.paragraphSettings))
         format.addItem(.separator()); item(format, "Modify Style…", #selector(EditorWindowController.editStyle)); item(format, "Create Style…", #selector(EditorWindowController.createStyle)); item(format, "Delete Custom Style", #selector(EditorWindowController.deleteStyle))
         let table = menu("Table")

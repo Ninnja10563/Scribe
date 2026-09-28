@@ -27,10 +27,12 @@ public enum NativeFormat {
         let version = try JSONDecoder().decode(Version.self, from: data).formatVersion
         guard (1...ScribeDocument.currentVersion).contains(version) else { throw DocumentError.unsupportedVersion(version) }
         var migrated = data
-        if version == 1 {
-            // Additive v1 → v2 migration occurs in memory; original bytes are never rewritten on open.
+        if version < ScribeDocument.currentVersion {
+            // Migrations occur in memory; opening never rewrites the original bytes.
             guard var json = try JSONSerialization.jsonObject(with: data) as? [String: Any] else { throw DocumentError.invalid("missing document object") }
-            json["formatVersion"] = 2; json["tables"] = []
+            if version == 1 { json["tables"] = [] }
+            // v2 → v3: absent seriesID/restart retain legacy contiguous-list semantics.
+            json["formatVersion"] = ScribeDocument.currentVersion
             migrated = try JSONSerialization.data(withJSONObject: json)
         }
         let document = try JSONDecoder().decode(ScribeDocument.self, from: migrated)
@@ -72,7 +74,7 @@ public enum NativeFormat {
         for p in paragraphs {
             guard document.styles.contains(where: { $0.id == p.styleID }) else { throw DocumentError.invalid("missing paragraph style") }
             guard !p.text.contains("\n"), !p.text.contains("\r") else { throw DocumentError.invalid("paragraph contains a line separator") }
-            if let list = p.list, !(0...8).contains(list.level) || list.start < 1 { throw DocumentError.invalid("invalid list") }
+            if let list = p.list, !(0...8).contains(list.level) || !(1...1_000_000).contains(list.start) { throw DocumentError.invalid("invalid list") }
             if let formatting = p.formatting { try validateParagraph(formatting) }
             if let cell = p.tableCell {
                 guard let table = document.tables.first(where: { $0.id == cell.tableID }),

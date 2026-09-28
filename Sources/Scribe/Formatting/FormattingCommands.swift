@@ -25,9 +25,12 @@ extension PaginatedEditor {
     }
     func applyList(_ list: ListDescriptor?) {
         let indices = selectedParagraphIndices()
+        let first = indices.min()
         owner?.performEdit("List") { model in
             for index in indices where model.sections[0].paragraphs.indices.contains(index) {
-                model.sections[0].paragraphs[index].list = list
+                var descriptor = list
+                if index != first { descriptor?.restart = nil }
+                model.sections[0].paragraphs[index].list = descriptor
             }
         }
     }
