@@ -112,19 +112,19 @@ public enum DOCX {
     }
 }
 
-private func value(_ a: [String: String], _ key: String = "val") -> String? { a["w:\(key)"] ?? a[key] }
-private func flag(_ a: [String: String]) -> Bool { !["0", "false", "off"].contains(value(a) ?? "1") }
+private func wordAttribute(_ a: [String: String], _ key: String = "val") -> String? { a["w:\(key)"] ?? a[key] }
+private func flag(_ a: [String: String]) -> Bool { !["0", "false", "off"].contains(wordAttribute(a) ?? "1") }
 private func applyRun(_ name: String, _ a: [String: String], _ f: inout TextFormatting) {
     switch name {
-    case "rFonts": f.fontFamily = value(a, "ascii") ?? value(a, "hAnsi")
-    case "sz": f.fontSize = value(a).flatMap(Double.init).map { $0 / 2 }
+    case "rFonts": f.fontFamily = wordAttribute(a, "ascii") ?? wordAttribute(a, "hAnsi")
+    case "sz": f.fontSize = wordAttribute(a).flatMap(Double.init).map { $0 / 2 }
     case "b": f.bold = flag(a)
     case "i": f.italic = flag(a)
-    case "u": f.underline = value(a) != "none"
+    case "u": f.underline = wordAttribute(a) != "none"
     case "strike": f.strikethrough = flag(a)
-    case "color": if let c = value(a), c != "auto" { f.foreground = "#" + c }
-    case "shd": if let c = value(a, "fill"), c != "auto" { f.highlight = "#" + c }
-    case "vertAlign": f.baseline = value(a) == "superscript" ? 1 : value(a) == "subscript" ? -1 : 0
+    case "color": if let c = wordAttribute(a), c != "auto" { f.foreground = "#" + c }
+    case "shd": if let c = wordAttribute(a, "fill"), c != "auto" { f.highlight = "#" + c }
+    case "vertAlign": f.baseline = wordAttribute(a) == "superscript" ? 1 : wordAttribute(a) == "subscript" ? -1 : 0
     default: break
     }
 }
@@ -137,12 +137,12 @@ private class RelationshipReader: NSObject, XMLParserDelegate {
 private class StyleReader: NSObject, XMLParserDelegate {
     var styles: [ParagraphStyle] = []; var current: ParagraphStyle?
     func parser(_ parser: XMLParser, didStartElement name: String, namespaceURI: String?, qualifiedName: String?, attributes a: [String: String]) {
-        if name == "style", value(a, "type") == "paragraph", let id = value(a, "styleId") {
+        if name == "style", wordAttribute(a, "type") == "paragraph", let id = wordAttribute(a, "styleId") {
             current = ParagraphStyle(id: id, name: id)
         }
         guard current != nil else { return }
-        if name == "name" { current?.name = value(a) ?? current!.name }
-        if name == "outlineLvl", let level = value(a).flatMap(Int.init), level < 9 { current?.headingLevel = level + 1 }
+        if name == "name" { current?.name = wordAttribute(a) ?? current!.name }
+        if name == "outlineLvl", let level = wordAttribute(a).flatMap(Int.init), level < 9 { current?.headingLevel = level + 1 }
         applyRun(name, a, &current!.text)
     }
     func parser(_ parser: XMLParser, didEndElement name: String, namespaceURI: String?, qualifiedName: String?) {
@@ -161,26 +161,26 @@ private class WordReader: NSObject, XMLParserDelegate {
         case "t": collecting = true
         case "tab": run.text += "\t"
         case "br":
-            if value(a, "type") == "page" { paragraph?.pageBreakBefore = true }
+            if wordAttribute(a, "type") == "page" { paragraph?.pageBreakBefore = true }
             else { run.text += "\u{2028}" }
-        case "pStyle": paragraph?.styleID = value(a) ?? "normal"
+        case "pStyle": paragraph?.styleID = wordAttribute(a) ?? "normal"
         case "pageBreakBefore": paragraph?.pageBreakBefore = flag(a)
         case "numPr": paragraph?.list = ListDescriptor(kind: .decimal); warnings.insert("List numbering is approximated; custom numbering definitions are not imported.")
-        case "ilvl": paragraph?.list?.level = min(8, max(0, value(a).flatMap(Int.init) ?? 0))
-        case "numId": if value(a) == "1" { paragraph?.list?.kind = .bullet }
+        case "ilvl": paragraph?.list?.level = min(8, max(0, wordAttribute(a).flatMap(Int.init) ?? 0))
+        case "numId": if wordAttribute(a) == "1" { paragraph?.list?.kind = .bullet }
         case "jc":
             if paragraph?.formatting == nil { paragraph?.formatting = ParagraphFormatting() }
-            paragraph?.formatting?.alignment = value(a) == "both" ? .justified : Alignment(rawValue: value(a) ?? "left") ?? .left
+            paragraph?.formatting?.alignment = wordAttribute(a) == "both" ? .justified : Alignment(rawValue: wordAttribute(a) ?? "left") ?? .left
         case "hyperlink": link = (a["r:id"] ?? a["id"]).flatMap { links[$0] }
         case "pgSz":
-            if let w = value(a, "w").flatMap(Double.init), let h = value(a, "h").flatMap(Double.init) {
+            if let w = wordAttribute(a, "w").flatMap(Double.init), let h = wordAttribute(a, "h").flatMap(Double.init) {
                 document.sections[0].page.width = w / 20; document.sections[0].page.height = h / 20
             }
         case "pgMar":
-            if let n = value(a, "top").flatMap(Double.init) { document.sections[0].page.top = n / 20 }
-            if let n = value(a, "bottom").flatMap(Double.init) { document.sections[0].page.bottom = n / 20 }
-            if let n = value(a, "left").flatMap(Double.init) { document.sections[0].page.left = n / 20 }
-            if let n = value(a, "right").flatMap(Double.init) { document.sections[0].page.right = n / 20 }
+            if let n = wordAttribute(a, "top").flatMap(Double.init) { document.sections[0].page.top = n / 20 }
+            if let n = wordAttribute(a, "bottom").flatMap(Double.init) { document.sections[0].page.bottom = n / 20 }
+            if let n = wordAttribute(a, "left").flatMap(Double.init) { document.sections[0].page.left = n / 20 }
+            if let n = wordAttribute(a, "right").flatMap(Double.init) { document.sections[0].page.right = n / 20 }
         case "tbl": warnings.insert("Table cells are imported as sequential paragraphs; table geometry is not retained.")
         case "drawing", "pict": warnings.insert("Images and drawings are not imported in this version.")
         case "headerReference", "footerReference": warnings.insert("Headers and footers are not imported in this version.")

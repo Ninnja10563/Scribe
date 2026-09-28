@@ -36,7 +36,7 @@ public enum ZipArchive {
                i + 22 + Int(try data.read16(i + 20)) == data.count { end = i; break }
         }
         guard let end else { throw ArchiveError.invalid("missing directory") }
-        guard try data.read16(end + 4) == 0, data.read16(end + 6) == 0 else { throw ArchiveError.invalid("multi-disk archive") }
+        guard try data.read16(end + 4) == 0, try data.read16(end + 6) == 0 else { throw ArchiveError.invalid("multi-disk archive") }
         let count = Int(try data.read16(end + 10))
         guard count <= 4096 else { throw ArchiveError.invalid("too many entries") }
         var cursor = Int(try data.read32(end + 16)), result: [String: Data] = [:], total = 0
