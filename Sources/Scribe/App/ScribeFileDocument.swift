@@ -19,11 +19,25 @@ import ImportExport
         editorController = controller; addWindowController(controller)
     }
     func snapshot() -> ScribeDocument {
-        if let editor = editorController?.editor { model = AttributedDocument.capture(editor.storage, preserving: model) }
+        if let editor = editorController?.editor {
+            model = AttributedDocument.capture(editor.storage, preserving: model)
+            var offset = 0
+            editor.storage.beginEditing()
+            for (index, component) in editor.storage.string.components(separatedBy: "\n").enumerated() {
+                let length = min((component as NSString).length + 1, editor.storage.length - offset)
+                if length > 0 { editor.storage.addAttribute(.scribeParagraphID, value: model.paragraphs[index].id.uuidString, range: NSRange(location: offset, length: length)) }
+                offset += (component as NSString).length + 1
+            }
+            editor.storage.endEditing()
+        }
         return model
     }
     override func data(ofType typeName: String) throws -> Data { try NativeFormat.encode(snapshot()) }
-    override func read(from data: Data, ofType typeName: String) throws { model = try NativeFormat.decode(data) }
+    override func read(from data: Data, ofType typeName: String) throws {
+        let decoded = try NativeFormat.decode(data)
+        guard decoded.sections.count == 1 else { throw DocumentError.invalid("this version cannot edit multiple native sections without losing their layout") }
+        model = decoded
+    }
     func didEdit() {
         guard !isRestoring else { return }
         updateChangeCount(.changeDone)
