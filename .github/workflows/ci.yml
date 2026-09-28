@@ -28,7 +28,7 @@ jobs:
       - name: Diagnose failed native tests with Objective-C zombies
         if: failure()
         env:
-          NSZombieEnabled: YES
+          NSZombieEnabled: "YES"
         run: |
           if test -d .build/debug/ScribePackageTests.xctest; then
             swift test --skip-build
