@@ -2,6 +2,12 @@
 
 A native document-authoring application for Apple Silicon Macs, built with Swift and AppKit. This repository is an early foundation for a professional word processor, not a finished Word or Pages replacement.
 
+[Download Scribe 0.2.0 for Apple Silicon](https://github.com/Ninnja10563/Scribe/releases/tag/v0.2.0) · [Feature status](docs/FEATURES.md)
+
+![Scribe's native document window with a table and inline image](docs/images/scribe-light.png)
+
+[View the dark appearance](docs/images/scribe-dark.png). These are captures of the running macOS application.
+
 Requires **macOS 14+**, an **Apple Silicon Mac**, and **Swift 6** to build.
 
 ```sh
