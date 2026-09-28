@@ -4,8 +4,12 @@ import DocumentCore
 
 extension EditorWindowController {
     @objc func toggleComments() {
-        commentsSidebar.isHidden.toggle()
-        if !commentsSidebar.isHidden { commentsSidebar.reload(fileDocument.snapshot()) }
+        if commentsSidebar.isHidden {
+            commentsSidebar.isHidden = false; commentsSidebar.reload(fileDocument.snapshot()); commentsSidebar.focusList()
+        } else { hideComments() }
+    }
+    func hideComments() {
+        commentsSidebar.isHidden = true; window?.makeFirstResponder(editor.activeTextView)
     }
     @objc func addComment() {
         let model = fileDocument.snapshot(), selection = editor.activeTextView.selectedRange()

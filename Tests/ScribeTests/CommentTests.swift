@@ -113,6 +113,12 @@ import DocumentCore
         resolve.performClick(nil)
         XCTAssertTrue(controller.window?.firstResponder === table)
         XCTAssertTrue(document.snapshot().comments[0].resolved)
+        controller.toggleComments()
+        XCTAssertTrue(sidebar.isHidden)
+        XCTAssertTrue(controller.window?.firstResponder === controller.editor.activeTextView)
+        controller.toggleComments()
+        XCTAssertFalse(sidebar.isHidden)
+        XCTAssertTrue(controller.window?.firstResponder === table)
     }
     func testSidebarResolveReopenDeleteAndUndo() throws {
         let document = ScribeFileDocument(); let p = Paragraph("Review this text")

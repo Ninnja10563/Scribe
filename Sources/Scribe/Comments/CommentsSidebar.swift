@@ -89,7 +89,8 @@ import DocumentCore
         resolve.title = comment?.resolved == true ? "Reopen" : "Resolve"
     }
     @objc private func addComment() { owner?.addComment() }
-    @objc private func closeComments() { isHidden = true }
+    func focusList() { window?.makeFirstResponder(table) }
+    @objc private func closeComments() { owner?.hideComments() }
     @objc private func changeFilter() { if let owner { reload(owner.fileDocument.snapshot()) } }
     @objc private func editComment() { if let comment = selectedComment { owner?.editComment(comment) } }
     @objc private func resolveComment() {
