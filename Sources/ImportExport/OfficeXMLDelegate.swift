@@ -40,6 +40,10 @@ final class OfficeXMLDelegate: NSObject, XMLParserDelegate {
         receiver.parser(parser, didEndElement: name, namespaceURI: namespaceURI, qualifiedName: qualifiedName)
         #endif
     }
+    func parser(_ parser: XMLParser, foundCDATA data: Data) {
+        guard let text = String(data: data, encoding: .utf8) else { parser.abortParsing(); return }
+        self.parser(parser, foundCharacters: text)
+    }
     func parser(_ parser: XMLParser, foundCharacters text: String) {
         #if canImport(ObjectiveC)
         receiver.parser?(parser, foundCharacters: text)

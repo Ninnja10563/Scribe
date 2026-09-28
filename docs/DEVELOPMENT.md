@@ -7,7 +7,7 @@ Inspected on 28 September 2026. HEAD was `6591ce4` (Initial commit). The entire 
 ## Architecture decisions
 
 - Swift Package Manager, Swift 6 toolchain, macOS 14 minimum, Apple Silicon release builds. Swift 5 language mode currently avoids making the AppKit integration contingent on a full Swift 6 concurrency audit.
-- DocumentCore is Foundation-only: semantic paragraphs/runs, sections/page settings, stable IDs, named styles with direct overrides, comments/bookmark anchor types, search, validation, atomic native saves, and recovery storage. Comments/bookmarks are schema groundwork, not user-facing features yet.
+- DocumentCore is Foundation-only: semantic paragraphs/runs, sections/page settings, stable IDs, named styles with direct overrides, comments/bookmark anchor types, search, validation, atomic native saves, and recovery storage. Comments are implemented with native editing associations; bookmarks remain schema groundwork.
 - ImportExport implements actual OPC ZIP/XML for a limited DOCX subset, without launching third-party converters. Stored and DEFLATE ZIP inputs are supported. Paths are never extracted to disk. CRC checks, size limits, duplicate path rejection and disabled external XML entities constrain hostile files.
 - AppKit owns windows, responders, NSDocument lifecycle, selection, input methods, accessibility, rich clipboard, spelling and undo. A shared NSTextStorage feeds an NSLayoutManager with fixed-size linked NSTextContainers. Containers are physical writing areas, not independent text boxes. TextKit determines glyph overflow and page boundaries.
 - TextKit 1 is a deliberate initial choice: its linked container/text view support provides a proven native pagination path. TextKit 2 viewport layout is a future profiling-led migration, not an assumption that modern API names alone guarantee professional pagination.
@@ -20,7 +20,7 @@ Inspected on 28 September 2026. HEAD was `6591ce4` (Initial commit). The entire 
 2. **Editing hardening:** manual IME/VoiceOver/selection/undo testing, list behavior, clipboard provenance, incremental paragraph projection, page virtualization, long-document profiling.
 3. **Structured objects:** basic cell operations, embedded assets, accessible inline images and proportional geometry editing are delivered in v0.2, with a native v1→v2 migration. Remaining work includes merge/split, floating anchors/exclusion paths, shapes, and more table-layout coverage.
 4. **Document structure:** independent sections, editable running content, page fields, TOC, bookmarks, links, footnote/endnote layout and reference numbering.
-5. **Review:** anchored comments with edit transforms, reversible tracked operations, acceptance/rejection, modular grammar engines.
+5. **Review:** anchored comments with edit transforms and a native sidebar are delivered in v0.4. Reversible tracked operations, acceptance/rejection and grammar engines remain future work.
 6. **Interoperability:** Word/Pages/LibreOffice fixture corpus, table/image/numbering/section/header relationships, OOXML preservation of unsupported parts where safe, Markdown syntax coverage, PDF links and export options.
 7. **Distribution:** Developer ID signing and notarization once credentials are available, update strategy, crash reporting with consent and privacy controls.
 

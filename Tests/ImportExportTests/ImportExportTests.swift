@@ -68,6 +68,18 @@ final class ImportExportTests: XCTestCase {
         XCTAssertEqual(result.document.sections[0].header, "Research")
         XCTAssertEqual(result.document.sections[0].footer, "Confidential")
     }
+    func testNamespaceRebindingCannotMasqueradeAsWordAttributesAndCDATAIsPreserved() throws {
+        let xml = """
+        <doc:document xmlns:doc="\(DOCX.wordNS)" xmlns:w="urn:unrelated">
+          <doc:body><doc:p><doc:pPr><doc:pStyle w:val="heading1"/></doc:pPr>
+            <doc:r><doc:t><![CDATA[<kept> & café 東京]]></doc:t></doc:r>
+          </doc:p></doc:body>
+        </doc:document>
+        """
+        let result = try DOCX.decode(ZipArchive.encode(["word/document.xml": Data(xml.utf8)]))
+        XCTAssertEqual(result.document.plainText, "<kept> & café 東京")
+        XCTAssertEqual(result.document.paragraphs[0].styleID, "normal")
+    }
     func testMalformedXMLFails() throws {
         let data = try ZipArchive.encode(["word/document.xml": Data("<document>".utf8)])
         XCTAssertThrowsError(try DOCX.decode(data))
