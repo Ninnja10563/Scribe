@@ -4,6 +4,11 @@ import DocumentCore
 
 @MainActor final class ScribeTextView: NSTextView {
     weak var editor: PaginatedEditor?
+    override func becomeFirstResponder() -> Bool {
+        let accepted = super.becomeFirstResponder()
+        if accepted { editor?.rememberSelection(self) }
+        return accepted
+    }
     override func draw(_ dirtyRect: NSRect) { super.draw(dirtyRect); drawImageSelection() }
     override func mouseDown(with event: NSEvent) { if !resizeImageIfNeeded(with: event) { super.mouseDown(with: event) } }
     override func insertText(_ insertString: Any, replacementRange: NSRange) {

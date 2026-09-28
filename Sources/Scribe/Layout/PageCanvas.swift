@@ -64,7 +64,7 @@ import DocumentCore
     private(set) var revision = 0
     var zoom: CGFloat = 1 { didSet { scrollView.setMagnification(zoom, centeredAt: scrollView.documentVisibleRect.origin); resizeCanvas() } }
     var activeTextView: ScribeTextView {
-        if let focused = canvas.window?.firstResponder as? ScribeTextView { return focused }
+        if let focused = canvas.window?.firstResponder as? ScribeTextView, focused.editor === self { return focused }
         if let selected = selectionView, selected.superview === canvas { return selected }
         return textViews.first!
     }
@@ -182,8 +182,11 @@ import DocumentCore
         relayout = job; DispatchQueue.main.asyncAfter(deadline: .now() + 0.04, execute: job)
         onChange?()
     }
+    func rememberSelection(_ view: ScribeTextView) { selectionView = view }
     func textViewDidChangeSelection(_ notification: Notification) {
-        if let view = notification.object as? ScribeTextView { selectionView = view }
+        // Linked text views broadcast the same selection. Only the focused view identifies
+        // its page reliably; passive navigation records its target explicitly in select().
+        if let view = notification.object as? ScribeTextView, canvas.window?.firstResponder === view { selectionView = view }
         onSelection?()
     }
     func undoManager(for view: NSTextView) -> UndoManager? { owner?.undoManager }
@@ -208,6 +211,7 @@ import DocumentCore
         if focus { canvas.window?.makeFirstResponder(view) }
         let safeRange = NSRange(location: range.location, length: min(range.length, storage.length - range.location))
         view.setSelectedRange(safeRange); view.scrollRangeToVisible(safeRange)
+        selectionView = view; onSelection?()
     }
     func jump(to id: UUID) {
         var found: NSRange?
