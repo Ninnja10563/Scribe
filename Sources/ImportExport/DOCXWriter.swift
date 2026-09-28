@@ -33,7 +33,7 @@ final class DOCXWriter {
                 guard !text.isEmpty || numbering != nil else { continue }
                 let kind = isHeader ? "header" : "footer", root = isHeader ? "hdr" : "ftr"
                 let path = "\(kind)\(index + 1).xml"
-                var content = "<w:p><w:r><w:t xml:space=\"preserve\">\(DOCX.xml(text))</w:t></w:r></w:p>"
+                var content = text.isEmpty ? "" : "<w:p><w:r><w:rPr><w:sz w:val=\"18\"/></w:rPr><w:t xml:space=\"preserve\">\(DOCX.xml(text))</w:t></w:r></w:p>"
                 if let numbering {
                     let alignment = [.topCenter, .bottomCenter].contains(numbering.position) ? "center" : [.topRight, .bottomRight].contains(numbering.position) ? "right" : "left"
                     let page = "<w:fldSimple w:instr=\"PAGE\"><w:r><w:t>\(numbering.start)</w:t></w:r></w:fldSimple>"
@@ -66,10 +66,12 @@ final class DOCXWriter {
         }.joined()
         put("word/numbering.xml", "<w:numbering xmlns:w=\"\(DOCX.wordNS)\">\(numbering)</w:numbering>")
         _ = relationship(type: "numbering", target: "numbering.xml")
+        put("word/settings.xml", "<w:settings xmlns:w=\"\(DOCX.wordNS)\"><w:updateFields w:val=\"true\"/></w:settings>")
+        _ = relationship(type: "settings", target: "settings.xml")
         put("word/_rels/document.xml.rels", "<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\">\(relationships.joined())</Relationships>")
         put("_rels/.rels", "<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\"><Relationship Id=\"document\" Type=\"\(DOCX.relationNS)/officeDocument\" Target=\"word/document.xml\"/></Relationships>")
         let images = [("png", "image/png"), ("jpg", "image/jpeg"), ("jpeg", "image/jpeg"), ("tiff", "image/tiff"), ("heic", "image/heic")].map { "<Default Extension=\"\($0.0)\" ContentType=\"\($0.1)\"/>" }.joined()
-        let standard = [("document", "document.main"), ("styles", "styles"), ("numbering", "numbering")].map { "<Override PartName=\"/word/\($0.0).xml\" ContentType=\"application/vnd.openxmlformats-officedocument.wordprocessingml.\($0.1)+xml\"/>" }.joined()
+        let standard = [("document", "document.main"), ("styles", "styles"), ("numbering", "numbering"), ("settings", "settings")].map { "<Override PartName=\"/word/\($0.0).xml\" ContentType=\"application/vnd.openxmlformats-officedocument.wordprocessingml.\($0.1)+xml\"/>" }.joined()
         put("[Content_Types].xml", "<Types xmlns=\"http://schemas.openxmlformats.org/package/2006/content-types\"><Default Extension=\"rels\" ContentType=\"application/vnd.openxmlformats-package.relationships+xml\"/><Default Extension=\"xml\" ContentType=\"application/xml\"/>\(images)\(standard)\(overrides.joined())</Types>")
         return try ZipArchive.encode(parts)
     }

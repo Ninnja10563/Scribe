@@ -18,4 +18,13 @@ Automated tests do not establish interactive usability. Before a production rele
 - 10/50/100/200+ page typing latency, scrolling, memory and Instruments profiling; no current latency guarantee.
 - PDF visual comparison and printer output; Word/Pages/LibreOffice opening exported DOCX.
 
-Results from the current development run will be recorded after CI completes. Do not confuse a configured test with a passed test.
+## Recorded development results (28 September 2026)
+
+- Latest Linux ARM64 verification: 20 core/interchange tests passed; the AppKit-only target was explicitly skipped. A stale incremental build following a public struct-layout change initially crashed; cleaning the build resolved it. Native CI always uses a fresh checkout/build.
+- macOS run [36402947038](https://github.com/Ninnja10563/Scribe/actions/runs/36402947038) passed 28 tests, including native document factory creation/save/reopen, formatting undo/redo, search navigation after deletion, tables, images and PDF link annotations. Subsequent tests add malformed-image preservation and combining-mark boundaries.
+- The same macOS run built an arm64 app and verified DMG, launched the app, saved a 14-page native document, exported DOCX/PDF, and captured light/dark window images. The actual captures were visually inspected.
+- An independent python-docx reader opened the exported DOCX and verified the table cells and inline image. This is not a Microsoft Word compatibility certification.
+- The downloaded DMG's SHA-256 digest matched the generated checksum.
+- The 256-page native benchmark initially measured ~0.9 seconds for initial layout and ~190 ms for an edit near the end. After restarting layout near the edited page and eliminating repeated paragraph flattening, the cited run measured **0.730 seconds initial layout and 3.9 ms for the end edit**. These are debug-build timings on a hosted macOS runner, not an end-to-end input-latency guarantee. Editing near the beginning, complex objects, and physical-Mac memory/scrolling behavior need further profiling.
+
+Developer ID signing, notarization, physical-Mac input/VoiceOver testing, and manual Word/Pages/LibreOffice round trips have not been completed.

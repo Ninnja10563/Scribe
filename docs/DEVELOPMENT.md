@@ -18,7 +18,7 @@ Inspected on 28 September 2026. HEAD was `6591ce4` (Initial commit). The entire 
 
 1. **Native foundation:** buildable application, styled paragraphs, flowing pages, native lifecycle, file validation, basic interoperability, release automation.
 2. **Editing hardening:** manual IME/VoiceOver/selection/undo testing, list behavior, clipboard provenance, incremental paragraph projection, page virtualization, long-document profiling.
-3. **Structured objects:** tables with cell operations and spanning, embedded assets, accessible inline images, editable geometry, floating anchors/exclusion paths, shapes. These require model and undo migrations before UI exposure.
+3. **Structured objects:** basic cell operations, embedded assets, accessible inline images and proportional geometry editing are delivered in v0.2, with a native v1→v2 migration. Remaining work includes merge/split, floating anchors/exclusion paths, shapes, and more table-layout coverage.
 4. **Document structure:** independent sections, editable running content, page fields, TOC, bookmarks, links, footnote/endnote layout and reference numbering.
 5. **Review:** anchored comments with edit transforms, reversible tracked operations, acceptance/rejection, modular grammar engines.
 6. **Interoperability:** Word/Pages/LibreOffice fixture corpus, table/image/numbering/section/header relationships, OOXML preservation of unsupported parts where safe, Markdown syntax coverage, PDF links and export options.

@@ -84,9 +84,9 @@ import DocumentCore
         let title = NSTextField(labelWithString: "OUTLINE"); title.font = .systemFont(ofSize: 10, weight: .semibold); title.textColor = .secondaryLabelColor
         let hint = outlineHint
         hint.font = .systemFont(ofSize: 11); hint.textColor = .secondaryLabelColor
-        let scroll = NSScrollView(); scroll.hasVerticalScroller = true; scroll.drawsBackground = false
+        let scroll = NSScrollView(); scroll.hasVerticalScroller = true; scroll.autohidesScrollers = true; scroll.drawsBackground = true; scroll.backgroundColor = .windowBackgroundColor
         let column = NSTableColumn(identifier: NSUserInterfaceItemIdentifier("heading")); outline.addTableColumn(column)
-        outline.headerView = nil; outline.backgroundColor = .clear; outline.rowHeight = 30
+        outline.headerView = nil; outline.backgroundColor = .windowBackgroundColor; outline.rowHeight = 30
         outline.style = .sourceList; outline.delegate = self; outline.dataSource = self
         outline.target = self; outline.action = #selector(selectHeading); outline.setAccessibilityLabel("Document outline")
         scroll.documentView = outline

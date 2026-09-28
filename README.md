@@ -16,7 +16,7 @@ To create a drag-to-Applications installer:
 ./scripts/build-dmg.sh
 ```
 
-On Linux, the document-core and import/export tests can run with `swift test`; the macOS editor is only built and exercised on macOS. No Electron or web runtime is used.
+On Linux, install Swift 6 plus the zlib development headers (`zlib1g-dev` on Debian/Ubuntu). The document-core and import/export tests can run with `swift test`; the macOS editor is only built and exercised on macOS. No Electron or web runtime is used.
 
 ## Current capabilities
 
