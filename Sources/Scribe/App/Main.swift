@@ -98,7 +98,12 @@ import ImportExport
             try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
             try NativeFormat.save(document.snapshot(), to: folder.appendingPathComponent("Smoke.scribe"))
             try PrintRenderer(editor: controller.editor).exportPDF(to: folder.appendingPathComponent("Smoke.pdf"), title: "Scribe Smoke Test", author: "Scribe")
-            try DOCX.encode(document.snapshot()).write(to: folder.appendingPathComponent("Smoke.docx"))
+            let exportModel = document.snapshot(), wordBytes = try DOCX.encode(document.snapshot())
+            try wordBytes.write(to: folder.appendingPathComponent("Smoke.docx"))
+            let imported = try DOCX.decode(wordBytes).document
+            guard imported.plainText == exportModel.plainText, imported.comments.map(\.text) == exportModel.comments.map(\.text), imported.comments.map(\.resolved) == exportModel.comments.map(\.resolved) else {
+                throw DocumentError.invalid("release-build DOCX import did not preserve text and review data")
+            }
             try PrintRenderer(editor: controller.editor).exportPDF(to: folder.appendingPathComponent("Selected-pages.pdf"), title: "Selected pages", author: "Scribe", pages: [0, controller.editor.textViews.count - 1], subject: "Range export", keywords: ["Scribe", "validation"])
             let pages = controller.editor.textViews.count
             guard pages > 1 else { fatalError("Text did not paginate") }
@@ -115,7 +120,7 @@ import ImportExport
                 view.cacheDisplay(in: view.bounds, to: bitmap)
                 if let png = bitmap.representation(using: .png, properties: [:]) { try png.write(to: folder.appendingPathComponent("Scribe-Dark.png")) }
             }
-            print("Scribe launch smoke test passed: \(pages) pages, native save, PDF and window rendering")
+            print("Scribe launch smoke test passed: \(pages) pages, native save, DOCX re-import, PDF and window rendering")
             NSApp.terminate(nil)
         } catch { fputs("Smoke test failed: \(error)\n", stderr); exit(1) }
     }

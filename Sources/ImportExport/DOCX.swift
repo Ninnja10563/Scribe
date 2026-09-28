@@ -79,7 +79,8 @@ public enum DOCX {
         let parser = XMLParser(data: data); parser.shouldProcessNamespaces = true
         let normalizer = OfficeXMLDelegate(receiver: delegate)
         parser.shouldResolveExternalEntities = false; parser.shouldReportNamespacePrefixes = true; parser.delegate = normalizer
-        guard parser.parse(), parser.parserError == nil else { throw DocumentError.invalid("malformed Office XML") }
+        let parsed = withExtendedLifetime(normalizer) { parser.parse() }
+        guard parsed, parser.parserError == nil else { throw DocumentError.invalid("malformed Office XML") }
     }
     static func xml(_ s: String) -> String {
         s.replacingOccurrences(of: "&", with: "&amp;").replacingOccurrences(of: "<", with: "&lt;")
