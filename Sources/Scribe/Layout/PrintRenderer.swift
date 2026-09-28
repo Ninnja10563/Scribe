@@ -1,5 +1,6 @@
 #if canImport(AppKit)
 import AppKit
+import PDFKit
 import DocumentCore
 
 /// Screen, print and PDF share the same glyph layout and physical page dimensions.
@@ -37,6 +38,27 @@ import DocumentCore
         (editor.canvas.header as NSString).draw(at: NSPoint(x: p.left, y: 30), withAttributes: attrs)
         editor.canvas.drawPageNumber(index: index, origin: .zero)
         (editor.canvas.footer as NSString).draw(at: NSPoint(x: p.left, y: p.height - 38), withAttributes: attrs)
+    }
+    private func removingPrivateURLAnnotations(from data: Data) throws -> Data {
+        var hasInternalLinks = false
+        editor.storage.enumerateAttribute(.link, in: NSRange(location: 0, length: editor.storage.length)) { value, _, stop in
+            let url = (value as? URL) ?? (value as? String).flatMap(URL.init(string:))
+            if url?.scheme?.lowercased() == "scribe" { hasInternalLinks = true; stop.pointee = true }
+        }
+        guard hasInternalLinks else { return data }
+        guard let pdf = PDFDocument(data: data) else { throw DocumentError.invalid("could not finalize PDF links") }
+        var changed = false
+        for index in 0..<pdf.pageCount {
+            guard let page = pdf.page(at: index) else { continue }
+            // AppKit emits URL annotations while drawing linked glyphs. The private
+            // native scheme is replaced by the actual PDF destinations authored below.
+            for annotation in page.annotations where (annotation.action as? PDFActionURL)?.url.scheme?.lowercased() == "scribe" {
+                page.removeAnnotation(annotation); changed = true
+            }
+        }
+        guard changed else { return data }
+        guard let result = pdf.dataRepresentation() else { throw DocumentError.invalid("could not finalize PDF links") }
+        return result
     }
     private func internalDestinations(in selected: Set<Int>) -> [UUID: (page: Int, point: CGPoint)] {
         let full = NSRange(location: 0, length: editor.storage.length)
@@ -99,7 +121,8 @@ import DocumentCore
             }
             context.endPDFPage()
         }
-        context.closePDF(); try (data as Data).write(to: url, options: .atomic)
+        context.closePDF()
+        try removingPrivateURLAnnotations(from: data as Data).write(to: url, options: .atomic)
     }
 }
 #endif

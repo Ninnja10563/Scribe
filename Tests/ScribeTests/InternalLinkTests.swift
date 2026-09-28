@@ -48,7 +48,6 @@ import DocumentCore
         let renderer = PrintRenderer(editor: editor)
         try renderer.exportPDF(to: fullURL, title: "Links", author: "")
         let pdf = try XCTUnwrap(PDFDocument(url: fullURL))
-        print("Internal PDF annotations:", pdf.page(at: 0)?.annotations.map { ($0.type ?? "", String(describing: $0.action), String(describing: $0.destination)) } ?? [])
         let annotation = try XCTUnwrap(pdf.page(at: 0)?.annotations.first)
         let destination = annotation.destination ?? (annotation.action as? PDFActionGoTo)?.destination
         XCTAssertTrue(try XCTUnwrap(destination?.page) === pdf.page(at: 1))
