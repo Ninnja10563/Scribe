@@ -20,6 +20,13 @@ jobs:
         env:
           SCRIBE_SCHEMA_OUTPUT: build/schema
         run: swift test
+      - name: Retain test export diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Test-exports
+          path: build/schema/
+          if-no-files-found: ignore
       - name: Check release version
         if: startsWith(github.ref, 'refs/tags/v')
         run: test "$GITHUB_REF_NAME" = "v$(/usr/libexec/PlistBuddy -c 'Print CFBundleShortVersionString' Resources/Info.plist)"

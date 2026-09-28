@@ -39,12 +39,16 @@ import DocumentCore
         XCTAssertEqual(document.snapshot().paragraphs[0].runs[0].link, DocumentLink.paragraph(heading.id))
         XCTAssertTrue(editor.textView(editor.activeTextView, clickedOnLink: DocumentLink.paragraph(heading.id), at: 0))
         XCTAssertEqual(editor.activeTextView.selectedRange().location, (editor.storage.string as NSString).range(of: "Destination").location)
-        let fullURL = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".pdf")
-        let partialURL = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".pdf")
-        defer { try? FileManager.default.removeItem(at: fullURL); try? FileManager.default.removeItem(at: partialURL) }
+        let diagnostics = ProcessInfo.processInfo.environment["SCRIBE_SCHEMA_OUTPUT"]
+        let directory = diagnostics.map { URL(fileURLWithPath: $0, isDirectory: true) } ?? FileManager.default.temporaryDirectory
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let fullURL = directory.appendingPathComponent("HeadingLinks.pdf")
+        let partialURL = directory.appendingPathComponent("HeadingLinks-partial.pdf")
+        defer { if diagnostics == nil { try? FileManager.default.removeItem(at: fullURL); try? FileManager.default.removeItem(at: partialURL) } }
         let renderer = PrintRenderer(editor: editor)
         try renderer.exportPDF(to: fullURL, title: "Links", author: "")
         let pdf = try XCTUnwrap(PDFDocument(url: fullURL))
+        print("Internal PDF annotations:", pdf.page(at: 0)?.annotations.map { ($0.type ?? "", String(describing: $0.action), String(describing: $0.destination)) } ?? [])
         let annotation = try XCTUnwrap(pdf.page(at: 0)?.annotations.first)
         let destination = annotation.destination ?? (annotation.action as? PDFActionGoTo)?.destination
         XCTAssertTrue(try XCTUnwrap(destination?.page) === pdf.page(at: 1))
