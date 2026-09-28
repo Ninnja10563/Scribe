@@ -6,6 +6,18 @@ import DocumentCore
     weak var editor: PaginatedEditor?
     override func draw(_ dirtyRect: NSRect) { super.draw(dirtyRect); drawImageSelection() }
     override func mouseDown(with event: NSEvent) { if !resizeImageIfNeeded(with: event) { super.mouseDown(with: event) } }
+    override func insertText(_ insertString: Any, replacementRange: NSRange) {
+        let range = replacementRange.location == NSNotFound ? selectedRange() : replacementRange
+        let ids = commentIDs(forReplacement: range)
+        if ids.isEmpty { typingAttributes.removeValue(forKey: .scribeComments) }
+        else { typingAttributes[.scribeComments] = ids }
+        if let attributed = insertString as? NSAttributedString {
+            let value = NSMutableAttributedString(attributedString: attributed)
+            value.removeAttribute(.scribeComments, range: NSRange(location: 0, length: value.length))
+            if !ids.isEmpty { value.addAttribute(.scribeComments, value: ids, range: NSRange(location: 0, length: value.length)) }
+            super.insertText(value, replacementRange: replacementRange)
+        } else { super.insertText(insertString, replacementRange: replacementRange) }
+    }
     override func menu(for event: NSEvent) -> NSMenu? {
         let menu = super.menu(for: event) ?? NSMenu()
         menu.addItem(.separator()); menu.addItem(NSMenuItem(title: "Add Comment…", action: #selector(EditorWindowController.addComment), keyEquivalent: ""))

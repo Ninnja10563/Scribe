@@ -9,7 +9,8 @@ final class DOCXWriter {
     private var nextID = 1
     private let document: ScribeDocument
     private let numbering: DOCXNumberingWriter
-    init(_ document: ScribeDocument) { self.document = document; numbering = DOCXNumberingWriter(paragraphs: document.paragraphs) }
+    private let comments: DOCXCommentsWriter
+    init(_ document: ScribeDocument) { self.document = document; numbering = DOCXNumberingWriter(paragraphs: document.paragraphs); comments = DOCXCommentsWriter(document: document) }
     private func put(_ path: String, _ xml: String) { parts[path] = Data(xml.utf8) }
     private func relationship(type: String, target: String, external: Bool = false) -> String {
         let id = "rId\(nextID)"; nextID += 1
@@ -61,6 +62,11 @@ final class DOCXWriter {
         _ = relationship(type: "styles", target: "styles.xml")
         put("word/numbering.xml", numbering.xml)
         _ = relationship(type: "numbering", target: "numbering.xml")
+        if !document.comments.isEmpty {
+            put("word/comments.xml", comments.xml)
+            _ = relationship(type: "comments", target: "comments.xml")
+            overrides.append("<Override PartName=\"/word/comments.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.wordprocessingml.comments+xml\"/>")
+        }
         put("word/settings.xml", "<w:settings xmlns:w=\"\(DOCX.wordNS)\"><w:updateFields w:val=\"true\"/></w:settings>")
         _ = relationship(type: "settings", target: "settings.xml")
         put("word/_rels/document.xml.rels", "<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\">\(relationships.joined())</Relationships>")
@@ -78,14 +84,27 @@ final class DOCXWriter {
             let id = numbering.paragraphIDs[p.id]!
             properties += "<w:numPr><w:ilvl w:val=\"\(list.level)\"/><w:numId w:val=\"\(id)\"/></w:numPr>"
         }
-        let runs = p.runs.map { run -> String in
+        var text = "", offset = 0
+        let boundaries = comments.boundaries(paragraphID: p.id)
+        for run in p.runs {
+            let length = (run.text as NSString).length
+            let cuts = [offset] + boundaries.filter { $0 > offset && $0 < offset + length } + [offset + length]
+            for (start, end) in zip(cuts, cuts.dropFirst()) where end > start {
+                text += comments.markers(paragraphID: p.id, offset: start)
+                var fragment = run; fragment.text = (run.text as NSString).substring(with: NSRange(location: start - offset, length: end - start))
+                text += runXML(fragment)
+            }
+            offset += length
+        }
+        text += comments.markers(paragraphID: p.id, offset: offset)
+        return "<w:p><w:pPr>\(properties)</w:pPr>\(text)</w:p>"
+    }
+    private func runXML(_ run: TextRun) -> String {
             if let image = run.image { return imageRun(image) }
             let text = DOCX.xml(run.text).replacingOccurrences(of: "\t", with: "</w:t><w:tab/><w:t xml:space=\"preserve\">").replacingOccurrences(of: "\u{2028}", with: "</w:t><w:br/><w:t xml:space=\"preserve\">")
             let content = "<w:r><w:rPr>\(DOCX.runProperties(run.format))</w:rPr><w:t xml:space=\"preserve\">\(text)</w:t></w:r>"
             guard let link = run.link else { return content }
             return "<w:hyperlink r:id=\"\(relationship(type: "hyperlink", target: link, external: true))\">\(content)</w:hyperlink>"
-        }.joined()
-        return "<w:p><w:pPr>\(properties)</w:pPr>\(runs)</w:p>"
     }
     private func table(_ table: DocumentTable, paragraphs: [Paragraph]) -> String {
         let borders = ["top", "left", "bottom", "right", "insideH", "insideV"].map { "<w:\($0) w:val=\"single\" w:sz=\"\(Int(table.borderWidth * 8))\" w:color=\"\(table.borderColor.dropFirst())\"/>" }.joined()

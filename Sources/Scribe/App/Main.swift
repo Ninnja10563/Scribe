@@ -27,7 +27,9 @@ import ImportExport
                 if alert.runModal() == .alertFirstButtonReturn {
                     let document = ScribeFileDocument(); document.model = snapshot.document
                     document.model.title += " — Recovered"
-                    documents.addDocument(document); document.makeWindowControllers(); document.showWindows(); document.updateChangeCount(.changeDone)
+                    let reviewed = document.model.paragraphs[2]
+            document.model.comments = [Comment(anchor: TextAnchor(paragraphID: reviewed.id, offset: 0, length: (reviewed.text as NSString).length), text: "Check the section structure before sharing this draft.\nThe outline and page layout should agree.", author: "Scribe reviewer")]
+            documents.addDocument(document); document.makeWindowControllers(); document.showWindows(); document.updateChangeCount(.changeDone)
                 }
             }
             if documents.documents.isEmpty { _ = try? documents.openUntitledDocumentAndDisplay(true) }
@@ -77,9 +79,14 @@ import ImportExport
             for (text, list) in listSamples { var p = Paragraph(text); p.list = list; document.model.sections[0].paragraphs.append(p) }
             document.model.sections[0].pageNumbering = PageNumbering()
             for i in 1...80 { document.model.sections[0].paragraphs.append(Paragraph("Paragraph \(i). " + String(repeating: "Professional documents need clear structure and dependable editing. ", count: 6))) }
+            let reviewed = document.model.paragraphs[2]
+            document.model.comments = [Comment(anchor: TextAnchor(paragraphID: reviewed.id, offset: 0, length: (reviewed.text as NSString).length), text: "Check the section structure before sharing this draft.\nThe outline and page layout should agree.", author: "Scribe reviewer")]
             documents.addDocument(document); document.makeWindowControllers(); document.showWindows()
             guard let controller = document.editorController else { fatalError("Missing editor") }
             controller.editor.paginate()
+            controller.commentsSidebar.isHidden = false
+            controller.commentsSidebar.reload(document.snapshot(), selecting: document.model.comments[0].id)
+            controller.editor.zoom = 0.75
             controller.window?.makeFirstResponder(controller.editor.textViews[0])
             let folder = URL(fileURLWithPath: ProcessInfo.processInfo.environment["SCRIBE_SMOKE_OUTPUT"] ?? NSTemporaryDirectory())
             try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)

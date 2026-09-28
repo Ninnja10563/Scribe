@@ -42,6 +42,22 @@ import DocumentCore
         XCTAssertEqual(restored.comments[0].anchor.length, 8)
         XCTAssertEqual(try NativeFormat.decode(NativeFormat.encode(restored)).comments, restored.comments)
     }
+    func testTypingAtCommentEdgesDoesNotExpandItsRange() throws {
+        let document = ScribeFileDocument(); let p = Paragraph("A word B")
+        document.model.sections[0].paragraphs = [p]
+        document.model.comments = [Comment(anchor: .init(paragraphID: p.id, offset: 2, length: 4), text: "Word", author: "Alex")]
+        document.makeWindowControllers(); defer { document.close() }
+        let editor = document.editorController!.editor
+        editor.select(NSRange(location: 6, length: 0)); editor.activeTextView.insertText("!", replacementRange: NSRange(location: 6, length: 0))
+        XCTAssertEqual(document.snapshot().comments[0].anchor.length, 4)
+        editor.select(NSRange(location: 2, length: 0)); editor.activeTextView.insertText("[", replacementRange: NSRange(location: 2, length: 0))
+        XCTAssertEqual(document.snapshot().comments[0].anchor.offset, 3)
+        editor.select(NSRange(location: 4, length: 0)); editor.activeTextView.insertText("x", replacementRange: NSRange(location: 4, length: 0))
+        XCTAssertEqual(document.snapshot().comments[0].anchor.length, 5)
+        editor.select(NSRange(location: 3, length: 5)); editor.activeTextView.insertText("replacement", replacementRange: NSRange(location: 3, length: 5))
+        XCTAssertEqual(document.snapshot().comments[0].anchor.length, 11)
+        XCTAssertNotEqual(document.model.comments[0].isDetached, true)
+    }
     func testSemanticListSplitPreservesCommentAssociation() throws {
         let document = ScribeFileDocument(); var paragraph = Paragraph("FirstSecond"); paragraph.list = .init(kind: .decimal)
         document.model.sections[0].paragraphs = [paragraph]

@@ -27,12 +27,13 @@ import DocumentCore
         table.headerView = nil; table.rowHeight = 54; table.style = .plain; table.backgroundColor = .windowBackgroundColor
         table.dataSource = self; table.delegate = self; table.setAccessibilityLabel("Document comments")
         let list = NSScrollView(); list.documentView = table; list.hasVerticalScroller = true; list.autohidesScrollers = true
-        list.drawsBackground = false; list.heightAnchor.constraint(greaterThanOrEqualToConstant: 130).isActive = true
+        list.drawsBackground = false; list.heightAnchor.constraint(greaterThanOrEqualToConstant: 80).isActive = true
         detail.isEditable = false; detail.isRichText = false; detail.isSelectable = true
         detail.font = .systemFont(ofSize: 12); detail.textColor = .labelColor; detail.drawsBackground = false
         detail.textContainerInset = NSSize(width: 6, height: 8); detail.setAccessibilityLabel("Selected comment")
         let body = NSScrollView(); body.documentView = detail; body.hasVerticalScroller = true; body.autohidesScrollers = true; body.drawsBackground = false
-        body.heightAnchor.constraint(equalToConstant: 170).isActive = true
+        let preferredHeight = body.heightAnchor.constraint(equalToConstant: 170); preferredHeight.priority = .defaultHigh; preferredHeight.isActive = true
+        body.heightAnchor.constraint(greaterThanOrEqualToConstant: 70).isActive = true
         detail.isVerticallyResizable = true; detail.isHorizontallyResizable = false; detail.autoresizingMask = .width; detail.textContainer?.widthTracksTextView = true
         location.font = .systemFont(ofSize: 11); location.textColor = .secondaryLabelColor
         for button in [edit, resolve, delete] { button.target = self; button.bezelStyle = .rounded; button.controlSize = .small }

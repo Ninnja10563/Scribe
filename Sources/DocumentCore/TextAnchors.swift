@@ -10,27 +10,30 @@ public struct DocumentTextIndex {
     public let entries: [Entry]
     public let length: Int
     private let positions: [UUID: Int]
+    private let strings: [String]
     public init(paragraphs: [Paragraph]) {
-        var offset = 0, values: [Entry] = [], positions: [UUID: Int] = [:]
+        var offset = 0, values: [Entry] = [], positions: [UUID: Int] = [:], strings: [String] = []
         for paragraph in paragraphs {
-            let length = (paragraph.text as NSString).length
+            let text = paragraph.text, length = (paragraph.text as NSString).length; strings.append(text)
             positions[paragraph.id] = values.count
             values.append(Entry(id: paragraph.id, start: offset, length: length))
             offset += length + 1
         }
-        entries = values; length = max(0, offset - 1); self.positions = positions
+        entries = values; length = max(0, offset - 1); self.positions = positions; self.strings = strings
     }
     public func range(for anchor: TextAnchor) -> NSRange? {
         guard let position = positions[anchor.paragraphID] else { return nil }
         let first = entries[position]
         guard (0...first.length).contains(anchor.offset), anchor.length >= 0 else { return nil }
+        guard isScalarBoundary(anchor.offset, paragraph: position) else { return nil }
         let start = first.start + anchor.offset, end: Int
         if let id = anchor.endParagraphID, let offset = anchor.endOffset, let index = positions[id] {
             let last = entries[index]
-            guard (0...last.length).contains(offset) else { return nil }
+            guard (0...last.length).contains(offset), isScalarBoundary(offset, paragraph: index) else { return nil }
             end = last.start + offset
         } else {
             guard anchor.endParagraphID == nil, anchor.endOffset == nil, anchor.length <= first.length - anchor.offset else { return nil }
+            guard isScalarBoundary(anchor.offset + anchor.length, paragraph: position) else { return nil }
             end = start + anchor.length
         }
         guard end >= start else { return nil }
@@ -41,7 +44,12 @@ public struct DocumentTextIndex {
               let first = entry(at: range.location), let last = entry(at: NSMaxRange(range)) else { return nil }
         var anchor = TextAnchor(paragraphID: first.id, offset: range.location - first.start, length: range.length)
         if first.id != last.id { anchor.endParagraphID = last.id; anchor.endOffset = NSMaxRange(range) - last.start }
-        return anchor
+        return self.range(for: anchor) == nil ? nil : anchor
+    }
+    private func isScalarBoundary(_ offset: Int, paragraph: Int) -> Bool {
+        let text = strings[paragraph] as NSString
+        guard offset > 0, offset < text.length else { return true }
+        return !((0xD800...0xDBFF).contains(text.character(at: offset - 1)) && (0xDC00...0xDFFF).contains(text.character(at: offset)))
     }
     private func entry(at offset: Int) -> Entry? {
         // Binary search keeps navigation independent of document length.
@@ -65,7 +73,7 @@ extension ScribeDocument {
     /// For semantic commands that replace text without passing through attributed-text editing.
     public mutating func transformCommentAnchors(from original: [Paragraph], replacing edit: NSRange, withLength inserted: Int) {
         let before = DocumentTextIndex(paragraphs: original), after = DocumentTextIndex(paragraphs: paragraphs)
-        guard edit.location >= 0, edit.length >= 0, edit.location <= before.length, edit.length <= before.length - edit.location, inserted >= 0 else { return }
+        guard edit.location >= 0, edit.length >= 0, edit.location <= before.length, edit.length <= before.length - edit.location, inserted >= 0, inserted == after.length - (before.length - edit.length) else { return }
         func position(_ value: Int, trailing: Bool) -> Int {
             if value < edit.location { return value }
             if value > NSMaxRange(edit) { return value + inserted - edit.length }

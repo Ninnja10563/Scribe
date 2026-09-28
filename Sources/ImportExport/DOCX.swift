@@ -36,8 +36,27 @@ public enum DOCX {
         for p in delegate.paragraphs where !delegate.document.styles.contains(where: { $0.id == p.styleID }) {
             delegate.document.updateStyle(ParagraphStyle(id: p.styleID, name: p.styleID))
         }
-        if files.keys.contains(where: { $0.contains("comments") || $0.contains("footnotes") || $0.contains("endnotes") }) {
-            delegate.warnings.insert("Comments and notes are not imported in this version.")
+        if let data = files["word/comments.xml"] {
+            let reader = DOCXCommentsReader(); try parse(data, delegate: reader)
+            let index = DocumentTextIndex(paragraphs: delegate.paragraphs)
+            for value in reader.values {
+                var anchor = delegate.commentStarts[value.id] ?? delegate.commentReferences[value.id] ?? TextAnchor(paragraphID: delegate.paragraphs[0].id, offset: 0, length: 0)
+                var detached = delegate.commentStarts[value.id] == nil && delegate.commentReferences[value.id] == nil
+                if let end = delegate.commentEnds[value.id] {
+                    if end.paragraphID == anchor.paragraphID { anchor.length = max(0, end.offset - anchor.offset) }
+                    else { anchor.endParagraphID = end.paragraphID; anchor.endOffset = end.offset }
+                    if let range = index.range(for: anchor) { anchor.length = range.length } else { detached = true }
+                }
+                var comment = Comment(anchor: anchor, text: value.text, author: value.author)
+                if detached { comment.isDetached = true }
+                delegate.document.comments.append(comment)
+            }
+        }
+        if files.keys.contains(where: { $0.contains("footnotes") || $0.contains("endnotes") }) {
+            delegate.warnings.insert("Footnotes and endnotes are not imported in this version.")
+        }
+        if files.keys.contains(where: { $0.contains("commentsExtended") || $0.contains("commentsExtensible") }) {
+            delegate.warnings.insert("Modern comment threading and resolution metadata are not imported.")
         }
         for (id, isHeader) in [(delegate.headerID, true), (delegate.footerID, false)] {
             guard let id, let target = delegate.targets[id], let data = files["word/" + target] else { continue }
@@ -162,6 +181,7 @@ private class WordReader: NSObject, XMLParserDelegate {
     var document = ScribeDocument(), paragraphs: [Paragraph] = [], warnings: Set<String> = []
     var paragraph: Paragraph?, run = TextRun(""), collecting = false, links: [String: String] = [:], link: String?
     let numbering = DOCXNumberingReader()
+    var commentStarts: [String: TextAnchor] = [:], commentEnds: [String: TextAnchor] = [:], commentReferences: [String: TextAnchor] = [:]
     var styleLists: [String: StyleList] = [:]
     var listID: String?, listLevel: Int?
     var inRun = false, sawDocument = false
@@ -196,6 +216,14 @@ private class WordReader: NSObject, XMLParserDelegate {
             if let p = paragraph {
                 var formatting = p.formatting ?? document.style(for: p).paragraph
                 applyParagraph(name, a, &formatting); paragraph?.formatting = formatting
+            }
+        case "commentRangeStart", "commentRangeEnd", "commentReference":
+            if let id = wordAttribute(a, "id"), let paragraph {
+                let offset = paragraph.runs.reduce(0) { $0 + ($1.text as NSString).length } + (inRun ? (run.text as NSString).length : 0)
+                let anchor = TextAnchor(paragraphID: paragraph.id, offset: offset, length: 0)
+                if name == "commentRangeStart" { commentStarts[id] = anchor }
+                else if name == "commentRangeEnd" { commentEnds[id] = anchor }
+                else { commentReferences[id] = anchor }
             }
         case "hyperlink": link = (a["r:id"] ?? a["id"]).flatMap { links[$0] }
         case "pgSz":
