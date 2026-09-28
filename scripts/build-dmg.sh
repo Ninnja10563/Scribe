@@ -9,4 +9,5 @@ ditto build/Scribe.app "$staging_dir/Scribe.app"
 ln -s /Applications "$staging_dir/Applications"
 cp docs/INSTALL.md "$staging_dir/Read Me.md"
 hdiutil create -volname "Scribe $scribe_version" -srcfolder "$staging_dir" -ov -format UDZO "build/Scribe-$scribe_version-arm64.dmg"
-shasum -a 256 "build/Scribe-$scribe_version-arm64.dmg" > "build/Scribe-$scribe_version-arm64.dmg.sha256"
+hdiutil verify "build/Scribe-$scribe_version-arm64.dmg"
+(cd build && shasum -a 256 "Scribe-$scribe_version-arm64.dmg" > "Scribe-$scribe_version-arm64.dmg.sha256")

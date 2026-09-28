@@ -68,7 +68,22 @@ extension EditorWindowController {
         guard values.count == 4 else { presentError(DocumentError.invalid("enter numeric margins")); return }
         settings.top = values[0]; settings.bottom = values[1]; settings.left = values[2]; settings.right = values[3]
         guard settings.isValid else { presentError(DocumentError.invalid("margins leave less than one inch of writing space")); return }
-        fileDocument.performEdit("Page Layout") { $0.sections[0].page = settings }
+        guard fileDocument.model.tables.allSatisfy({ Double($0.columnWidths.count) * 12 <= settings.contentWidth }) else { presentError(DocumentError.invalid("this page is too narrow for the document's tables")); return }
+        fileDocument.performEdit("Page Layout") { model in
+            model.sections[0].page = settings
+            for i in model.tables.indices {
+                let total = model.tables[i].columnWidths.reduce(0, +)
+                if total > settings.contentWidth { model.tables[i].columnWidths = model.tables[i].columnWidths.map { $0 * settings.contentWidth / total } }
+            }
+            for p in model.sections[0].paragraphs.indices {
+                for r in model.sections[0].paragraphs[p].runs.indices {
+                    guard var image = model.sections[0].paragraphs[p].runs[r].image else { continue }
+                    let scale = min(1, settings.contentWidth / image.width, (settings.contentHeight - 24) / image.height)
+                    image.width *= scale; image.height *= scale
+                    model.sections[0].paragraphs[p].runs[r].image = image
+                }
+            }
+        }
     }
     @objc func editHeaderFooter() {
         let alert = NSAlert(); alert.messageText = "Headers and Footers"

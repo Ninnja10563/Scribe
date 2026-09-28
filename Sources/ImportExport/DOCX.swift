@@ -91,6 +91,20 @@ private func applyRun(_ name: String, _ a: [String: String], _ f: inout TextForm
     default: break
     }
 }
+private func applyParagraph(_ name: String, _ a: [String: String], _ f: inout ParagraphFormatting) {
+    switch name {
+    case "jc": f.alignment = wordAttribute(a) == "both" ? .justified : Alignment(rawValue: wordAttribute(a) ?? "left") ?? .left
+    case "spacing":
+        if let before = wordAttribute(a, "before").flatMap(Double.init) { f.spaceBefore = before / 20 }
+        if let after = wordAttribute(a, "after").flatMap(Double.init) { f.spaceAfter = after / 20 }
+    case "ind":
+        if let left = (wordAttribute(a, "left") ?? wordAttribute(a, "start")).flatMap(Double.init) { f.headIndent = left / 20; f.firstLineIndent = f.headIndent }
+        if let right = (wordAttribute(a, "right") ?? wordAttribute(a, "end")).flatMap(Double.init) { f.tailIndent = right / 20 }
+        if let first = wordAttribute(a, "firstLine").flatMap(Double.init) { f.firstLineIndent = f.headIndent + first / 20 }
+        if let hanging = wordAttribute(a, "hanging").flatMap(Double.init) { f.firstLineIndent = f.headIndent - hanging / 20 }
+    default: break
+    }
+}
 private class RelationshipReader: NSObject, XMLParserDelegate {
     var links: [String: String] = [:], targets: [String: String] = [:]
     func parser(_ parser: XMLParser, didStartElement name: String, namespaceURI: String?, qualifiedName: String?, attributes a: [String: String]) {
@@ -110,6 +124,7 @@ private class StyleReader: NSObject, XMLParserDelegate {
         if name == "name" { current?.name = wordAttribute(a) ?? current!.name }
         if name == "outlineLvl", let level = wordAttribute(a).flatMap(Int.init), level < 9 { current?.headingLevel = level + 1 }
         applyRun(name, a, &current!.text)
+        applyParagraph(name, a, &current!.paragraph)
     }
     func parser(_ parser: XMLParser, didEndElement name: String, namespaceURI: String?, qualifiedName: String?) {
         if name == "style", let style = current { styles.append(style); current = nil }
@@ -147,9 +162,11 @@ private class WordReader: NSObject, XMLParserDelegate {
         case "numPr": paragraph?.list = ListDescriptor(kind: .decimal); warnings.insert("List numbering is approximated; custom numbering definitions are not imported.")
         case "ilvl": paragraph?.list?.level = min(8, max(0, wordAttribute(a).flatMap(Int.init) ?? 0))
         case "numId": if wordAttribute(a) == "1" { paragraph?.list?.kind = .bullet }
-        case "jc":
-            if paragraph?.formatting == nil { paragraph?.formatting = ParagraphFormatting() }
-            paragraph?.formatting?.alignment = wordAttribute(a) == "both" ? .justified : Alignment(rawValue: wordAttribute(a) ?? "left") ?? .left
+        case "jc", "spacing", "ind":
+            if let p = paragraph {
+                var formatting = p.formatting ?? document.style(for: p).paragraph
+                applyParagraph(name, a, &formatting); paragraph?.formatting = formatting
+            }
         case "hyperlink": link = (a["r:id"] ?? a["id"]).flatMap { links[$0] }
         case "pgSz":
             if let w = wordAttribute(a, "w").flatMap(Double.init), let h = wordAttribute(a, "h").flatMap(Double.init) {
