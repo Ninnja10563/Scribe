@@ -4,18 +4,20 @@ import DocumentCore
 
 extension EditorWindowController {
     @objc func insertTableOfContents() {
-        let alert = NSAlert(); alert.messageText = "Insert Table of Contents"
-        alert.informativeText = "Insert after the current paragraph. Update Table refreshes generated entries from heading styles and page layout. Keep your own notes outside the generated entries."
-        let title = NSTextField(string: "Contents"), levels = NSPopUpButton()
-        title.setAccessibilityLabel("Contents title"); levels.setAccessibilityLabel("Heading levels")
-        levels.addItems(withTitles: (1...9).map { $0 == 1 ? "Heading 1 only" : "Heading levels 1–\($0)" }); levels.selectItem(at: 2)
-        let stack = NSStackView(views: [NSTextField(labelWithString: "Title (optional)"), title, levels])
-        stack.orientation = .vertical; stack.alignment = .leading; stack.spacing = 8
-        title.widthAnchor.constraint(equalToConstant: 320).isActive = true
-        stack.frame = NSRect(x: 0, y: 0, width: 320, height: 85); alert.accessoryView = stack
-        alert.addButton(withTitle: "Insert"); alert.addButton(withTitle: "Cancel")
-        guard alert.runModal() == .alertFirstButtonReturn else { return }
-        addTableOfContents(title: title.stringValue, maximumLevel: levels.indexOfSelectedItem + 1)
+        guard let options = TableOfContentsOptions.show(DocumentTOC(), inserting: true) else { return }
+        addTableOfContents(title: options.title, maximumLevel: options.maximumLevel)
+    }
+
+    @objc func modifyTableOfContents() {
+        let model = fileDocument.snapshot()
+        guard let definition = selectedContents(in: model) else { showStatus("Place the cursor in the table of contents to edit its options."); return }
+        guard let updated = TableOfContentsOptions.show(definition, inserting: false) else { return }
+        let undo = fileDocument.undoManager; undo?.beginUndoGrouping()
+        fileDocument.performEdit("Table of Contents Options") { value in
+            if let index = value.tablesOfContents.firstIndex(where: { $0.id == updated.id }) { value.tablesOfContents[index] = updated }
+        }
+        updateContentsPages()
+        undo?.endUndoGrouping(); undo?.setActionName("Table of Contents Options")
     }
 
     func addTableOfContents(title: String, maximumLevel: Int) {
@@ -41,12 +43,17 @@ extension EditorWindowController {
     }
 
     @objc func removeTableOfContents() {
-        let model = fileDocument.snapshot(), range = editor.activeTextView.selectedRange()
+        let model = fileDocument.snapshot()
+        guard let definition = selectedContents(in: model) else { showStatus("Place the cursor in the table of contents to remove it."); return }
+        fileDocument.performEdit("Remove Table of Contents") { $0.removeTableOfContents(id: definition.id) }
+    }
+
+    private func selectedContents(in model: ScribeDocument) -> DocumentTOC? {
+        let range = editor.activeTextView.selectedRange()
         guard range.location < editor.storage.length,
               let paragraphID = editor.storage.attribute(.scribeParagraphID, at: range.location, effectiveRange: nil) as? String,
-              let entry = model.paragraphs.first(where: { $0.id.uuidString == paragraphID })?.toc,
-              model.tablesOfContents.contains(where: { $0.id == entry.tableID }) else { showStatus("Place the cursor in the table of contents to remove it."); return }
-        fileDocument.performEdit("Remove Table of Contents") { $0.removeTableOfContents(id: entry.tableID) }
+              let entry = model.paragraphs.first(where: { $0.id.uuidString == paragraphID })?.toc else { return nil }
+        return model.tablesOfContents.first(where: { $0.id == entry.tableID })
     }
 
     private func updateContentsPages() {

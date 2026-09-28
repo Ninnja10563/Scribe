@@ -50,6 +50,7 @@ import AppKit
         item(insert, "Image…", #selector(EditorWindowController.insertImage))
         item(insert, "Page Break", #selector(ScribeTextView.insertPageBreak(_:)), "\r")
         item(insert, "Table of Contents…", #selector(EditorWindowController.insertTableOfContents))
+        item(insert, "Table of Contents Options…", #selector(EditorWindowController.modifyTableOfContents))
         item(insert, "Update Tables of Contents", #selector(EditorWindowController.updateTableOfContents))
         item(insert, "Remove Table of Contents", #selector(EditorWindowController.removeTableOfContents))
         item(insert, "Page Numbers…", #selector(EditorWindowController.pageNumbers))
