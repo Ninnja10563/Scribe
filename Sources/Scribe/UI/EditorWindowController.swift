@@ -1,0 +1,149 @@
+#if canImport(AppKit)
+import AppKit
+import DocumentCore
+
+@MainActor final class EditorWindowController: NSWindowController, NSTableViewDataSource, NSTableViewDelegate {
+    let editor: PaginatedEditor
+    let outline = NSTableView()
+    let sidebar = NSView()
+    let status = NSTextField(labelWithString: "")
+    let stylePicker = NSPopUpButton()
+    let zoomPicker = NSPopUpButton()
+    let toolbar = NSStackView()
+    let searchBar = SearchBar()
+    var entries: [OutlineEntry] = []
+    var isFocused = false
+    private var statsWork: DispatchWorkItem?
+    var fileDocument: ScribeFileDocument { document as! ScribeFileDocument }
+    init(document: ScribeFileDocument) {
+        editor = PaginatedEditor(document: document)
+        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 1120, height: 850), styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)
+        window.minSize = NSSize(width: 760, height: 500); window.title = "Scribe"
+        window.tabbingMode = .preferred; window.tabbingIdentifier = "ScribeDocuments"
+        window.setFrameAutosaveName("ScribeDocumentWindow"); window.center()
+        super.init(window: window)
+        self.document = document
+        buildInterface()
+        editor.onChange = { [weak self] in self?.fileDocument.didEdit(); self?.scheduleStatistics() }
+        editor.onSelection = { [weak self] in self?.updateStatus() }
+        searchBar.editor = editor
+        refreshOutline(); updateStatus()
+        window.initialFirstResponder = editor.textViews.first
+    }
+    required init?(coder: NSCoder) { fatalError("Programmatic windows only") }
+    private func buildInterface() {
+        guard let content = window?.contentView else { return }
+        let stack = NSStackView(); stack.orientation = .vertical; stack.spacing = 0; stack.alignment = .leading
+        stack.translatesAutoresizingMaskIntoConstraints = false; content.addSubview(stack)
+        NSLayoutConstraint.activate([stack.leadingAnchor.constraint(equalTo: content.leadingAnchor), stack.trailingAnchor.constraint(equalTo: content.trailingAnchor), stack.topAnchor.constraint(equalTo: content.topAnchor), stack.bottomAnchor.constraint(equalTo: content.bottomAnchor)])
+        toolbar.orientation = .horizontal; toolbar.spacing = 10; toolbar.edgeInsets = NSEdgeInsets(top: 10, left: 16, bottom: 10, right: 16)
+        toolbar.addArrangedSubview(button("sidebar.left", "Show or hide outline", #selector(toggleSidebar)))
+        stylePicker.target = self; stylePicker.action = #selector(changeStyle); stylePicker.setAccessibilityLabel("Paragraph style")
+        stylePicker.widthAnchor.constraint(equalToConstant: 125).isActive = true; toolbar.addArrangedSubview(stylePicker)
+        toolbar.addArrangedSubview(button("textformat", "Choose font", #selector(showFonts)))
+        toolbar.addArrangedSubview(divider())
+        toolbar.addArrangedSubview(button("bold", "Bold (⌘B)", #selector(ScribeTextView.toggleBold(_:)), responder: true))
+        toolbar.addArrangedSubview(button("italic", "Italic (⌘I)", #selector(ScribeTextView.toggleItalic(_:)), responder: true))
+        toolbar.addArrangedSubview(button("underline", "Underline (⌘U)", #selector(NSTextView.underline(_:)), responder: true))
+        toolbar.addArrangedSubview(divider())
+        toolbar.addArrangedSubview(button("text.alignleft", "Align left", #selector(NSTextView.alignLeft(_:)), responder: true))
+        toolbar.addArrangedSubview(button("text.aligncenter", "Align centre", #selector(NSTextView.alignCenter(_:)), responder: true))
+        toolbar.addArrangedSubview(button("text.alignright", "Align right", #selector(NSTextView.alignRight(_:)), responder: true))
+        toolbar.addArrangedSubview(button("list.bullet", "Bullet list", #selector(bulletList)))
+        toolbar.addArrangedSubview(button("list.number", "Numbered list", #selector(numberedList)))
+        let spacer = NSView(); spacer.setContentHuggingPriority(.defaultLow, for: .horizontal); toolbar.addArrangedSubview(spacer)
+        toolbar.addArrangedSubview(button("magnifyingglass", "Find and replace (⌘F)", #selector(showFind)))
+        toolbar.addArrangedSubview(button("arrow.up.left.and.arrow.down.right", "Focus mode", #selector(toggleFocus)))
+        stack.addArrangedSubview(toolbar)
+        stack.addArrangedSubview(searchBar); searchBar.isHidden = true
+        let split = NSSplitView(); split.isVertical = true; split.dividerStyle = .thin
+        split.addArrangedSubview(sidebar); split.addArrangedSubview(editor.scrollView)
+        setupOutline()
+        sidebar.widthAnchor.constraint(greaterThanOrEqualToConstant: 150).isActive = true
+        sidebar.widthAnchor.constraint(lessThanOrEqualToConstant: 280).isActive = true
+        split.setHoldingPriority(.defaultHigh, forSubviewAt: 0)
+        stack.addArrangedSubview(split)
+        split.heightAnchor.constraint(greaterThanOrEqualToConstant: 300).isActive = true
+        let footer = NSStackView(); footer.orientation = .horizontal; footer.spacing = 14
+        footer.edgeInsets = NSEdgeInsets(top: 7, left: 16, bottom: 7, right: 16)
+        status.font = .systemFont(ofSize: 11); status.textColor = .secondaryLabelColor
+        status.setAccessibilityLabel("Document statistics"); footer.addArrangedSubview(status)
+        let flex = NSView(); flex.setContentHuggingPriority(.defaultLow, for: .horizontal); footer.addArrangedSubview(flex)
+        zoomPicker.addItems(withTitles: ["50%", "75%", "100%", "125%", "150%", "200%", "Fit Width", "Fit Page"])
+        zoomPicker.selectItem(withTitle: "100%"); zoomPicker.target = self; zoomPicker.action = #selector(changeZoom)
+        zoomPicker.setAccessibilityLabel("Document zoom"); footer.addArrangedSubview(zoomPicker)
+        stack.addArrangedSubview(footer)
+        for child in [toolbar, searchBar, split, footer] { child.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true }
+        split.setPosition(200, ofDividerAt: 0)
+    }
+    private func setupOutline() {
+        let title = NSTextField(labelWithString: "OUTLINE"); title.font = .systemFont(ofSize: 10, weight: .semibold); title.textColor = .secondaryLabelColor
+        let hint = NSTextField(wrappingLabelWithString: "Apply heading styles to build your document outline.")
+        hint.font = .systemFont(ofSize: 11); hint.textColor = .secondaryLabelColor
+        let scroll = NSScrollView(); scroll.hasVerticalScroller = true; scroll.drawsBackground = false
+        let column = NSTableColumn(identifier: NSUserInterfaceItemIdentifier("heading")); outline.addTableColumn(column)
+        outline.headerView = nil; outline.backgroundColor = .clear; outline.rowHeight = 30
+        outline.style = .sourceList; outline.delegate = self; outline.dataSource = self
+        outline.target = self; outline.action = #selector(selectHeading); outline.setAccessibilityLabel("Document outline")
+        scroll.documentView = outline
+        let stack = NSStackView(views: [title, hint, scroll]); stack.orientation = .vertical; stack.alignment = .leading; stack.spacing = 12
+        stack.translatesAutoresizingMaskIntoConstraints = false; sidebar.addSubview(stack)
+        NSLayoutConstraint.activate([stack.leadingAnchor.constraint(equalTo: sidebar.leadingAnchor, constant: 14), stack.trailingAnchor.constraint(equalTo: sidebar.trailingAnchor, constant: -12), stack.topAnchor.constraint(equalTo: sidebar.topAnchor, constant: 18), stack.bottomAnchor.constraint(equalTo: sidebar.bottomAnchor, constant: -10), scroll.widthAnchor.constraint(equalTo: stack.widthAnchor)])
+    }
+    private func button(_ symbol: String, _ label: String, _ action: Selector, responder: Bool = false) -> NSButton {
+        let button = NSButton(image: NSImage(systemSymbolName: symbol, accessibilityDescription: label)!, target: responder ? nil : self, action: action)
+        button.bezelStyle = .texturedRounded; button.isBordered = false; button.toolTip = label
+        button.setAccessibilityLabel(label); button.widthAnchor.constraint(equalToConstant: 26).isActive = true
+        return button
+    }
+    private func divider() -> NSView { let view = NSBox(); view.boxType = .separator; view.widthAnchor.constraint(equalToConstant: 1).isActive = true; view.heightAnchor.constraint(equalToConstant: 18).isActive = true; return view }
+    func refreshOutline() {
+        let model = fileDocument.snapshot(); entries = model.outline; outline.reloadData()
+        let selected = stylePicker.titleOfSelectedItem
+        stylePicker.removeAllItems(); stylePicker.addItems(withTitles: model.styles.map(\.name))
+        if let selected { stylePicker.selectItem(withTitle: selected) }
+        updateStatus()
+    }
+    func scheduleStatistics() {
+        statsWork?.cancel(); let job = DispatchWorkItem { [weak self] in self?.updateStatus() }
+        statsWork = job; DispatchQueue.main.asyncAfter(deadline: .now() + 0.25, execute: job)
+    }
+    private var cachedTextLength = -1
+    private var cachedWords = 0
+    func updateStatus() {
+        let view = editor.activeTextView
+        let selection = view.selectedRange()
+        let page = editor.textViews.firstIndex(where: { $0 === view }).map { $0 + 1 } ?? 1
+        if cachedTextLength != editor.storage.length {
+            cachedTextLength = editor.storage.length; cachedWords = DocumentStatistics(text: editor.storage.string).words
+        }
+        let selectedWords = selection.length > 0 && NSMaxRange(selection) <= editor.storage.length ? DocumentStatistics(text: (editor.storage.string as NSString).substring(with: selection)).words : nil
+        status.stringValue = "Page \(page) of \(editor.textViews.count)    ·    \(cachedWords.formatted()) words\(selectedWords.map { " (\($0) selected)" } ?? "")    ·    English (Australia)"
+        if let id = view.typingAttributes[.scribeStyle] as? String, let style = fileDocument.model.styles.first(where: { $0.id == id }) { stylePicker.selectItem(withTitle: style.name) }
+    }
+    func showStatus(_ message: String) { status.stringValue = message }
+    func numberOfRows(in tableView: NSTableView) -> Int { entries.count }
+    func tableView(_ tableView: NSTableView, viewFor tableColumn: NSTableColumn?, row: Int) -> NSView? {
+        let label = NSTextField(labelWithString: String(repeating: "   ", count: max(0, entries[row].level - 1)) + (entries[row].title.isEmpty ? "Untitled heading" : entries[row].title))
+        label.font = .systemFont(ofSize: 12, weight: entries[row].level == 1 ? .medium : .regular); label.lineBreakMode = .byTruncatingTail
+        return label
+    }
+    @objc func selectHeading() { if entries.indices.contains(outline.selectedRow) { editor.jump(to: entries[outline.selectedRow].id) } }
+    @objc func changeStyle() {
+        let index = stylePicker.indexOfSelectedItem; guard fileDocument.model.styles.indices.contains(index) else { return }
+        editor.applyStyle(fileDocument.model.styles[index].id)
+    }
+    @objc func showFonts() { window?.makeFirstResponder(editor.activeTextView); NSFontManager.shared.orderFrontFontPanel(self) }
+    @objc func bulletList() { editor.applyList(ListDescriptor()) }
+    @objc func numberedList() { editor.applyList(ListDescriptor(kind: .decimal)) }
+    @objc func toggleSidebar() { sidebar.isHidden.toggle() }
+    @objc func toggleFocus() { isFocused.toggle(); sidebar.isHidden = isFocused; toolbar.isHidden = isFocused; if isFocused { searchBar.isHidden = true }; window?.makeFirstResponder(editor.activeTextView) }
+    @objc func showFind() { searchBar.isHidden = false; window?.makeFirstResponder(searchBar.query) }
+    @objc func changeZoom() {
+        let title = zoomPicker.titleOfSelectedItem ?? "100%"
+        if title == "Fit Width" { editor.zoom = max(0.5, min(2, editor.scrollView.contentSize.width / (editor.canvas.pageSettings.width + 48))) }
+        else if title == "Fit Page" { editor.zoom = max(0.5, min(2, editor.scrollView.contentSize.height / (editor.canvas.pageSettings.height + 48))) }
+        else { editor.zoom = CGFloat(Double(title.replacingOccurrences(of: "%", with: "")) ?? 100) / 100 }
+    }
+}
+#endif
