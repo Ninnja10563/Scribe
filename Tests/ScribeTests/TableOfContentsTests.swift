@@ -16,16 +16,16 @@ import DocumentCore
         controller.editor.select(NSRange(location: 0, length: 0))
         func respond(titleText: String, levelIndex: Int, buttonTitle: String) {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-            func descendants(_ view: NSView) -> [NSView] { [view] + view.subviews.flatMap(descendants) }
-            guard let content = NSApp.modalWindow?.contentView else { XCTFail("Missing contents dialog"); NSApp.abortModal(); return }
-            let views = descendants(content)
-            guard let title = views.compactMap({ $0 as? NSTextField }).first(where: { $0.isEditable }),
-                  let levels = views.compactMap({ $0 as? NSPopUpButton }).first,
-                  let button = views.compactMap({ $0 as? NSButton }).first(where: { $0.title == buttonTitle }) else {
-                XCTFail("Missing contents controls"); NSApp.abortModal(); return
+                func descendants(_ view: NSView) -> [NSView] { [view] + view.subviews.flatMap(descendants) }
+                guard let content = NSApp.modalWindow?.contentView else { XCTFail("Missing contents dialog"); NSApp.abortModal(); return }
+                let views = descendants(content)
+                guard let title = views.compactMap({ $0 as? NSTextField }).first(where: { $0.isEditable }),
+                      let levels = views.compactMap({ $0 as? NSPopUpButton }).first,
+                      let button = views.compactMap({ $0 as? NSButton }).first(where: { $0.title == buttonTitle }) else {
+                    XCTFail("Missing contents controls"); NSApp.abortModal(); return
+                }
+                title.stringValue = titleText; levels.selectItem(at: levelIndex); button.performClick(nil)
             }
-            title.stringValue = titleText; levels.selectItem(at: levelIndex); button.performClick(nil)
-        }
         }
         respond(titleText: "Index", levelIndex: 0, buttonTitle: "Insert")
         controller.insertTableOfContents()

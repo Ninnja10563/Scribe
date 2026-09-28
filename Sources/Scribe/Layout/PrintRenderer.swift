@@ -31,9 +31,10 @@ import DocumentCore
         NSColor.white.setFill(); NSRect(x: 0, y: 0, width: p.width, height: p.height).fill()
         let range = editor.layout.glyphRange(for: editor.layout.textContainers[index])
         let origin = NSPoint(x: p.left, y: p.top)
-        // Search highlights are temporary and should not be included in output.
-        editor.layout.drawBackground(forGlyphRange: range, at: origin)
-        editor.layout.drawGlyphs(forGlyphRange: range, at: origin)
+        withLinkPresentation(on: index) {
+            editor.layout.drawBackground(forGlyphRange: range, at: origin)
+            editor.layout.drawGlyphs(forGlyphRange: range, at: origin)
+        }
         let attrs: [NSAttributedString.Key: Any] = [.font: NSFont.systemFont(ofSize: 9), .foregroundColor: NSColor.darkGray]
         (editor.canvas.header as NSString).draw(at: NSPoint(x: p.left, y: 30), withAttributes: attrs)
         editor.canvas.drawPageNumber(index: index, origin: .zero)

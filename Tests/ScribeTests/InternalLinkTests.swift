@@ -71,7 +71,12 @@ import DocumentCore
         let partialURL = directory.appendingPathComponent("HeadingLinks-partial.pdf")
         defer { if diagnostics == nil { try? FileManager.default.removeItem(at: fullURL); try? FileManager.default.removeItem(at: partialURL) } }
         let renderer = PrintRenderer(editor: editor)
+        let range = NSRange(location: 0, length: 9)
+        editor.layout.addTemporaryAttribute(.foregroundColor, value: NSColor.red, forCharacterRange: range)
+        let originalAttributes = editor.storage.attributes(at: 0, effectiveRange: nil) as NSDictionary
         try renderer.exportPDF(to: fullURL, title: "Links", author: "")
+        XCTAssertEqual(editor.storage.attributes(at: 0, effectiveRange: nil) as NSDictionary, originalAttributes)
+        XCTAssertEqual(editor.layout.temporaryAttribute(.foregroundColor, atCharacterIndex: 0, effectiveRange: nil) as? NSColor, NSColor.red)
         let pdf = try XCTUnwrap(PDFDocument(url: fullURL))
         XCTAssertEqual(pdf.documentAttributes?[PDFDocumentAttribute.titleAttribute] as? String, "Links")
         XCTAssertFalse(pdf.page(at: 0)?.annotations.contains(where: { ($0.action as? PDFActionURL)?.url?.scheme == "scribe" }) == true)
