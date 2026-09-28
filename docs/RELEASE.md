@@ -1,12 +1,12 @@
-Scribe 0.3.0 improves native list editing, Word numbering interoperability, and PDF export.
+Scribe 0.4.0 adds anchored comments and native review controls.
 
-- Continue independent numbered lists across body paragraphs, restart at a chosen value, and use upper/lower letter or Roman numbering. Format → List Options exposes nesting, starts and removal; Continue Previous List reconnects a separated item.
-- Return splits a list item while preserving formatted Unicode text. Return on an empty item exits/outdents; Backspace at the content start outdents. These commands support undo/redo.
-- DOCX import resolves actual numbering definitions, level/start overrides and numbering inherited through paragraph styles. Export preserves independent lists and restarts instead of sharing one numbering instance across every list.
-- PDF export now accepts page ranges such as 1, 3–5 and title, author, subject and keywords. Selected pages retain original page numbers, vector text and image quality. Invalid ranges cannot overwrite an existing output file.
-- Native format v3 preserves list identities and restarts. Earlier v1/v2 documents migrate in memory; opening does not overwrite their original bytes. Saving in v3 requires Scribe 0.3 or newer to reopen.
-- Includes the existing native pagination, styles, tables, inline images, outline, search, recovery, tabs, printing and interchange features.
+- Select text and choose Review → Add Comment (Command–Shift–M), or use the text context menu. The comments sidebar supports navigation, editing, deletion, resolution and reopening, with a filter for resolved comments.
+- Comments can span paragraphs and overlap. Associations follow native text editing and semantic list splits. Deleting their text retains detached comments; native undo can restore the association. Comment operations themselves are undoable.
+- DOCX imports/exports actual comment parts, author/text data and range markers. Word 2013 resolved status is retained through the commentsExtended part. Namespace aliases and relationship-specified comment/style/numbering filenames are supported.
+- Native format v4 preserves multi-paragraph and detached anchors. v1/v2/v3 documents migrate in memory without overwriting their original bytes. Files saved in v4 require Scribe 0.4 or newer.
+- Empty final paragraphs retain their style and identity when focus moves away. Review navigation keeps keyboard focus in the sidebar and remembers the selected document page.
+- Includes the existing pagination, styles, lists, tables, inline images, search, recovery, tabs, printing and DOCX/PDF/text interchange. PDF export supports page ranges and metadata.
 
-For Apple Silicon and macOS 14+. This is an early development release. Review UI, tracked changes, notes, equations, automatic TOC, merged/nested tables, floating objects and wrapping remain unfinished. DOCX custom compound markers, custom nested restart rules and advanced styles remain limited; known import losses are disclosed. PDF image-quality presets remain pending. Physical-Mac input/accessibility testing and manual Word/Pages/LibreOffice interoperability have not been completed.
+For Apple Silicon and macOS 14+. This remains a development release. Track changes, footnotes/endnotes, equations, automatic TOC, merged/nested tables, floating objects, wrapping and independent section layout remain unfinished. DOCX reply threads are flattened with a warning; newer collaboration metadata is limited. Detached comments are preserved in the package but may be hidden by other editors. Physical-Mac input/accessibility audits and manual Word/Pages/LibreOffice checks remain pending.
 
-The DMG is ad-hoc signed and not notarized. A SHA-256 checksum is provided with the installer. See docs/VALIDATION.md for automated and independent artifact checks.
+The DMG is ad-hoc signed and not notarized. A SHA-256 checksum is provided. See docs/VALIDATION.md for automated native tests and independent package/PDF checks.

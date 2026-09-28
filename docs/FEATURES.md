@@ -1,4 +1,4 @@
-# Feature status — Scribe development after 0.3
+# Feature status — Scribe 0.4
 
 This is a foundation release. “Implemented” means there is working code and an exposed editing path, not that the feature has the interoperability coverage of a mature word processor.
 
@@ -15,7 +15,7 @@ This is a foundation release. “Implemented” means there is working code and 
 | Running content | Text headers/footers; top/bottom, left/centre/right page numbers and formats, custom start | Direct-on-page editing, first/odd/even variants, document metadata fields |
 | Navigation | Clickable outline, case/whole-word find/replace, match highlights, statistics | Automatic TOC, bookmark UI, internal-link editing |
 | Review/references | Native anchored comments with multi-paragraph associations, detached-text retention, sidebar edit/delete/resolve/reopen; bookmark schema and modular grammar protocol | Classic DOCX comments, insertion-boundary and sidebar-control tests; modern Word reply threads and collaboration metadata, track changes, footnotes/endnotes, equation layout |
-| DOCX | Real OPC ZIP/XML; common text, headings, basic lists/tables/images, page geometry, running content, fields on export; import warnings | Word/Pages/LibreOffice fixture coverage, advanced styles, custom compound numbering and restart rules, merged/nested tables, tracked changes/notes, newer review metadata, field import, exact line-spacing fidelity |
+| DOCX | Real OPC ZIP/XML; common text, headings, lists/tables/images, anchored comments and resolved state, page geometry, running content, fields on export; import warnings | Word/Pages/LibreOffice fixture coverage, advanced styles, custom compound numbering and restart rules, merged/nested tables, tracked changes/notes, newer review metadata, field import, exact line-spacing fidelity |
 | Other formats | Basic RTF, Markdown subset, UTF-8 text; native copies protect originals | RTF table import, complete CommonMark, external Markdown image bundles |
 | Output | PDF vector text/links and native images/tables; page-range selection and metadata; native printing; shared glyph layout | PDF image-quality presets, PDF accessibility tags, color-management audit |
 | Reliability | NSDocument lifecycle/autosave, native undo plus document transactions, atomic saves, separate recoverable snapshots, archive validation | Crash/power-loss/disk-full fault injection, long-session memory testing |

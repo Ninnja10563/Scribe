@@ -48,7 +48,8 @@ import ImportExport
         sender.reply(toOpenOrPrint: .success)
     }
     @objc func showAbout() {
-        NSApp.orderFrontStandardAboutPanel(options: [.applicationName: "Scribe", .applicationVersion: "0.3.0", .credits: NSAttributedString(string: "A native document workspace for macOS.\nEarly development release.")])
+        let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "Development"
+        NSApp.orderFrontStandardAboutPanel(options: [.applicationName: "Scribe", .applicationVersion: version, .credits: NSAttributedString(string: "A native document workspace for macOS.\nEarly development release.")])
     }
     private func smokeTest() async {
         do {
