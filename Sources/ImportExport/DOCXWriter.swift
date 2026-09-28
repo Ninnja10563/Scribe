@@ -105,7 +105,8 @@ final class DOCXWriter {
     private func runXML(_ run: TextRun) -> String {
             if let image = run.image { return imageRun(image) }
             let text = DOCX.xml(run.text).replacingOccurrences(of: "\t", with: "</w:t><w:tab/><w:t xml:space=\"preserve\">").replacingOccurrences(of: "\u{2028}", with: "</w:t><w:br/><w:t xml:space=\"preserve\">")
-            let content = "<w:r><w:rPr>\(DOCX.runProperties(run.format))</w:rPr><w:t xml:space=\"preserve\">\(text)</w:t></w:r>"
+            let pageText = text.replacingOccurrences(of: "\u{c}", with: "</w:t><w:br w:type=\"page\"/><w:t xml:space=\"preserve\">")
+            let content = "<w:r><w:rPr>\(DOCX.runProperties(run.format))</w:rPr><w:t xml:space=\"preserve\">\(pageText)</w:t></w:r>"
             guard let link = run.link else { return content }
             return "<w:hyperlink r:id=\"\(relationship(type: "hyperlink", target: link, external: true))\">\(content)</w:hyperlink>"
     }

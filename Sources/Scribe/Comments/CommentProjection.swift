@@ -21,7 +21,7 @@ extension NSAttributedString.Key {
         var result: [Span] = [], position = 0, semantic = 0
         for (i, component) in components.enumerated() where paragraphs.indices.contains(i) {
             let p = paragraphs[i], length = (component as NSString).length
-            var prefix = component.hasPrefix("\u{c}") ? 1 : 0
+            var prefix = p.pageBreakBefore && component.hasPrefix("\u{c}") ? 1 : 0
             let rest = String(component.dropFirst(prefix))
             if p.list != nil, rest.hasPrefix("\t"), let end = rest.dropFirst().firstIndex(of: "\t") {
                 prefix += (String(rest[...end]) as NSString).length

@@ -3,6 +3,7 @@ import AppKit
 import DocumentCore
 
 extension NSAttributedString.Key {
+    static let scribePageBreakMarker = NSAttributedString.Key("org.scribe.pageBreakMarker")
     static let scribeStyle = NSAttributedString.Key("org.scribe.paragraphStyle")
     static let scribeParagraphID = NSAttributedString.Key("org.scribe.paragraphID")
     static let scribeCell = NSAttributedString.Key("org.scribe.tableCell")
@@ -24,7 +25,10 @@ extension NSAttributedString.Key {
             var base = attributes(style: style, paragraph: paragraph)
             if let cell = paragraph.tableCell { tables.apply(cell, to: &base) }
             let start = result.length
-            if paragraph.pageBreakBefore { result.append(NSAttributedString(string: "\u{c}", attributes: base)) }
+            if paragraph.pageBreakBefore {
+                var marker = base; marker[.scribePageBreakMarker] = true
+                result.append(NSAttributedString(string: "\u{c}", attributes: marker))
+            }
             if let marker = numbering.marker(for: paragraph.list) { result.append(NSAttributedString(string: "\t" + marker + "\t", attributes: base)) }
             for run in paragraph.runs {
                 var attrs = base
@@ -70,7 +74,7 @@ extension NSAttributedString.Key {
             p.styleID = attrs[.scribeStyle] as? String ?? "normal"
             if !document.styles.contains(where: { $0.id == p.styleID }) { p.styleID = "normal" }
             let style = document.style(for: p)
-            p.pageBreakBefore = component.hasPrefix("\u{c}")
+            p.pageBreakBefore = component.hasPrefix("\u{c}") && attrs[.scribePageBreakMarker] as? Bool == true
             p.tableCell = (attrs[.scribeCell] as? Data).flatMap { try? JSONDecoder().decode(TableCellReference.self, from: $0) }
             p.list = (attrs[.scribeList] as? Data).flatMap { try? JSONDecoder().decode(ListDescriptor.self, from: $0) }
             if let ns = attrs[.paragraphStyle] as? NSParagraphStyle {
@@ -85,7 +89,7 @@ extension NSAttributedString.Key {
             }
             if length > prefix {
                 storage.enumerateAttributes(in: NSRange(location: offset + prefix, length: length - prefix)) { attributes, range, _ in
-                    let value = text.substring(with: range).replacingOccurrences(of: "\u{c}", with: "")
+                    let value = text.substring(with: range)
                     guard !value.isEmpty else { return }
                     var format = TextFormatting()
                     if let font = attributes[.font] as? NSFont {

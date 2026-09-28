@@ -62,6 +62,7 @@ public struct Paragraph: Codable, Equatable, Sendable, Identifiable {
 }
 
 public struct TextRun: Codable, Equatable, Sendable {
+    /// Text flow uses U+2028 for a soft line break and U+000C for an inline page break.
     public var text: String
     public var format: TextFormatting
     public var link: String?

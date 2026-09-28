@@ -41,3 +41,11 @@ Native v4 extends comment anchors across paragraphs and explicitly retains comme
 Classic DOCX comments now use actual comments parts, relationships, range starts/ends and references. Multi-paragraph and overlapping associations import/export, and detached comment text remains in the package. Word 2013 resolved state is preserved through the commentsExtended part and the last comment paragraph’s paraId. Reply hierarchy and newer collaboration/identity metadata remain limited and are disclosed on import. An independent python-docx comment fixture and semantic round-trip tests cover author/text/range preservation. Native insertion-boundary tests verify that typing next to a comment does not accidentally extend it.
 
 Comment resolution follows Microsoft's [CommentEx definition](https://learn.microsoft.com/en-us/dotnet/api/documentformat.openxml.office2013.word.commentex?view=openxml-3.0.1) and [Open XML SDK part metadata](https://github.com/dotnet/Open-XML-SDK/blob/main/data/parts/WordprocessingCommentsExPart.json). Namespace aliases are normalized by URI before Office readers receive attributes, and comment/style/numbering parts are resolved through relationships instead of requiring fixed filenames.
+
+## Typography and editing fidelity (v0.5 development)
+
+Native v5 adds concrete PostScript font-face identity, with optional family/size/trait overrides. Missing faces render with a fallback while retaining the requested identity. Native font-panel selection now survives semantic capture and save/reopen for intermediate weights and condensed faces. DOCX remains family/trait based and discloses approximation on export. v1–v4 formats migrate in memory.
+
+Find and statistics use a revision-cached semantic snapshot that omits generated list/page-break prefixes and maps content ranges to native UTF-16 selections. Literal text that resembles a generated marker remains content.
+
+Inline page breaks use the native U+000C flow control inside text runs, separately from a paragraph's pageBreakBefore property. Office XML encodes them as actual `w:br type="page"` elements, never illegal literal XML controls. The editing projection labels generated paragraph-break prefixes so capture can distinguish them from inline breaks. Insert Page Break operates at the caret with native undo.

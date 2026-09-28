@@ -11,7 +11,7 @@ final class SchemaExportTests: XCTestCase {
         format.strikethrough = true; format.foreground = "#123456"
         format.highlight = "#FFEEDD"; format.baseline = 1
         document.styles[0].text = format
-        var paragraph = Paragraph("Formatting schema regression")
+        var paragraph = Paragraph("Formatting schema regression\u{c}After the page break")
         paragraph.runs[0].format = format
         paragraph.formatting = ParagraphFormatting()
         paragraph.list = ListDescriptor(kind: .decimal)

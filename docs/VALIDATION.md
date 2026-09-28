@@ -64,3 +64,6 @@ A semantic text snapshot now excludes generated list/page-break prefixes from Fi
 ### Font-face persistence (v0.5 development)
 
 Native v5 adds optional PostScript face identities, preserving weights/widths beyond bold/italic. v4 migration retains previous family/trait semantics. Native regression tests cover Medium/Light/Condensed faces through capture/save/reopen, style inheritance, family overrides and missing-face retention. These tests are awaiting macOS CI. DOCX still approximates concrete faces using family and bold/italic information; the export dialog discloses this when applicable.
+
+- Font-face persistence passed [macOS run 36494732575](https://github.com/Ninnja10563/Scribe/actions/runs/36494732575), including native Medium/Light/Condensed round trips, style inheritance and missing-font retention. The independent DOCX schema check also passed.
+- Inline DOCX page-break import previously moved preceding text to the next page by incorrectly setting paragraph.pageBreakBefore. The fix retains native inline flow controls and exports actual Office break elements. New native tests check projection, caret insertion/undo and PDF page placement; validation is pending.

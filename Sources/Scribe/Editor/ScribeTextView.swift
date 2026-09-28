@@ -110,7 +110,7 @@ import DocumentCore
         transform(value)
         replaceSelection(value, action: action); setSelectedRange(range)
     }
-    @objc func insertPageBreak(_ sender: Any?) { insertText("\n\u{c}", replacementRange: selectedRange()) }
+    @objc func insertPageBreak(_ sender: Any?) { insertText("\u{c}", replacementRange: selectedRange()) }
     @objc func insertSpecialCharacter(_ sender: Any?) { NSApp.orderFrontCharacterPalette(sender) }
     override func insertNewline(_ sender: Any?) { if !insertListNewline() { super.insertNewline(sender) } }
     override func deleteBackward(_ sender: Any?) { if !removeListAtStart() { super.deleteBackward(sender) } }

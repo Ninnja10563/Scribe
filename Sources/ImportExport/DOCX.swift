@@ -217,7 +217,7 @@ private class WordReader: NSObject, XMLParserDelegate {
         case "t": collecting = true
         case "tab": run.text += "\t"
         case "br":
-            if wordAttribute(a, "type") == "page" { paragraph?.pageBreakBefore = true }
+            if wordAttribute(a, "type") == "page" { run.text += "\u{c}" }
             else { run.text += "\u{2028}" }
         case "pStyle": paragraph?.styleID = wordAttribute(a) ?? "normal"
         case "pageBreakBefore": paragraph?.pageBreakBefore = flag(a)
