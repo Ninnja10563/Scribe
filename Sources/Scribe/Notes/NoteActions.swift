@@ -39,10 +39,7 @@ extension EditorWindowController {
         }
         let numbered = try NoteNumbering.resolve(referenceIDs: [note.id], notes: [note])[0]
         let model = fileDocument.snapshot()
-        let measurement = try NoteTextLayout(note: numbered, styles: model.styles, width: editor.canvas.pageSettings.contentWidth)
-        guard note.kind == .endnote || measurement.height + 40 < editor.canvas.pageSettings.contentHeight else {
-            throw DocumentError.invalid("this note requires continuation onto another page, which is not available yet")
-        }
+        _ = try NoteTextLayout(note: numbered, styles: model.styles, width: editor.canvas.pageSettings.contentWidth)
         var attributes = range.length > 0 ? editor.storage.attributes(at: range.location, effectiveRange: nil) : editor.activeTextView.typingAttributes
         for key in [NSAttributedString.Key.attachment, .scribeImage, .scribeEquation, .scribeNoteNumber] { attributes.removeValue(forKey: key) }
         attributes[.scribeNote] = try JSONEncoder().encode(note)

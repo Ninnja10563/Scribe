@@ -6,7 +6,7 @@ import DocumentCore
 /// Page fitting uses real line fragments and verifies the result after TextKit reflows.
 @MainActor final class FootnoteLayout {
     @MainActor struct Page {
-        let notes: [NoteTextLayout]
+        let notes: [NoteTextLayout.Fragment]
         let height: CGFloat
         func draw(at origin: NSPoint, width: CGFloat) {
             guard !notes.isEmpty else { return }
@@ -19,6 +19,9 @@ import DocumentCore
     }
     let endnotes: [NumberedNote]
     private let measured: [UUID: NoteTextLayout]
+    private struct Continuation { let id: UUID; let start: Int }
+    private var pending: [Continuation] = []
+    var hasPendingNotes: Bool { !pending.isEmpty }
     private let references: [(range: NSRange, id: UUID)]
     init(storage: NSTextStorage, styles: [ParagraphStyle], width: CGFloat) throws {
         var references: [(range: NSRange, id: UUID)] = [], notes: [DocumentNote] = []
@@ -53,18 +56,56 @@ import DocumentCore
             lines.append(.init(bottom: rect.maxY, noteIDs: self.ids(in: characters)))
         }
         let heights = measured.mapValues { Double($0.height + 6) }
-        let plan = try FootnotePagePlan.choose(lines: lines, pageHeight: pageHeight, noteHeights: heights)
-        guard !plan.needsContinuation, plan.lineCount > 0 || lines.isEmpty else {
-            throw DocumentError.invalid("A footnote and its reference cannot fit on one page. Note continuation is not available yet.")
+        if !pending.isEmpty {
+            let remaining = pending.map { item in measured[item.id]!.fragment(from: item.start, fitting: 1_000_000)! }
+            let reserved = remaining.reduce(CGFloat(12)) { $0 + $1.height + 6 }
+            if reserved >= pageHeight || lines.first.map({ $0.bottom + reserved > pageHeight }) == true {
+                var fragments: [NoteTextLayout.Fragment] = [], next: [Continuation] = []
+                var available = pageHeight - 12
+                for item in pending {
+                    let note = measured[item.id]!
+                    guard let fragment = note.fragment(from: item.start, fitting: available - 6) else { next.append(item); continue }
+                    fragments.append(fragment); available -= fragment.height + 6
+                    if NSMaxRange(fragment.glyphs) < NSMaxRange(note.glyphRange) { next.append(Continuation(id: item.id, start: NSMaxRange(fragment.glyphs))) }
+                }
+                guard !fragments.isEmpty else { throw DocumentError.invalid("a footnote line or object is taller than the page writing area") }
+                let page = try finish(layout: layout, container: container, bodyHeight: 1, expectedReferences: [], fragments: fragments, pageHeight: pageHeight)
+                pending = next; return page
+            }
+            let plan = try FootnotePagePlan.choose(lines: lines, pageHeight: pageHeight - reserved, noteHeights: heights, separatorHeight: 0)
+            let fragments = remaining + plan.noteIDs.map { measured[$0]!.fullFragment }
+            let page = try finish(layout: layout, container: container, bodyHeight: max(1, plan.bodyHeight), expectedReferences: plan.noteIDs, fragments: fragments, pageHeight: pageHeight)
+            pending = []; return page
         }
-        container.containerSize.height = max(1, plan.bodyHeight)
+        let plan = try FootnotePagePlan.choose(lines: lines, pageHeight: pageHeight, noteHeights: heights)
+        if plan.needsContinuation, let first = lines.first {
+            let minimums = first.noteIDs.map { measured[$0]!.minimumFragmentHeight(from: 0) + 6 }
+            var available = pageHeight - first.bottom - 12
+            guard minimums.reduce(0, +) <= available else { throw DocumentError.invalid("the references on one line require more note space than the page provides") }
+            var fragments: [NoteTextLayout.Fragment] = [], next: [Continuation] = []
+            for (index, id) in first.noteIDs.enumerated() {
+                let note = measured[id]!
+                let reservedForLater = minimums.dropFirst(index + 1).reduce(0, +)
+                guard let fragment = note.fragment(from: 0, fitting: available - reservedForLater - 6) else { throw DocumentError.invalid("a footnote object cannot fit on the reference page") }
+                fragments.append(fragment); available -= fragment.height + 6
+                if NSMaxRange(fragment.glyphs) < NSMaxRange(note.glyphRange) { next.append(Continuation(id: id, start: NSMaxRange(fragment.glyphs))) }
+            }
+            let page = try finish(layout: layout, container: container, bodyHeight: first.bottom, expectedReferences: first.noteIDs, fragments: fragments, pageHeight: pageHeight)
+            pending = next; return page
+        }
+        guard plan.lineCount > 0 || lines.isEmpty else { throw DocumentError.invalid("the next body line cannot fit within the page writing area") }
+        return try finish(layout: layout, container: container, bodyHeight: max(1, plan.bodyHeight), expectedReferences: plan.noteIDs, fragments: plan.noteIDs.map { measured[$0]!.fullFragment }, pageHeight: pageHeight)
+    }
+    private func finish(layout: NSLayoutManager, container: NSTextContainer, bodyHeight: CGFloat, expectedReferences: [UUID], fragments: [NoteTextLayout.Fragment], pageHeight: CGFloat) throws -> Page {
+        container.containerSize.height = bodyHeight
         layout.textContainerChangedGeometry(container); layout.ensureLayout(for: container)
         let characters = layout.characterRange(forGlyphRange: layout.glyphRange(for: container), actualGlyphRange: nil)
-        guard ids(in: characters) == plan.noteIDs,
-              layout.usedRect(for: container).maxY + plan.noteHeight <= pageHeight + 0.5 else {
-            throw DocumentError.invalid("The footnote reference could not be kept with its note on this page.")
+        let height = fragments.isEmpty ? 0 : fragments.reduce(CGFloat(12)) { $0 + $1.height + 6 }
+        guard ids(in: characters) == expectedReferences,
+              layout.usedRect(for: container).maxY + height <= pageHeight + 0.5 else {
+            throw DocumentError.invalid("the footnote reference could not be kept with its note on this page")
         }
-        return Page(notes: plan.noteIDs.compactMap { measured[$0] }, height: plan.noteHeight)
+        return Page(notes: fragments, height: height)
     }
     private func ids(in range: NSRange) -> [UUID] {
         references.filter { NSIntersectionRange($0.range, range).length > 0 }.map(\.id)

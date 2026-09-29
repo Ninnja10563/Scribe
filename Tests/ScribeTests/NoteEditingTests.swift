@@ -54,8 +54,8 @@ import DocumentCore
         document.undoManager?.undo(); XCTAssertEqual(document.snapshot().notes, inserted.notes)
         let encoded = try document.data(ofType: "org.scribe.document")
         XCTAssertEqual(try NativeFormat.decode(encoded).notes, inserted.notes)
-        let tooLong = DocumentNote(kind: .footnote, text: String(repeating: "Too much text. ", count: 1000))
-        XCTAssertThrowsError(try controller.applyNote(tooLong, replacing: NSRange(location: 0, length: 1), action: "Edit Note"))
+        var invalid = DocumentNote(kind: .footnote); invalid.paragraphs = []
+        XCTAssertThrowsError(try controller.applyNote(invalid, replacing: NSRange(location: 0, length: 1), action: "Edit Note"))
         XCTAssertEqual(document.snapshot().notes, inserted.notes)
     }
 }

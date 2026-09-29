@@ -231,7 +231,7 @@ import DocumentCore
             if pageCharacterRanges.indices.contains(index) { pageCharacterRanges[index] = characters }
             else { pageCharacterRanges.append(characters) }
             required = index + 1
-            if range.length == 0 && NSMaxRange(range) < layout.numberOfGlyphs && lastEnd == range.location {
+            if range.length == 0 && NSMaxRange(range) < layout.numberOfGlyphs && lastEnd == range.location && (canvas.footnotes[index]?.notes.isEmpty ?? true) {
                 layoutWarning = "Content cannot fit on this page. Reduce its size or increase the writing area."
                 break
             }
@@ -243,6 +243,7 @@ import DocumentCore
                 break
             }
             if NSMaxRange(range) >= layout.numberOfGlyphs {
+                if noteLayout?.hasPendingNotes == true { continue }
                 // A trailing newline may need a final empty page for its insertion point.
                 if storage.string.hasSuffix("\n"), layout.extraLineFragmentTextContainer == nil, range.length > 0 {
                     continue
@@ -250,6 +251,7 @@ import DocumentCore
                 break
             }
         }
+        if noteLayout?.hasPendingNotes == true, layoutWarning == nil { layoutWarning = "Footnotes exceed the current 2,000-page layout limit." }
         if layoutWarning == nil, owner?.model.tables.contains(where: { ($0.minimumRowHeights ?? []).compactMap { $0 }.contains { $0 > canvas.pageSettings.contentHeight } }) == true {
             layoutWarning = "A table row's minimum height exceeds the page writing area. Reduce it using Table → Row Height before PDF export or printing."
         }

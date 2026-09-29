@@ -64,7 +64,7 @@ import DocumentCore
         XCTAssertTrue(editor.canvas.footnotes.isEmpty)
         XCTAssertTrue(editor.layout.textContainers.allSatisfy { $0.containerSize.height == editor.canvas.pageSettings.contentHeight })
     }
-    func testOversizedNoteBlocksOutputWithoutTruncatingSemanticContent() throws {
+    func testLongFootnoteContinuesAcrossPagesWithoutTruncatingSemanticContent() throws {
         _ = NSApplication.shared
         let document = ScribeFileDocument()
         let note = DocumentNote(kind: .footnote, text: String(repeating: "Lengthy citation content. ", count: 1000))
@@ -72,7 +72,21 @@ import DocumentCore
         document.model.notes = [note]; document.model.sections[0].paragraphs[0].runs = [reference]
         document.makeWindowControllers(); defer { document.close() }
         let editor = document.editorController!.editor
-        XCTAssertNotNil(editor.layoutWarning)
+        XCTAssertNil(editor.layoutWarning)
+        XCTAssertGreaterThan(editor.canvas.pageCount, 2)
+        let renderer = PrintRenderer(editor: editor), combined = PDFDocument()
+        for index in 0..<editor.canvas.pageCount {
+            let data = renderer.dataWithPDF(inside: renderer.rectForPage(index + 1))
+            let page = try XCTUnwrap(PDFDocument(data: data)?.page(at: 0))
+            combined.insert(page, at: combined.pageCount)
+        }
+        let text = (combined.string ?? "").split(whereSeparator: \.isWhitespace).joined(separator: " ")
+        XCTAssertEqual(text.components(separatedBy: "Lengthy citation content.").count - 1, 1000)
+        if let folder = ProcessInfo.processInfo.environment["SCRIBE_SCHEMA_OUTPUT"] {
+            let url = URL(fileURLWithPath: folder, isDirectory: true)
+            try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
+            try XCTUnwrap(combined.dataRepresentation()).write(to: url.appendingPathComponent("FootnoteContinuation.pdf"))
+        }
         XCTAssertEqual(document.snapshot().notes, [note])
         XCTAssertNotNil(editor.outputWarning)
     }
