@@ -30,6 +30,7 @@ extension ScribeTextView {
         guard let data = original[.scribeImage] as? Data, let image = try? JSONDecoder().decode(InlineImage.self, from: data),
               let attachment = ImageProjection.attachment(image), let cell = attachment.attachmentCell as? NSTextAttachmentCell else { return false }
         var updated = image
+        let startInWindow = event.locationInWindow, gestureScale = editor.zoom
         let horizontalDirection: CGFloat = corner.x == rect.minX ? -1 : 1
         let verticalDirection: CGFloat = corner.y == rect.minY ? -1 : 1
         let maxWidth = editor.canvas.pageSettings.contentWidth
@@ -42,8 +43,10 @@ extension ScribeTextView {
                 break
             }
             if next.type == .leftMouseUp { break }
-            let location = convert(next.locationInWindow, from: nil)
-            let scale = ImageResizeGeometry.scale(width: image.width, height: image.height, horizontalChange: (location.x - point.x) * horizontalDirection, verticalChange: (location.y - point.y) * verticalDirection, maximumWidth: maxWidth, maximumHeight: maxHeight)
+            // The original text view may disappear when a smaller image moves to an earlier page.
+            let horizontalChange = (next.locationInWindow.x - startInWindow.x) / gestureScale
+            let verticalChange = (startInWindow.y - next.locationInWindow.y) / gestureScale
+            let scale = ImageResizeGeometry.scale(width: image.width, height: image.height, horizontalChange: horizontalChange * horizontalDirection, verticalChange: verticalChange * verticalDirection, maximumWidth: maxWidth, maximumHeight: maxHeight)
             updated.width = image.width * scale; updated.height = image.height * scale
             cell.image?.size = NSSize(width: updated.width, height: updated.height)
             storage.addAttribute(.attachment, value: attachment, range: range)
@@ -53,8 +56,10 @@ extension ScribeTextView {
         storage.setAttributes(original, range: range)
         if updated != image, let finalAttachment = ImageProjection.attachment(updated) {
             var attributes = original; attributes[.attachment] = finalAttachment; attributes[.scribeImage] = try? JSONEncoder().encode(updated)
-            setSelectedRange(range); replaceSelection(NSAttributedString(string: "\u{FFFC}", attributes: attributes), action: "Resize Image")
-            setSelectedRange(range)
+            editor.select(range)
+            let target = editor.activeTextView
+            target.replaceSelection(NSAttributedString(string: "\u{FFFC}", attributes: attributes), action: "Resize Image")
+            target.setSelectedRange(range)
         }
         editor.paginate(); needsDisplay = true
         if let deferredKey { NSApp.sendEvent(deferredKey) }

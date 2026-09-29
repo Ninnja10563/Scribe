@@ -53,6 +53,35 @@ import DocumentCore
         XCTAssertEqual(document.snapshot(), original); XCTAssertFalse(document.undoManager!.canUndo)
         XCTAssertEqual(try XCTUnwrap(view.selectedImageFrame).width, frame.width, accuracy: 0.01)
     }
+    func testShrinkingImageAcrossPageBoundaryRetainsTheCommittedResize() throws {
+        let document = document(); defer { document.close() }
+        document.performEdit("Small pages") { model in
+            model.sections[0].page.height = 360
+            model.sections[0].paragraphs[0].runs[0].image?.width = 320
+            model.sections[0].paragraphs[0].runs[0].image?.height = 160
+            model.sections[0].paragraphs.insert(contentsOf: [Paragraph("First line"), Paragraph("Second line"), Paragraph("Third line")], at: 0)
+        }
+        let editor = document.editorController!.editor, window = document.editorController!.window!
+        let range = (editor.storage.string as NSString).range(of: "\u{FFFC}")
+        editor.select(range); editor.paginate()
+        XCTAssertEqual(editor.textViews.count, 2)
+        let view = editor.activeTextView, frame = try XCTUnwrap(view.selectedImageFrame)
+        XCTAssertTrue(view === editor.textViews[1])
+        let start = view.convert(NSPoint(x: frame.maxX, y: frame.maxY), to: nil)
+        let first = NSPoint(x: start.x, y: start.y + 100 * editor.zoom)
+        let end = NSPoint(x: start.x, y: start.y + 120 * editor.zoom)
+        document.undoManager?.removeAllActions()
+        NSApp.postEvent(try mouse(.leftMouseDragged, point: first, window: window), atStart: false)
+        NSApp.postEvent(try mouse(.leftMouseDragged, point: end, window: window), atStart: false)
+        NSApp.postEvent(try mouse(.leftMouseUp, point: end, window: window), atStart: false)
+        XCTAssertTrue(try view.resizeImageIfNeeded(with: mouse(.leftMouseDown, point: start, window: window)))
+        let image = try XCTUnwrap(document.snapshot().paragraphs.flatMap(\.runs).compactMap(\.image).first)
+        XCTAssertEqual(image.width, 80, accuracy: 0.01); XCTAssertEqual(image.height, 40, accuracy: 0.01)
+        XCTAssertEqual(editor.textViews.count, 1)
+        document.undoManager?.undo()
+        XCTAssertEqual(document.snapshot().paragraphs.flatMap(\.runs).compactMap(\.image).first?.height, 160)
+        XCTAssertEqual(editor.textViews.count, 2)
+    }
     func testSelectionHandlesAppearOnlyOnImagePageAndGeometryRespectsBounds() throws {
         let document = document(); defer { document.close() }
         document.performEdit("Page break") { $0.sections[0].paragraphs.insert(Paragraph("First page"), at: 0); $0.sections[0].paragraphs[1].pageBreakBefore = true }
