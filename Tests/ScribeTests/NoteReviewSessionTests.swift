@@ -91,6 +91,20 @@ import DocumentCore
         let applied = document.snapshot()
         XCTAssertEqual(applied.notes.first?.plainText, "Citation added")
         XCTAssertTrue(applied.hasPendingRevisions)
+        XCTAssertEqual(try NativeFormat.decode(NativeFormat.encode(applied)), applied)
+        if let directory = ProcessInfo.processInfo.environment["SCRIBE_SCHEMA_OUTPUT"] {
+            let folder = URL(fileURLWithPath: directory, isDirectory: true)
+            try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+            try NativeFormat.encode(applied).write(to: folder.appendingPathComponent("TrackedNoteDialog.scribe"))
+            for mode in ReviewOutputMode.allCases {
+                let output = try ReviewOutputSession(source: applied, mode: mode)
+                defer { output.close() }
+                let name: String
+                switch mode { case .marked: name = "Marked"; case .accepted: name = "Accepted"; case .rejected: name = "Rejected" }
+                try output.renderer.exportPDF(to: folder.appendingPathComponent("TrackedNoteDialog-\(name).pdf"), title: "Tracked note", author: "Scribe tests")
+            }
+            XCTAssertEqual(document.snapshot(), applied)
+        }
         document.undoManager?.undo(); XCTAssertEqual(document.snapshot().notes, [original])
         document.undoManager?.redo(); XCTAssertEqual(document.snapshot().notes, applied.notes)
         var rejected = applied; try rejected.resolveAllRevisions(accepting: false)
