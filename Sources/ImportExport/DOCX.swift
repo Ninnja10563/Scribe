@@ -50,7 +50,7 @@ public enum DOCX {
         func part(_ name: String, namespace: String = DOCX.relationNS) -> Data? { files["word/" + (partTargets[namespace + "/" + name] ?? name + ".xml")] }
         if let styles = part("styles") {
             let reader = StyleReader(); try parse(styles, delegate: reader)
-            for style in reader.styles { delegate.document.updateStyle(style) }
+            for style in try reader.resolvedStyles() { delegate.document.updateStyle(style) }
             delegate.styleLists = reader.resolvedLists
             if let language = reader.defaultLanguage, let normalized = try? DocumentMetadata.languageIdentifier(language) { delegate.document.language = normalized }
             if reader.styleLanguages.contains(where: { (try? DocumentMetadata.languageIdentifier($0)) != delegate.document.language }) {
@@ -227,7 +227,7 @@ public enum DOCX {
         return s
     }
     static func paragraphProperties(_ f: ParagraphFormatting) -> String {
-        "<w:spacing w:before=\"\(Int(f.spaceBefore * 20))\" w:after=\"\(Int(f.spaceAfter * 20))\"/><w:ind w:left=\"\(Int(f.headIndent * 20))\" w:right=\"\(Int(f.tailIndent * 20))\" \(f.firstLineIndent >= f.headIndent ? "w:firstLine" : "w:hanging")=\"\(Int(abs(f.firstLineIndent - f.headIndent) * 20))\"/><w:jc w:val=\"\(f.alignment == .justified ? "both" : f.alignment.rawValue)\"/>"
+        "<w:spacing w:before=\"\(Int(f.spaceBefore * 20))\" w:after=\"\(Int(f.spaceAfter * 20))\"\(DOCXLineHeight.attributes(f.lineHeight))/><w:ind w:left=\"\(Int(f.headIndent * 20))\" w:right=\"\(Int(f.tailIndent * 20))\" \(f.firstLineIndent >= f.headIndent ? "w:firstLine" : "w:hanging")=\"\(Int(abs(f.firstLineIndent - f.headIndent) * 20))\"/><w:jc w:val=\"\(f.alignment == .justified ? "both" : f.alignment.rawValue)\"/>"
     }
     static func sectionProperties(_ p: PageSettings) -> String {
         "<w:sectPr><w:pgSz w:w=\"\(Int(p.width * 20))\" w:h=\"\(Int(p.height * 20))\"/><w:pgMar w:top=\"\(Int(p.top * 20))\" w:bottom=\"\(Int(p.bottom * 20))\" w:left=\"\(Int(p.left * 20))\" w:right=\"\(Int(p.right * 20))\"/></w:sectPr>"
@@ -252,10 +252,11 @@ func applyRun(_ name: String, _ a: [String: String], _ f: inout TextFormatting) 
     default: break
     }
 }
-private func applyParagraph(_ name: String, _ a: [String: String], _ f: inout ParagraphFormatting) {
+private func applyParagraph(_ name: String, _ a: [String: String], _ f: inout ParagraphFormatting, lineHeight: Bool = true) throws {
     switch name {
     case "jc": f.alignment = wordAttribute(a) == "both" ? .justified : Alignment(rawValue: wordAttribute(a) ?? "left") ?? .left
     case "spacing":
+        if lineHeight { try DOCXLineHeight.apply(a, to: &f) }
         if let before = wordAttribute(a, "before").flatMap(Double.init) { f.spaceBefore = before / 20 }
         if let after = wordAttribute(a, "after").flatMap(Double.init) { f.spaceAfter = after / 20 }
     case "ind":
@@ -317,11 +318,31 @@ private class StyleReader: NSObject, XMLParserDelegate {
     var defaultLanguage: String?
     var styleLanguages = Set<String>()
     private var inDefaults = false
+    private var inDefaultParagraph = false
+    private var defaultParagraph: ParagraphFormatting?
+    private var lineSettings: [String: [String: String]] = [:]
+    func resolvedStyles() throws -> [ParagraphStyle] {
+        try styles.map { style in
+            var chain: [String] = [], visited = Set<String>(), next: String? = style.id
+            while let id = next, visited.insert(id).inserted { chain.append(id); next = parents[id] }
+            var inherited = defaultParagraph ?? ParagraphFormatting()
+            for id in chain.reversed() { if let settings = lineSettings[id] { try DOCXLineHeight.apply(settings, to: &inherited) } }
+            var result = style
+            result.paragraph.lineHeight = inherited.lineHeight; result.paragraph.lineSpacing = inherited.lineSpacing
+            return result
+        }
+    }
     func parser(_ parser: XMLParser, didStartElement name: String, namespaceURI: String?, qualifiedName: String?, attributes a: [String: String]) {
+        guard namespaceURI == DOCX.wordNS else { return }
         if name == "docDefaults" { inDefaults = true }
         if inDefaults, name == "lang" { defaultLanguage = wordAttribute(a) }
+        if inDefaults, name == "pPr" { inDefaultParagraph = true; defaultParagraph = ParagraphFormatting() }
+        if inDefaultParagraph {
+            do { try applyParagraph(name, a, &defaultParagraph!) } catch { parser.abortParsing() }
+        }
         if name == "style", wordAttribute(a, "type") == "paragraph", let id = wordAttribute(a, "styleId") {
             current = ParagraphStyle(id: id, name: id)
+            if let defaultParagraph { current?.paragraph = defaultParagraph }
         }
         guard current != nil else { return }
         if name == "lang", let language = wordAttribute(a) { styleLanguages.insert(language) }
@@ -331,10 +352,13 @@ private class StyleReader: NSObject, XMLParserDelegate {
         if name == "name" { current?.name = wordAttribute(a) ?? current!.name }
         if name == "outlineLvl", let level = wordAttribute(a).flatMap(Int.init), level < 9 { current?.headingLevel = level + 1 }
         applyRun(name, a, &current!.text)
-        applyParagraph(name, a, &current!.paragraph)
+        if name == "spacing", wordAttribute(a, "line") != nil || wordAttribute(a, "lineRule") != nil { lineSettings[current!.id] = a }
+        do { try applyParagraph(name, a, &current!.paragraph, lineHeight: false) } catch { parser.abortParsing() }
     }
     func parser(_ parser: XMLParser, didEndElement name: String, namespaceURI: String?, qualifiedName: String?) {
+        guard namespaceURI == DOCX.wordNS else { return }
         if name == "docDefaults" { inDefaults = false }
+        if name == "pPr" { inDefaultParagraph = false }
         if name == "style", let style = current { styles.append(style); current = nil }
     }
 }
@@ -426,7 +450,8 @@ class WordReader: NSObject, XMLParserDelegate {
         case "jc", "spacing", "ind":
             if let p = paragraph {
                 var formatting = p.formatting ?? document.style(for: p).paragraph
-                applyParagraph(name, a, &formatting); paragraph?.formatting = formatting
+                do { try applyParagraph(name, a, &formatting); paragraph?.formatting = formatting }
+                catch { parser.abortParsing() }
             }
         case "commentRangeStart", "commentRangeEnd", "commentReference":
             if let id = wordAttribute(a, "id"), let paragraph {

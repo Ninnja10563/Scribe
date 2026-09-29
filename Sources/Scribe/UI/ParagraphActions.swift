@@ -42,22 +42,27 @@ extension EditorWindowController {
         let values = [current.lineSpacing, current.paragraphSpacingBefore, current.paragraphSpacing, current.firstLineHeadIndent, current.headIndent, -current.tailIndent]
         let labels = ["Additional line spacing", "Space before", "Space after", "First line indent", "Left indent", "Right indent"]
         let fields = values.map { NSTextField(string: String(format: "%.1f", $0)) }
-        let stack = NSStackView(); stack.orientation = .vertical; stack.alignment = .leading; stack.spacing = 8
+        let height = LineHeightOptions(AttributedDocument.paragraphFormatting(current).lineHeight)
+        height.onModeChange = { [weak height] in if (height?.mode.indexOfSelectedItem ?? 0) > 0 { fields[0].stringValue = "0" } }
         for (label, field) in zip(labels, fields) {
             field.setAccessibilityLabel(label); field.widthAnchor.constraint(equalToConstant: 90).isActive = true
-            stack.addArrangedSubview(NSStackView(views: [NSTextField(labelWithString: label), field]))
+            field.identifier = .init(label)
         }
-        let alert = NSAlert(); alert.messageText = "Paragraph Spacing and Indents"; alert.informativeText = "Measurements are in points. A first-line indent smaller than the left indent creates a hanging indent."
-        stack.frame = NSRect(x: 0, y: 0, width: 340, height: 200); alert.accessoryView = stack
+        let rows: [[NSView]] = [[NSTextField(labelWithString: "Line height"), height.mode], [NSTextField(labelWithString: "Value"), height.valueView]] + zip(labels, fields).map { [NSTextField(labelWithString: $0.0), $0.1] }
+        let grid = NSGridView(views: rows); grid.column(at: 0).width = 170; grid.columnSpacing = 12; grid.rowSpacing = 8
+        for index in rows.indices { grid.row(at: index).height = 24 }
+        let alert = NSAlert(); alert.messageText = "Paragraph Spacing and Indents"; alert.informativeText = "Multiple uses a line-height factor; other measurements are in points. Additional spacing adds a gap after each line."
+        grid.frame = NSRect(x: 0, y: 0, width: 390, height: 256); alert.accessoryView = grid
         alert.addButton(withTitle: "Apply"); alert.addButton(withTitle: "Cancel")
         while !isClosing, alert.runModal() == .alertFirstButtonReturn {
             do {
                 let numbers = fields.compactMap { Double($0.stringValue) }
-                try applyParagraphGeometry(numbers); return
+                try applyParagraphGeometry(numbers, lineHeight: height.value()); return
             } catch { alert.informativeText = error.localizedDescription }
         }
     }
-    func applyParagraphGeometry(_ numbers: [Double]) throws {
+    func applyParagraphGeometry(_ numbers: [Double], lineHeight: ParagraphLineHeight? = nil) throws {
+        try lineHeight?.validate()
         guard numbers.count == 6, numbers.allSatisfy({ $0.isFinite && (0...4000).contains($0) }), max(numbers[3], numbers[4]) + numbers[5] < editor.canvas.pageSettings.contentWidth - 30 else {
             throw DocumentError.invalid("enter non-negative spacing and indents that leave at least 30 points of writing width")
         }
@@ -66,6 +71,7 @@ extension EditorWindowController {
             for index in indices where model.sections[0].paragraphs.indices.contains(index) {
                 let paragraph = model.sections[0].paragraphs[index]
                 var format = paragraph.formatting ?? model.style(for: paragraph).paragraph
+                format.lineHeight = lineHeight
                 format.lineSpacing = numbers[0]; format.spaceBefore = numbers[1]; format.spaceAfter = numbers[2]
                 format.firstLineIndent = numbers[3]; format.headIndent = numbers[4]; format.tailIndent = numbers[5]
                 model.sections[0].paragraphs[index].formatting = format

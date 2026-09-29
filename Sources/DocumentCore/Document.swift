@@ -1,7 +1,7 @@
 import Foundation
 
 public struct ScribeDocument: Codable, Equatable, Sendable {
-    public static let currentVersion = 14
+    public static let currentVersion = 15
     public var formatVersion = currentVersion
     public var id = UUID()
     public var title = "Untitled"
@@ -124,6 +124,7 @@ public enum Alignment: String, Codable, Sendable, CaseIterable { case left, cent
 public struct ParagraphFormatting: Codable, Equatable, Sendable {
     public var alignment = Alignment.left
     public var lineSpacing = 3.0
+    public var lineHeight: ParagraphLineHeight?
     public var spaceBefore = 0.0
     public var spaceAfter = 8.0
     public var firstLineIndent = 0.0

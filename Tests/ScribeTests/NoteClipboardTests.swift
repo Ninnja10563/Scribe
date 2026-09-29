@@ -5,6 +5,26 @@ import DocumentCore
 @testable import Scribe
 
 @MainActor final class NoteClipboardTests: XCTestCase {
+    func testLineHeightNotesUseVersionedClipboardAndRestoreFormatting() throws {
+        _ = NSApplication.shared
+        for height in [nil, ParagraphLineHeight(rule: .exact, value: 24)] {
+            var source = ScribeDocument(), note = DocumentNote(kind: .footnote, text: "Citation")
+            var format = ParagraphFormatting(); format.lineHeight = height
+            note.paragraphs[0].formatting = format
+            source.notes = [note]
+            var reference = TextRun("\u{fffc}"); reference.noteID = note.id
+            source.sections[0].paragraphs[0].runs = [reference]
+            let projection = AttributedDocument.render(source)
+            let data = try InlineObjectClipboard.encode(projection)
+            let payload = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+            XCTAssertEqual(payload["version"] as? Int, height == nil ? 2 : 3)
+            let restored = try InlineObjectClipboard.restore(data, in: NSAttributedString(string: NoteClipboard.fallback(note)))
+            let noteData = try XCTUnwrap(restored.attribute(.scribeNote, at: 0, effectiveRange: nil) as? Data)
+            let copy = try JSONDecoder().decode(DocumentNote.self, from: noteData)
+            XCTAssertEqual(copy.paragraphs[0].formatting?.lineHeight, height)
+            XCTAssertNotEqual(copy.id, note.id)
+        }
+    }
     func testNativeCopyPreservesContentCreatesIndependentNotesAndKeepsExternalTextReadable() throws {
         _ = NSApplication.shared
         let source = ScribeFileDocument()

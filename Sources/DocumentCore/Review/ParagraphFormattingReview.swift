@@ -70,6 +70,7 @@ extension ParagraphFormatting {
         var result = self
         if before.alignment != after.alignment { result.alignment = after.alignment }
         if before.lineSpacing != after.lineSpacing { result.lineSpacing = after.lineSpacing }
+        if before.lineHeight != after.lineHeight { result.lineHeight = after.lineHeight }
         if before.spaceBefore != after.spaceBefore { result.spaceBefore = after.spaceBefore }
         if before.spaceAfter != after.spaceAfter { result.spaceAfter = after.spaceAfter }
         if before.firstLineIndent != after.firstLineIndent { result.firstLineIndent = after.firstLineIndent }

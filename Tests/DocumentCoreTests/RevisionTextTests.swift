@@ -87,7 +87,7 @@ final class RevisionTextTests: XCTestCase {
         json["formatVersion"] = 13
         let earlier = try JSONSerialization.data(withJSONObject: json)
         let migrated = try NativeFormat.decode(earlier)
-        XCTAssertEqual(migrated.formatVersion, 14); XCTAssertNil(migrated.paragraphs[0].runs[0].review)
+        XCTAssertEqual(migrated.formatVersion, ScribeDocument.currentVersion); XCTAssertNil(migrated.paragraphs[0].runs[0].review)
         XCTAssertEqual((try JSONSerialization.jsonObject(with: earlier) as? [String: Any])?["formatVersion"] as? Int, 13)
     }
     func testInvalidRevisionIdentityAndFormattingHistoryAreRejected() throws {

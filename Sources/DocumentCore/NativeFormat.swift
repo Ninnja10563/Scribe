@@ -43,6 +43,7 @@ public enum NativeFormat {
             // v11 → v12: absent equation retains legacy text and image runs.
             if version < 13 { json["notes"] = [] } // v12 → v13: earlier documents have no note registry.
             // v13 → v14: absent run review metadata means accepted content.
+            // v14 → v15: absent lineHeight retains the original additional-spacing layout.
             json["formatVersion"] = ScribeDocument.currentVersion
             migrated = try JSONSerialization.data(withJSONObject: json)
         }
@@ -168,6 +169,7 @@ public enum NativeFormat {
         }
     }
     static func validateParagraph(_ format: ParagraphFormatting) throws {
+        try format.lineHeight?.validate()
         guard [format.lineSpacing, format.spaceBefore, format.spaceAfter, format.headIndent, format.tailIndent, format.firstLineIndent]
             .allSatisfy({ $0.isFinite && abs($0) <= 4000 }) else { throw DocumentError.invalid("invalid paragraph geometry") }
     }

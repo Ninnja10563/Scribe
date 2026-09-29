@@ -24,3 +24,5 @@ This is a foundation release. “Implemented” means there is working code and 
 | Distribution | macOS CI, launch/render smoke artifacts, verified DMGs, versioned pre-releases and checksums | Developer ID signing, notarization, automatic updater |
 
 Limits: 128 MB native/decompressed archive safety limit; 32 MB and 64 megapixels per decoded image; 100 rows and 20 columns per table; 2,000 page-layout containers. These are explicit implementation bounds, not performance guarantees. An unlayable object is reported and PDF/print is blocked rather than silently truncated.
+
+Development branch: native v15 adds explicit multiple/minimum/exact paragraph line heights, style controls and Office spacing attributes. Native rendered-output validation is pending; the published release remains 0.20.0.

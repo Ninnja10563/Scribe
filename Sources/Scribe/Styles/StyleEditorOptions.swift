@@ -14,6 +14,7 @@ import DocumentCore
     let foreground = NSColorWell(), highlight = NSColorWell()
     let useHighlight = NSButton(checkboxWithTitle: "Highlight", target: nil, action: nil)
     let spacing: [NSTextField]
+    let lineHeight: LineHeightOptions
     let view = NSStackView()
     let preview = NSTextField(labelWithString: "Scribe — The quick brown fox")
     private var faceNames: [String?] = []
@@ -21,6 +22,7 @@ import DocumentCore
         original = style; name = NSTextField(string: style.name)
         size = NSTextField(string: String(style.text.fontSize ?? 12))
         let p = style.paragraph
+        lineHeight = LineHeightOptions(p.lineHeight)
         spacing = [p.lineSpacing, p.spaceBefore, p.spaceAfter, p.firstLineIndent, p.headIndent, p.tailIndent].map { NSTextField(string: String($0)) }
         super.init()
         var families = NSFontManager.shared.availableFontFamilies
@@ -42,7 +44,7 @@ import DocumentCore
         outline.selectItem(at: style.headingLevel ?? 0)
         let tabs = NSTabView(); tabs.translatesAutoresizingMaskIntoConstraints = false
         let text = grid([("Font family", family), ("Font face", face), ("Size (pt)", size), ("Traits", NSStackView(views: [bold, italic])), ("Text color", foreground), ("", underline), ("", strike), ("", useHighlight), ("Highlight color", highlight)])
-        let paragraph = grid([("Alignment", alignment), ("Outline", outline)] + zip(["Additional line spacing", "Space before", "Space after", "First line indent", "Left indent", "Right indent"], spacing).map { ($0.0, $0.1 as NSView) })
+        let paragraph = grid([("Alignment", alignment), ("Outline", outline), ("Line height", lineHeight.mode), ("Line height value", lineHeight.valueView)] + zip(["Additional line spacing", "Space before", "Space after", "First line indent", "Left indent", "Right indent"], spacing).map { ($0.0, $0.1 as NSView) })
         for (label, content) in [("Text", text), ("Paragraph", paragraph)] {
             let item = NSTabViewItem(identifier: label); item.label = label
             let wrapper = NSView(); content.translatesAutoresizingMaskIntoConstraints = false; wrapper.addSubview(content)
@@ -54,10 +56,16 @@ import DocumentCore
         view.addArrangedSubview(title); view.addArrangedSubview(tabs); view.addArrangedSubview(preview)
         preview.setAccessibilityLabel("Style preview"); preview.heightAnchor.constraint(equalToConstant: 44).isActive = true
         for control in [size, bold, italic, underline, strike, foreground, highlight, useHighlight] as [NSControl] { control.target = self; control.action = #selector(updatePreview) }
+        lineHeight.onModeChange = { [weak self] in
+            guard let self else { return }
+            if self.lineHeight.mode.indexOfSelectedItem > 0 { self.spacing[0].stringValue = "0" }
+            self.updatePreview()
+        }
+        lineHeight.amount.delegate = self
         face.target = self; face.action = #selector(faceChanged); size.delegate = self
         updatePreview()
-        NSLayoutConstraint.activate([title.widthAnchor.constraint(equalToConstant: 450), tabs.widthAnchor.constraint(equalToConstant: 450), tabs.heightAnchor.constraint(equalToConstant: 365)])
-        view.frame = NSRect(x: 0, y: 0, width: 450, height: 465)
+        NSLayoutConstraint.activate([title.widthAnchor.constraint(equalToConstant: 450), tabs.widthAnchor.constraint(equalToConstant: 450), tabs.heightAnchor.constraint(equalToConstant: 400)])
+        view.frame = NSRect(x: 0, y: 0, width: 450, height: 500)
     }
     private func grid(_ rows: [(String, NSView)]) -> NSGridView {
         for (label, control) in rows where !label.isEmpty { control.setAccessibilityLabel(label); control.identifier = NSUserInterfaceItemIdentifier(label) }
@@ -110,6 +118,7 @@ import DocumentCore
         guard numbers.count == 6, numbers.allSatisfy({ $0.isFinite && (0...4000).contains($0) }), max(numbers[3], numbers[4]) + numbers[5] < contentWidth - 30 else { throw DocumentError.invalid("spacing and indents must be non-negative and leave at least 30 points of writing width") }
         result.paragraph.alignment = Alignment.allCases[alignment.indexOfSelectedItem]
         result.headingLevel = outline.indexOfSelectedItem == 0 ? nil : outline.indexOfSelectedItem
+        result.paragraph.lineHeight = try lineHeight.value()
         result.paragraph.lineSpacing = numbers[0]; result.paragraph.spaceBefore = numbers[1]; result.paragraph.spaceAfter = numbers[2]
         result.paragraph.firstLineIndent = numbers[3]; result.paragraph.headIndent = numbers[4]; result.paragraph.tailIndent = numbers[5]
         return result

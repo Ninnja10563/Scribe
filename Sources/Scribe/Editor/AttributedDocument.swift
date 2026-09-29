@@ -186,6 +186,13 @@ extension NSAttributedString.Key {
         let ns = NSMutableParagraphStyle()
         let f = paragraph?.formatting ?? style.paragraph
         ns.alignment = [.left: .left, .center: .center, .right: .right, .justified: .justified][f.alignment]!
+        if let height = f.lineHeight {
+            switch height.rule {
+            case .multiple: ns.lineHeightMultiple = height.value
+            case .minimum: ns.minimumLineHeight = height.value
+            case .exact: ns.minimumLineHeight = height.value; ns.maximumLineHeight = height.value
+            }
+        }
         ns.lineSpacing = f.lineSpacing; ns.paragraphSpacingBefore = f.spaceBefore; ns.paragraphSpacing = f.spaceAfter
         ns.firstLineHeadIndent = f.firstLineIndent; ns.headIndent = f.headIndent; ns.tailIndent = -f.tailIndent
         var attrs: [NSAttributedString.Key: Any] = [.paragraphStyle: ns, .scribeStyle: style.id]
@@ -230,6 +237,13 @@ extension NSAttributedString.Key {
     static func paragraphFormatting(_ ns: NSParagraphStyle) -> ParagraphFormatting {
         var f = ParagraphFormatting()
         f.alignment = [.left: Alignment.left, .center: .center, .right: .right, .justified: .justified][ns.alignment] ?? .left
+        if ns.maximumLineHeight > 0, ns.maximumLineHeight == ns.minimumLineHeight {
+            f.lineHeight = .init(rule: .exact, value: ns.maximumLineHeight)
+        } else if ns.minimumLineHeight > 0 {
+            f.lineHeight = .init(rule: .minimum, value: ns.minimumLineHeight)
+        } else if ns.lineHeightMultiple > 0 {
+            f.lineHeight = .init(rule: .multiple, value: ns.lineHeightMultiple)
+        }
         f.lineSpacing = ns.lineSpacing; f.spaceBefore = ns.paragraphSpacingBefore; f.spaceAfter = ns.paragraphSpacing
         f.firstLineIndent = ns.firstLineHeadIndent; f.headIndent = ns.headIndent; f.tailIndent = -ns.tailIndent
         return f
