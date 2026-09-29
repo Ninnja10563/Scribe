@@ -5,6 +5,8 @@ import DocumentCore
 @main struct ScribeMain {
     @MainActor static func main() {
         let delegate = AppDelegate()
+        // The shared accessor finishes document-type and visible-UI initialization.
+        _ = NSDocumentController.shared
         let app = NSApplication.shared
         app.delegate = delegate
         app.setActivationPolicy(.regular)
