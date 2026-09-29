@@ -223,6 +223,7 @@ import DocumentCore
     }
     private func applyTrackedReplacement(_ value: NSAttributedString, range: NSRange, action: String) {
         guard let editor else { return }
+        if replaceTrackedParagraphRange(value, range: range, action: action) { return }
         if value.string == "\n", insertTrackedParagraphBreak(replacing: range, action: action) { return }
         do {
             guard let replacement = try editor.reviewEditing.replacement(in: editor, range: range, with: value) else { return }
