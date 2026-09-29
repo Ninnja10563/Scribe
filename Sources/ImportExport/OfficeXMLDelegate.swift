@@ -9,7 +9,7 @@ final class OfficeXMLDelegate: NSObject, XMLParserDelegate {
     private let receiver: XMLParserDelegate
     private var bindings: [String: [String]] = [:]
     private let aliases = [
-        DOCX.wordNS: "w", DOCX.relationNS: "r",
+        DOCX.wordNS: "w", DOCX.relationNS: "r", DOCXEquations.namespace: "m",
         "http://schemas.microsoft.com/office/word/2010/wordml": "w14",
         "http://schemas.microsoft.com/office/word/2012/wordml": "w15"
     ]

@@ -112,6 +112,7 @@ final class DOCXWriter {
         return "<w:p><w:pPr>\(properties)</w:pPr>\(bookmark)\(namedBookmarks?.markers(at: p.id) ?? "")\(contents.start(p.id))\(text)\(contents.end(p.id))</w:p>"
     }
     private func runXML(_ run: TextRun) -> String {
+            if let equation = run.equation { return DOCXEquations.xml(equation) }
             if let image = run.image { return imageRun(image) }
             let text = DOCX.xml(run.text).replacingOccurrences(of: "\t", with: "</w:t><w:tab/><w:t xml:space=\"preserve\">").replacingOccurrences(of: "\u{2028}", with: "</w:t><w:br/><w:t xml:space=\"preserve\">")
             let pageText = text.replacingOccurrences(of: "\u{c}", with: "</w:t><w:br w:type=\"page\"/><w:t xml:space=\"preserve\">")

@@ -284,7 +284,11 @@ private class WordReader: NSObject, XMLParserDelegate {
     private let tableMerging = DOCXTableMergingReader()
     var inDrawing = false
     private let imageReader = DOCXImageReader()
+    private let equationReader = DOCXEquationReader()
     func parser(_ parser: XMLParser, didStartElement name: String, namespaceURI: String?, qualifiedName: String?, attributes a: [String: String]) {
+        if equationReader.active || (namespaceURI == DOCXEquations.namespace && name == "oMath") {
+            equationReader.start(name, namespace: namespaceURI, attributes: a, parser: parser); return
+        }
         if inDrawing {
             imageReader.start(name, namespace: namespaceURI, attributes: a, targets: targets, warnings: &warnings)
         }
@@ -398,10 +402,18 @@ private class WordReader: NSObject, XMLParserDelegate {
         }
     }
     func parser(_ parser: XMLParser, foundCharacters text: String) {
+        if equationReader.active { equationReader.characters(text, parser: parser); return }
         if collecting { run.text += text }
         if collectingInstruction { instruction += text }
     }
     func parser(_ parser: XMLParser, didEndElement name: String, namespaceURI: String?, qualifiedName: String?) {
+        if equationReader.active {
+            if let result = equationReader.end() {
+                paragraph?.runs.append(result.run)
+                if let warning = result.warning { warnings.insert(warning) }
+            }
+            return
+        }
         guard namespaceURI == DOCX.wordNS else { return }
         if tableDepth == 1, let t = tableIndex {
             if name == "tbl" { document.tables[t].rows = max(1, row + 1) }
