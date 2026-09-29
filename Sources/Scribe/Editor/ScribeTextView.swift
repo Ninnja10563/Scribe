@@ -16,7 +16,14 @@ import DocumentCore
         super.updateFontPanel()
         let range = selectedRange()
         let attributes = range.length > 0 && range.location < (textStorage?.length ?? 0) ? textStorage!.attributes(at: range.location, effectiveRange: nil) : typingAttributes
-        if let font = ScriptProjection.logicalFont(in: attributes) { NSFontManager.shared.setSelectedFont(font, isMultiple: false) }
+        guard usesFontPanel, let font = ScriptProjection.logicalFont(in: attributes) else { return }
+        var multiple = false
+        if range.length > 0, let textStorage, NSMaxRange(range) <= textStorage.length {
+            textStorage.enumerateAttributes(in: range) { attributes, _, stop in
+                if let other = ScriptProjection.logicalFont(in: attributes), other != font { multiple = true; stop.pointee = true }
+            }
+        }
+        NSFontManager.shared.setSelectedFont(font, isMultiple: multiple)
     }
     override func checkSpelling(_ sender: Any?) {
         spellingTask?.cancel()

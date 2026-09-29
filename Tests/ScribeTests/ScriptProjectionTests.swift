@@ -21,6 +21,10 @@ import DocumentCore
             XCTAssertEqual((attributes[.font] as? NSFont)?.pointSize, 13)
             XCTAssertEqual(ScriptProjection.logicalFont(in: attributes)?.pointSize, 20)
         }
+        editor.select(NSRange(location: 0, length: editor.storage.length))
+        editor.activeTextView.updateFontPanel()
+        XCTAssertEqual(NSFontManager.shared.selectedFont?.pointSize, 20)
+        XCTAssertFalse(NSFontManager.shared.isMultiple, "Script rendering must not turn one logical font into a mixed-size selection")
         let snapshot = document.snapshot()
         XCTAssertTrue(snapshot.paragraphs[0].runs.allSatisfy { $0.format.fontSize == nil })
         XCTAssertEqual(snapshot.paragraphs[0].runs.first { $0.text == "SUP" }?.format.baseline, 1)
