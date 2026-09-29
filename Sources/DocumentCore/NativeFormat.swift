@@ -38,6 +38,7 @@ public enum NativeFormat {
             // v6 → v7: absent cellStyles and minimumRowHeights inherit table defaults.
             // v7 → v8: absent mergedCells retains the original rectangular grid.
             // v8 → v9: absent image adjustments preserve original image presentation.
+            // v9 → v10: absent clearHighlight retains inherited highlight semantics.
             json["formatVersion"] = ScribeDocument.currentVersion
             migrated = try JSONSerialization.data(withJSONObject: json)
         }
@@ -143,6 +144,7 @@ public enum NativeFormat {
         }
     }
     private static func validateText(_ format: TextFormatting) throws {
+        if format.clearHighlight == true, format.highlight != nil { throw DocumentError.invalid("conflicting highlight overrides") }
         if let face = format.fontFace, face.isEmpty || face.utf8.count > 512 || face.unicodeScalars.contains(where: { CharacterSet.controlCharacters.contains($0) }) {
             throw DocumentError.invalid("invalid font face")
         }

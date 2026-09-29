@@ -92,6 +92,7 @@ import DocumentCore
             result.text.bold = traits.contains(.boldFontMask); result.text.italic = traits.contains(.italicFontMask)
         }
         result.text.underline = underline.state == .on; result.text.strikethrough = strike.state == .on
+        result.text.clearHighlight = nil
         result.text.foreground = foreground.color.hex; result.text.highlight = useHighlight.state == .on ? highlight.color.hex : nil
         let numbers = spacing.compactMap { Double($0.stringValue) }
         guard numbers.count == 6, numbers.allSatisfy({ $0.isFinite && (0...4000).contains($0) }), max(numbers[3], numbers[4]) + numbers[5] < contentWidth - 30 else { throw DocumentError.invalid("spacing and indents must be non-negative and leave at least 30 points of writing width") }

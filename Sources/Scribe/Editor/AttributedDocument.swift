@@ -119,8 +119,11 @@ extension NSAttributedString.Key {
                     let strike = (attributes[.strikethroughStyle] as? Int ?? 0) != 0
                     if strike != (style.text.strikethrough ?? false) { format.strikethrough = strike }
                     if let color = attributes[.foregroundColor] as? NSColor, let hex = color.hex, hex != (style.text.foreground ?? "#1D1D1F") { format.foreground = hex }
-                    if let color = attributes[.backgroundColor] as? NSColor { format.highlight = color.hex }
-                    if let baseline = attributes[.superscript] as? Int { format.baseline = baseline }
+                    if let color = attributes[.backgroundColor] as? NSColor {
+                        if color.hex != style.text.highlight { format.highlight = color.hex }
+                    } else if style.text.highlight != nil { format.clearHighlight = true }
+                    let baseline = attributes[.superscript] as? Int ?? 0
+                    if baseline != (style.text.baseline ?? 0) { format.baseline = baseline }
                     let link = (attributes[.link] as? URL)?.absoluteString ?? attributes[.link] as? String
                     var run = TextRun(value, format: format, link: link)
                     if let attachment = attributes[.attachment] as? NSTextAttachment {
@@ -181,7 +184,9 @@ extension NSAttributedString.Key {
         attributes[.foregroundColor] = NSColor(hex: f.foreground ?? base.foreground ?? "#1D1D1F")
         attributes[.underlineStyle] = (f.underline ?? base.underline ?? false) ? NSUnderlineStyle.single.rawValue : 0
         attributes[.strikethroughStyle] = (f.strikethrough ?? base.strikethrough ?? false) ? NSUnderlineStyle.single.rawValue : 0
-        if let color = f.highlight ?? base.highlight { attributes[.backgroundColor] = NSColor(hex: color) }
+        let highlight = f.clearHighlight == true ? nil : f.highlight ?? (base.clearHighlight == true ? nil : base.highlight)
+        if let color = highlight { attributes[.backgroundColor] = NSColor(hex: color) }
+        else { attributes.removeValue(forKey: .backgroundColor) }
         if let baseline = f.baseline ?? base.baseline { attributes[.superscript] = baseline }
     }
     static func paragraphFormatting(_ ns: NSParagraphStyle) -> ParagraphFormatting {

@@ -1,7 +1,7 @@
 import Foundation
 
 public struct ScribeDocument: Codable, Equatable, Sendable {
-    public static let currentVersion = 9
+    public static let currentVersion = 10
     public var formatVersion = currentVersion
     public var id = UUID()
     public var title = "Untitled"
@@ -93,6 +93,8 @@ public struct TextFormatting: Codable, Equatable, Sendable {
     public var baseline: Int?
     public var foreground: String?
     public var highlight: String?
+    /// Explicitly remove a highlight inherited from the paragraph style.
+    public var clearHighlight: Bool?
     public init() {}
 }
 

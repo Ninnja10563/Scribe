@@ -17,7 +17,7 @@ args = parser.parse_args()
 build = args.build.resolve()
 output = build / 'office-render'
 output.mkdir(parents=True, exist_ok=True)
-sources = [build / 'smoke/Smoke.docx', build / 'schema/MergedTable.docx', build / 'schema/DocumentProperties.docx', build / 'schema/ImageAdjustments.docx', build / 'schema/ImageRotation.docx']
+sources = [build / 'smoke/Smoke.docx', build / 'schema/MergedTable.docx', build / 'schema/DocumentProperties.docx', build / 'schema/ImageAdjustments.docx', build / 'schema/ImageRotation.docx', build / 'schema/StyleOverrides.docx']
 result = subprocess.run([
     'libreoffice', '-env:UserInstallation=' + (output / 'profile').as_uri(),
     '--headless', '--norestore', '--convert-to', 'pdf:writer_pdf_Export',
@@ -87,3 +87,25 @@ for name, angle in [('ImageAdjustments', 90), ('ImageRotation', 30)]:
         assert abs(following.x0-x0) <= 4, f'{label}: rotated image shifts away from paragraph margin'
         pix.save(output / (label + '-' + name + '.png'))
 print('Native and LibreOffice PDFs preserve cropped clockwise image geometry, opacity, colors and following text flow at 30° and 90°.')
+
+for label, path in [('Native', build / 'schema/StyleOverrides.pdf'), ('LibreOffice', output / 'StyleOverrides.pdf')]:
+    pdf = pymupdf.open(path)
+    page = pdf[0]
+    pix = page.get_pixmap(matrix=pymupdf.Matrix(2, 2), alpha=False)
+    raw = pix.samples
+    for text, expected in [('INHERITED', 'yellow'), ('NO HIGHLIGHT', None), ('DIRECT', 'red')]:
+        boxes = page.search_for(text)
+        assert len(boxes) == 1, f'{label}: missing styled text {text}'
+        rect = boxes[0] * 2
+        yellow = red = 0
+        for y in range(max(0,int(rect.y0)), min(pix.height,int(rect.y1)+1)):
+            for x in range(max(0,int(rect.x0)), min(pix.width,int(rect.x1)+1)):
+                i = (y*pix.width+x)*pix.n
+                r,g,b = raw[i:i+3]
+                yellow += r > 180 and g > 180 and b < 90
+                red += r > 180 and g < 90 and b < 90
+        if expected == 'yellow': assert yellow > 20, f'{label}: missing inherited highlight'
+        elif expected == 'red': assert red > 20, f'{label}: missing direct highlight'
+        else: assert yellow + red == 0, f'{label}: explicit highlight removal was lost'
+    pix.save(output / (label + '-StyleOverrides.png'))
+print('Native and LibreOffice preserve inherited, explicitly removed and directly overridden style highlighting.')

@@ -23,6 +23,7 @@ extension EditorWindowController {
         style.text.underline = (attributes[.underlineStyle] as? Int ?? 0) != 0
         style.text.strikethrough = (attributes[.strikethroughStyle] as? Int ?? 0) != 0
         style.text.foreground = (attributes[.foregroundColor] as? NSColor)?.hex
+        style.text.clearHighlight = nil
         style.text.highlight = (attributes[.backgroundColor] as? NSColor)?.hex
         style.text.baseline = attributes[.superscript] as? Int
         if let paragraph = attributes[.paragraphStyle] as? NSParagraphStyle { style.paragraph = AttributedDocument.paragraphFormatting(paragraph) }

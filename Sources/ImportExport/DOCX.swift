@@ -136,8 +136,9 @@ public enum DOCX {
         if let color = f.foreground { s += "<w:color w:val=\"\(xml(color.replacingOccurrences(of: "#", with: "")))\"/>" }
         if let size = f.fontSize { s += "<w:sz w:val=\"\(Int(size * 2))\"/>" }
         if let u = f.underline { s += "<w:u w:val=\"\(u ? "single" : "none")\"/>" }
-        if let color = f.highlight { s += "<w:shd w:val=\"clear\" w:fill=\"\(xml(color.replacingOccurrences(of: "#", with: "")))\"/>" }
-        if let baseline = f.baseline, baseline != 0 { s += "<w:vertAlign w:val=\"\(baseline > 0 ? "superscript" : "subscript")\"/>" }
+        if f.clearHighlight == true { s += "<w:shd w:val=\"nil\" w:fill=\"auto\"/>" }
+        else if let color = f.highlight { s += "<w:shd w:val=\"clear\" w:fill=\"\(xml(color.replacingOccurrences(of: "#", with: "")))\"/>" }
+        if let baseline = f.baseline { s += "<w:vertAlign w:val=\"\(baseline > 0 ? "superscript" : baseline < 0 ? "subscript" : "baseline")\"/>" }
         return s
     }
     static func paragraphProperties(_ f: ParagraphFormatting) -> String {
@@ -159,7 +160,9 @@ private func applyRun(_ name: String, _ a: [String: String], _ f: inout TextForm
     case "u": f.underline = wordAttribute(a) != "none"
     case "strike": f.strikethrough = flag(a)
     case "color": if let c = wordAttribute(a), c != "auto" { f.foreground = "#" + c }
-    case "shd": if let c = wordAttribute(a, "fill"), c != "auto" { f.highlight = "#" + c }
+    case "shd":
+        if wordAttribute(a) == "nil" || wordAttribute(a, "fill") == "auto" { f.highlight = nil; f.clearHighlight = true }
+        else if let c = wordAttribute(a, "fill") { f.highlight = "#" + c; f.clearHighlight = nil }
     case "vertAlign": f.baseline = wordAttribute(a) == "superscript" ? 1 : wordAttribute(a) == "subscript" ? -1 : 0
     default: break
     }
