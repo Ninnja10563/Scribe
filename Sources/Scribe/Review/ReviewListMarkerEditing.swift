@@ -15,7 +15,8 @@ extension ScribeTextView {
         if start < text.length, text.character(at: start) == 12 { start += 1 }
         guard start < text.length, text.character(at: start) == 9 else { return range }
         let tab = text.range(of: "\t", range: NSRange(location: start + 1, length: text.length - start - 1))
-        guard tab.location != NSNotFound else { return range }
+        guard tab.location != NSNotFound,
+              text.range(of: "\n", range: NSRange(location: start, length: tab.location - start)).location == NSNotFound else { return range }
         let contentStart = NSMaxRange(tab)
         guard range.location < contentStart else { return range }
         let newline = text.range(of: "\n", range: NSRange(location: contentStart, length: text.length - contentStart))

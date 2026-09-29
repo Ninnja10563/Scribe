@@ -84,6 +84,20 @@ import DocumentCore
             }
         }
     }
+    func testMultilinePasteAcrossMarkerAndContentKeepsSemanticRevisionDecisions() throws {
+        let document = document("Body"); defer { document.close() }
+        let editor = document.editorController!.editor, before = document.snapshot()
+        editor.select(NSRange(location: 1, length: 5))
+        editor.activeTextView.replaceSelection(NSAttributedString(string: "X\nY", attributes: editor.activeTextView.typingAttributes), action: "Paste")
+        let changed = document.snapshot()
+        try NativeFormat.validate(changed)
+        var accepted = changed; try accepted.resolveAllRevisions(accepting: true)
+        XCTAssertEqual(accepted.paragraphs.map(\.text), ["X", "Ydy"])
+        var rejected = changed; try rejected.resolveAllRevisions(accepting: false)
+        XCTAssertEqual(rejected.paragraphs, before.paragraphs)
+        document.undoManager?.undo(); XCTAssertEqual(document.snapshot().paragraphs, before.paragraphs)
+        document.undoManager?.redo(); XCTAssertEqual(document.snapshot().paragraphs, changed.paragraphs)
+    }
     func testNativeReturnTracksSeparatorWithoutNumberingTextAndUndoRestores() throws {
         let document = document("First second"); defer { document.close() }
         let editor = document.editorController!.editor, before = document.snapshot()
