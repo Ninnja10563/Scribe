@@ -35,6 +35,42 @@ import DocumentCore
         XCTAssertThrowsError(try controller.applyEquation(Equation(source: String(repeating: "x", count: 1000), pointSize: 144), replacing: NSRange(location: 0, length: 1), action: "Edit Equation"))
         XCTAssertEqual(document.snapshot(), inserted)
     }
+    func testEquationsFlowAcrossPagesAndNarrowTableCellsBlockClippedOutput() throws {
+        _ = NSApplication.shared
+        let document = ScribeFileDocument()
+        document.model.sections[0].paragraphs = try (1...60).map { index in
+            var paragraph = Paragraph()
+            var run = TextRun("\u{FFFC}"); run.equation = try Equation(source: #"\frac{x^2+1}{\sqrt{y}}"#, pointSize: 24)
+            paragraph.runs = [TextRun("Formula \(index): "), run, TextRun(" End \(index).")]; return paragraph
+        }
+        document.makeWindowControllers(); defer { document.close() }
+        let editor = document.editorController!.editor
+        XCTAssertGreaterThan(editor.textViews.count, 2); XCTAssertNil(editor.outputWarning)
+        XCTAssertEqual(document.snapshot().paragraphs.flatMap(\.runs).compactMap(\.equation).count, 60)
+        let directory = ProcessInfo.processInfo.environment["SCRIBE_SCHEMA_OUTPUT"].map { URL(fileURLWithPath: $0, isDirectory: true) } ?? FileManager.default.temporaryDirectory
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let url = directory.appendingPathComponent("EquationPagination.pdf")
+        try PrintRenderer(editor: editor).exportPDF(to: url, title: "Equation pagination", author: "")
+        let pdf = try XCTUnwrap(PDFDocument(url: url))
+        XCTAssertEqual(pdf.pageCount, editor.textViews.count)
+        for index in 1...60 { XCTAssertTrue(pdf.string?.contains("Formula \(index):") == true) }
+        editor.storage.enumerateAttribute(.scribeEquation, in: NSRange(location: 0, length: editor.storage.length)) { value, range, _ in
+            guard value != nil else { return }
+            let glyph = editor.layout.glyphIndexForCharacter(at: range.location)
+            let container = editor.layout.textContainer(forGlyphAt: glyph, effectiveRange: nil)!
+            let box = editor.layout.boundingRect(forGlyphRange: NSRange(location: glyph, length: 1), in: container)
+            XCTAssertGreaterThanOrEqual(box.minY, -1); XCTAssertLessThanOrEqual(box.maxY, container.containerSize.height + 1)
+        }
+        let tableDocument = ScribeFileDocument()
+        tableDocument.model.insertTable(rows: 1, columns: 2, after: tableDocument.model.paragraphs[0].id)
+        let index = try XCTUnwrap(tableDocument.model.sections[0].paragraphs.firstIndex { $0.tableCell != nil })
+        var wide = TextRun("\u{FFFC}"); wide.equation = try Equation(source: String(repeating: "x", count: 24), pointSize: 30)
+        tableDocument.model.sections[0].paragraphs[index].runs = [wide]
+        let tableEditor = PaginatedEditor(document: tableDocument); defer { tableEditor.prepareForClose() }
+        XCTAssertNotNil(tableEditor.outputWarning, "A wide equation must not silently overpaint the adjacent cell")
+        let huge = EquationProjection.attachment(try Equation(source: String(repeating: "x", count: 1000), pointSize: 144))
+        XCTAssertLessThanOrEqual(huge.attachmentCell!.cellSize().width, 4000, "Untrusted native files must not allocate an enormous cached image")
+    }
     func testOversizedImportedEquationCannotOverwriteAnExistingPDF() throws {
         _ = NSApplication.shared
         let document = ScribeFileDocument()
