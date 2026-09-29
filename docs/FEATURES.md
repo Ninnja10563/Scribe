@@ -26,3 +26,7 @@ This is a foundation release. “Implemented” means there is working code and 
 Limits: 128 MB native/decompressed archive safety limit; 32 MB and 64 megapixels per decoded image; 100 rows and 20 columns per table; 2,000 page-layout containers. These are explicit implementation bounds, not performance guarantees. An unlayable object is reported and PDF/print is blocked rather than silently truncated.
 
 Published 0.21.0 uses native v15 and adds explicit multiple/minimum/exact paragraph line heights, style controls and Office spacing attributes. Full native and independent Office validation passed. Newer paragraph-review interchange on main remains internal; floating-image work is isolated on its development branch.
+
+### Launch and update candidate (0.22, not yet published)
+
+Editor windows now register correctly with their NSDocument, open visibly on startup and return when reopening from the Dock. Sparkle 2.10.0 adds manual checking, automatic checking and optional automatic downloading/installation. The HTTPS feed advertises Ed25519-signed release DMGs. Packaged direct/Finder-style startup, forged-update rejection and actual signed installation have passed macOS diagnostics. Full candidate release validation is pending. Install this version manually once when published; older releases do not contain an updater.

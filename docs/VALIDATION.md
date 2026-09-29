@@ -578,3 +578,11 @@ Full paragraph-review run 36632045222 at 5eea860 passed macOS tests/repeats, Add
 ## Published 0.21.0
 
 Tag v0.21.0 points to fc6ceeb0f2ae40fb9d0a22caed4467eec09295d8. Candidate run 36630801504, main run 36632634225 and tagged release run 36632660744 succeeded, including native/sanitizer/launch and Office-render checks. GitHub published Scribe-0.21.0-arm64.dmg and its checksum on 29 September 2026 UTC. The actual published assets were downloaded and `sha256sum -c` passed: `77a9c25628dda0e778063b27e217a93e3285fab40bc7ca124efc02b34fb34d2d`. The build is ad-hoc signed; no notarization, manual Word/Pages, physical printer or physical accessibility audit is claimed.
+
+## Startup and software updates (0.22 development)
+
+Normal startup exposed a real window ownership bug: native diagnostic 36641517806 reported one Scribe document with an editor controller but zero registered window controllers. Assigning the controller's `document` before `addWindowController` prevented registration. Construction now registers through NSDocument; the normal startup test verifies a visible editor, typing, File → New, hiding/reopening and recreation after all windows close. The old render smoke could capture a hidden view and did not cover this path.
+
+Run 36642976324 at af26767 passed packaged direct startup, Finder-style Launch Services startup and actual Sparkle update installation on macOS 14 ARM64. The installer rejected a forged Ed25519 signature without replacing the old app, installed a correctly signed DMG, verified the installed bundle signature and executable hash, and launched the installed copy with its updater configuration checked. The test uses disposable app copies and an ephemeral signing key. A standalone diagnostic build definition was corrected; an earlier Launch Services test also passed its output path as a document argument, which was corrected to an equals-form flag after a captured app stack identified the import error dialog. Neither workaround skips startup or update checks.
+
+Portable verification passed 232 tests (one platform placeholder skipped). Full native/lifecycle/Address Sanitizer and independent Office checks for the final candidate remain pending. Developer ID signing, notarization and physical-Mac Gatekeeper validation are not claimed.
