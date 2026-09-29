@@ -43,6 +43,8 @@ import AppKit
         item(edit, "Paste and Match Style", #selector(NSTextView.pasteAsPlainText(_:)), "v", shift: true)
         item(edit, "Select All", #selector(NSText.selectAll(_:)), "a")
         edit.addItem(.separator()); item(edit, "Find and Replace…", #selector(EditorWindowController.showFind), "f")
+        item(edit, "Find Next", #selector(EditorWindowController.findNext), "g")
+        item(edit, "Find Previous", #selector(EditorWindowController.findPrevious), "g", shift: true)
         item(edit, "Check Spelling", #selector(NSTextView.checkSpelling(_:)), ";")
         let view = menu("View")
         item(view, "Toggle Outline", #selector(EditorWindowController.toggleSidebar), "1", shift: true)

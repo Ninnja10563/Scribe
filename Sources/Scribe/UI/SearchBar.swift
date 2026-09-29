@@ -12,6 +12,13 @@ import DocumentCore
     private var matches: [DocumentSearchMatch] = []
     private(set) var currentMatch: DocumentSearchMatch?
     private let presentation = NoteSearchPresentation()
+    private var notePage: Int?
+    var selectedNotePage: Int? {
+        guard !isHidden, let currentMatch, case .note = currentMatch, let editor,
+              isSelected(currentMatch, selection: editor.activeTextView.selectedRange()),
+              editor.canvas.window?.firstResponder !== editor.activeTextView else { return nil }
+        return notePage
+    }
     private var task: Task<Void, Never>?
     override init(frame: NSRect) {
         super.init(frame: frame)
@@ -49,7 +56,7 @@ import DocumentCore
             let snapshot = editor.semanticText
             let found = await Task.detached { snapshot.documentMatches(query: query, options: options) }.value
             guard !Task.isCancelled, editor.revision == revision else { return }
-            matches = found; count.stringValue = "\(found.count) found"
+            matches = found; updateCount()
             presentation.highlight(found, in: editor)
             if let currentMatch, !found.contains(currentMatch) { self.currentMatch = nil }
         }
@@ -57,7 +64,7 @@ import DocumentCore
     private func refreshMatchesForNavigation() {
         guard let editor else { return }
         matches = editor.semanticText.documentMatches(query: query.stringValue, options: SearchOptions(matchCase: matchCase.state == .on, wholeWord: wholeWord.state == .on))
-        count.stringValue = "\(matches.count) found"
+        updateCount()
     }
     @objc func next() { navigate(forward: true) }
     @objc func previous() { navigate(forward: false) }
@@ -73,14 +80,15 @@ import DocumentCore
         } else {
             match = matches.last { $0.sourceLocation < selection.location } ?? matches.last!
         }
-        currentMatch = match
+        currentMatch = match; notePage = nil
         switch match {
         case .body(let range): editor.select(range)
         case .note:
-            _ = presentation.reveal(match, in: editor)
+            notePage = presentation.reveal(match, in: editor)
             window?.makeFirstResponder(query)
         }
         presentation.highlight(matches, in: editor)
+        updateCount(); editor.onSelection?()
     }
     private func isSelected(_ match: DocumentSearchMatch, selection: NSRange) -> Bool {
         switch match {
@@ -104,14 +112,24 @@ import DocumentCore
         guard let editor else { return }
         do {
             try DocumentSearchReplacement.apply(found, replacement: replacement.stringValue, in: editor, action: action)
-            currentMatch = nil; search()
+            currentMatch = nil; notePage = nil; search()
         } catch { presentError(error) }
     }
     func refreshHighlights() {
         guard !isHidden, let editor else { return }
-        refreshMatchesForNavigation(); presentation.highlight(matches, in: editor)
+        notePage = nil; refreshMatchesForNavigation(); presentation.highlight(matches, in: editor)
     }
-    func cancelPendingWork() { task?.cancel(); task = nil; presentation.clear(); currentMatch = nil }
+    private func updateCount() {
+        if let currentMatch, let index = matches.firstIndex(of: currentMatch) {
+            count.stringValue = "\(index + 1) of \(matches.count)" + (currentMatch.noteRange == nil ? "" : " · Note")
+        } else { count.stringValue = "\(matches.count) found" }
+    }
+    func control(_ control: NSControl, textView: NSTextView, doCommandBy commandSelector: Selector) -> Bool {
+        guard control === query, commandSelector == #selector(NSResponder.insertNewline(_:)) else { return false }
+        if NSApp.currentEvent?.modifierFlags.contains(.shift) == true { previous() } else { next() }
+        return true
+    }
+    func cancelPendingWork() { task?.cancel(); task = nil; presentation.clear(); currentMatch = nil; notePage = nil }
     @objc func close() {
         isHidden = true; cancelPendingWork()
         if let editor { editor.canvas.needsDisplay = true; window?.makeFirstResponder(editor.activeTextView) }

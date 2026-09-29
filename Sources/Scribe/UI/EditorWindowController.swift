@@ -153,7 +153,7 @@ import DocumentCore
         if let warning = editor.outputWarning { status.stringValue = warning; return }
         let view = editor.activeTextView
         let selection = view.selectedRange()
-        let page = editor.textViews.firstIndex(where: { $0 === view }).map { $0 + 1 } ?? 1
+        let page = searchBar.selectedNotePage ?? editor.textViews.firstIndex(where: { $0 === view }).map { $0 + 1 } ?? 1
         let selectedWords = selection.length > 0 && NSMaxRange(selection) <= editor.storage.length ? DocumentStatistics(text: editor.semanticText.text(inSourceRange: selection)).words : nil
         status.stringValue = "Page \(page) of \(editor.canvas.pageCount)    ·    \(cachedWords.formatted()) words\(selectedWords.map { " (\($0) selected)" } ?? "")    ·    \(DocumentSpelling.label(for: fileDocument.model.language))    ·    \(Int((editor.zoom * 100).rounded()))%"
         let selectedStyle = selection.location < editor.storage.length ? editor.storage.attribute(.scribeStyle, at: selection.location, effectiveRange: nil) : view.typingAttributes[.scribeStyle]
@@ -197,6 +197,8 @@ import DocumentCore
         if !isFocused { commentsBeforeFocus = !commentsSidebar.isHidden; commentsSidebar.isHidden = true }
         else { commentsSidebar.isHidden = !commentsBeforeFocus }
         isFocused.toggle(); sidebar.isHidden = isFocused; toolbar.isHidden = isFocused; if isFocused { searchBar.isHidden = true }; window?.makeFirstResponder(editor.activeTextView) }
+    @objc func findNext() { searchBar.isHidden = false; searchBar.next() }
+    @objc func findPrevious() { searchBar.isHidden = false; searchBar.previous() }
     @objc func showFind() { searchBar.isHidden = false; window?.makeFirstResponder(searchBar.query) }
     @objc func changeZoom() {
         let title = zoomPicker.titleOfSelectedItem ?? "100%"
