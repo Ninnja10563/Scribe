@@ -257,3 +257,9 @@ The first complete running-content run, [36524090953](https://github.com/Ninnja1
 - Targeted macOS run [36539859708](https://github.com/Ninnja10563/Scribe/actions/runs/36539859708) passed 12 tests, covering body/note search order, Unicode, generated marker exclusion, note navigation, continuation pages, retained formatting/list identities, atomic failure and batch undo/redo.
 - Run [36540133553](https://github.com/Ninnja10563/Scribe/actions/runs/36540133553) passed the listed-note correction and related native regressions. Its actual PDF was downloaded and visually inspected: the note label, list marker and short content share one line.
 - The PDF-highlight regression was subsequently strengthened to retain the same renderer and assert that live highlight attributes remain present after export; this avoids a false pass caused by reconstructing note layout before printing. Full final validation is pending.
+
+## 0.19.1 published release
+
+- Final candidate [36540445042](https://github.com/Ninnja10563/Scribe/actions/runs/36540445042) and main [36540774541](https://github.com/Ninnja10563/Scribe/actions/runs/36540774541) both passed at the identical revision `4e15d8f`, including repeated native tests, Address Sanitizer, the actual app launch, exported packages and Office rendering.
+- The strengthened live-highlight regression passed in [36540348700](https://github.com/Ninnja10563/Scribe/actions/runs/36540348700): Find attributes remained present after PDF export. Independent PyMuPDF rendering of the downloaded plain and highlighted exports was pixel-identical on both pages at 144 dpi.
+- Tag `v0.19.1` points to the validated revision. Release run [36541388374](https://github.com/Ninnja10563/Scribe/actions/runs/36541388374) passed all validation and published the DMG. The published Apple Silicon DMG was downloaded and its SHA-256 checksum verified successfully.
