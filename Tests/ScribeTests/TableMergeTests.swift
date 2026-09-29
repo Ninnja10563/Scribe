@@ -7,6 +7,30 @@ import DocumentCore
 
 @MainActor final class TableMergeTests: XCTestCase {
     override func setUp() { super.setUp(); _ = NSApplication.shared }
+    func testMergedTableFlowsAcrossPagesWithoutMissingCells() throws {
+        let document = ScribeFileDocument()
+        document.model.insertTable(rows: 40, columns: 2, after: document.model.paragraphs[0].id)
+        let id = document.model.tables[0].id
+        document.model.tables[0].minimumRowHeights = Array(repeating: 55, count: 40)
+        for p in document.model.sections[0].paragraphs.indices {
+            if let cell = document.model.sections[0].paragraphs[p].tableCell {
+                document.model.sections[0].paragraphs[p].runs = [TextRun("Unique-\(cell.row)-\(cell.column)-end")]
+            }
+        }
+        try document.model.mergeTableCells(tableID: id, region: TableMerge(row: 10, column: 0, rowSpan: 5, columnSpan: 1))
+        let editor = PaginatedEditor(document: document)
+        defer { editor.prepareForClose(); document.close() }
+        let directory = ProcessInfo.processInfo.environment["SCRIBE_SCHEMA_OUTPUT"].map { URL(fileURLWithPath: $0, isDirectory: true) } ?? FileManager.default.temporaryDirectory
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let url = directory.appendingPathComponent("MergedTable-Pages.pdf")
+        try PrintRenderer(editor: editor).exportPDF(to: url, title: "Merged table pagination", author: "")
+        let pdf = try XCTUnwrap(PDFDocument(url: url))
+        XCTAssertGreaterThanOrEqual(pdf.pageCount, 3)
+        let text = pdf.string ?? ""
+        for row in 0..<40 { for column in 0..<2 {
+            XCTAssertEqual(text.components(separatedBy: "Unique-\(row)-\(column)-end").count - 1, 1, "Missing or duplicated cell \(row),\(column)")
+        } }
+    }
     func testMergeDialogAndSplitUndo() throws {
         let document = ScribeFileDocument()
         document.model.insertTable(rows: 2, columns: 2, after: document.model.paragraphs[0].id)
