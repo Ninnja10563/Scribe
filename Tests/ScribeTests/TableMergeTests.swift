@@ -26,6 +26,11 @@ import DocumentCore
         XCTAssertEqual(try Data(contentsOf: url), original)
         XCTAssertTrue(document.model.plainText.contains("Tall-cell-line-39-end"))
         XCTAssertEqual(try NativeFormat.decode(NativeFormat.encode(document.model)), document.model)
+        // Splitting leaves the existing text in the first ordinary cell. The
+        // same safety check must cover that cell, not just merged geometry.
+        try document.model.splitTableCell(tableID: document.model.tables[0].id, row: 0, column: 0)
+        editor.storage.setAttributedString(AttributedDocument.render(document.model)); editor.paginate()
+        XCTAssertNotNil(editor.layoutWarning)
         document.model = ScribeDocument()
         editor.storage.setAttributedString(AttributedDocument.render(document.model)); editor.paginate()
         XCTAssertNil(editor.layoutWarning, "Removing overflowing content must clear the warning")

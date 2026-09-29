@@ -176,7 +176,7 @@ import DocumentCore
         } ?? false
         let tallCell = owner.map { tableValidation.hasOversizedCell(storage: storage, document: $0.model, pageHeight: canvas.pageSettings.contentHeight) } ?? false
         if layoutWarning == nil, !overflowingPages.isEmpty || tallMerge || tallCell {
-            layoutWarning = "Content extends beyond a page. A cell taller than one page must be split or shortened before PDF export or printing."
+            layoutWarning = "A table cell is taller than one page. Move some text to other rows or reduce its size before PDF export or printing."
         }
         if lastEnd < layout.numberOfGlyphs && layoutWarning == nil { layoutWarning = "This document exceeds the current 2,000-page layout limit." }
         while textViews.count > required {
