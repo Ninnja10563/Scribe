@@ -36,6 +36,11 @@ import DocumentCore
         presentation.highlight(matches, in: editor)
         let foot = try XCTUnwrap(editor.canvas.footnotes[0]?.notes.first?.note)
         let source = (foot.storage.string as NSString).range(of: "café")
+        let markerGlyph = foot.layout.glyphIndexForCharacter(at: 0)
+        let textGlyph = foot.layout.glyphIndexForCharacter(at: source.location)
+        XCTAssertEqual(foot.layout.lineFragmentRect(forGlyphAt: markerGlyph, effectiveRange: nil).minY,
+                       foot.layout.lineFragmentRect(forGlyphAt: textGlyph, effectiveRange: nil).minY,
+                       "A short listed note must not wrap after its generated markers")
         XCTAssertNotNil(foot.layout.temporaryAttribute(.backgroundColor, atCharacterIndex: source.location, effectiveRange: nil))
         XCTAssertNil(foot.layout.temporaryAttribute(.backgroundColor, atCharacterIndex: 0, effectiveRange: nil))
         XCTAssertEqual(presentation.reveal(matches[2], in: editor), editor.canvas.bodyPageCount + 1)

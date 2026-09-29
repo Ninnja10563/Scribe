@@ -31,7 +31,9 @@ import DocumentCore
             let style = (attributes as? NSParagraphStyle)?.mutableCopy() as? NSMutableParagraphStyle ?? NSMutableParagraphStyle()
             style.headIndent += 18
             style.firstLineHeadIndent = location == 0 ? 0 : style.firstLineHeadIndent + 18
-            style.tabStops = [NSTextTab(textAlignment: .left, location: 18)] + style.tabStops.filter { $0.location > 18 }
+            style.tabStops = [NSTextTab(textAlignment: .left, location: 18)] + style.tabStops.map {
+                NSTextTab(textAlignment: $0.alignment, location: $0.location + 18, options: $0.options)
+            }
             value.addAttribute(.paragraphStyle, value: style, range: range)
             location = NSMaxRange(range)
         }
