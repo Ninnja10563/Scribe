@@ -79,6 +79,7 @@ import DocumentCore
     weak var owner: ScribeFileDocument?
     private var relayout: DispatchWorkItem?
     private var isLayingOut = false
+    private var noteReferencesMayExist = false
     private var firstDirtyPage = 0
     private var pageCharacterRanges: [NSRange] = []
     private var paginationStability = PaginationStability()
@@ -171,7 +172,8 @@ import DocumentCore
         var stabilized = false
         // TextKit invalidates from the edited glyph; existing page containers are reused.
         layoutWarning = nil
-        let hasNotes = storage.containsNoteReferences
+        let hasNotes = noteReferencesMayExist && storage.containsNoteReferences
+        noteReferencesMayExist = hasNotes
         var noteLayout: FootnoteLayout?
         if hasNotes {
             paginationStability.invalidate()
@@ -297,12 +299,18 @@ import DocumentCore
     }
     nonisolated func textStorage(_ textStorage: NSTextStorage, didProcessEditing editedMask: NSTextStorageEditActions, range editedRange: NSRange, changeInLength delta: Int) {
         MainActor.assumeIsolated {
+            if !noteReferencesMayExist {
+                let range = NSIntersectionRange(editedRange, NSRange(location: 0, length: textStorage.length))
+                textStorage.enumerateAttribute(.scribeNote, in: range) { value, _, stop in
+                    if value != nil { self.noteReferencesMayExist = true; stop.pointee = true }
+                }
+            }
             let ends = paginationStability.expectedEnds ?? pageCharacterRanges.map(NSMaxRange)
             let page = ends.firstIndex { $0 >= editedRange.location } ?? max(0, textViews.count - 1)
             let isInsertion = editedMask.contains(.editedCharacters) && delta > 0 && delta <= 128 && editedRange.length == delta && NSMaxRange(editedRange) <= textStorage.length
             let text = isInsertion ? (textStorage.string as NSString).substring(with: editedRange) : ""
             let hasFlowControl = text.unicodeScalars.contains { CharacterSet.controlCharacters.contains($0) || $0.value == 0x2028 || $0.value == 0x2029 || $0.value == 0xfffc }
-            if isInsertion && !hasFlowControl && layoutWarning == nil && owner?.model.tables.isEmpty == true && !textStorage.containsNoteReferences {
+            if isInsertion && !hasFlowControl && layoutWarning == nil && owner?.model.tables.isEmpty == true && !noteReferencesMayExist {
                 paginationStability.insert(at: editedRange.location, length: delta, previousEnds: ends, startingClean: firstDirtyPage == Int.max)
             } else { paginationStability.invalidate() }
             firstDirtyPage = min(firstDirtyPage, max(0, page - 1))

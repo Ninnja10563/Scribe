@@ -23,11 +23,12 @@ import DocumentCore
         document.model.sections[0].paragraphs = paragraphs
         document.makeWindowControllers(); defer { document.close() }
         let editor = document.editorController!.editor
-        func check() throws {
+        func check(_ phase: String) throws {
             editor.paginate(); XCTAssertNil(editor.layoutWarning)
             XCTAssertGreaterThan(editor.textViews.count, 3)
             var count = 0
             let renderer = PrintRenderer(editor: editor)
+            let combined = PDFDocument()
             for (index, container) in editor.layout.textContainers.enumerated() {
                 let glyphs = editor.layout.glyphRange(for: container)
                 let characters = editor.layout.characterRange(forGlyphRange: glyphs, actualGlyphRange: nil)
@@ -40,17 +41,23 @@ import DocumentCore
                 XCTAssertEqual(editor.canvas.footnotes[index]?.notes.count ?? 0, expected.count)
                 let data = renderer.dataWithPDF(inside: renderer.rectForPage(index + 1))
                 let pdf = try XCTUnwrap(PDFDocument(data: data))
+                combined.insert(try XCTUnwrap(pdf.page(at: 0)), at: combined.pageCount)
                 for token in expected { XCTAssertTrue(pdf.string?.contains(token) == true, "Missing \(token) on page \(index + 1)") }
                 XCTAssertLessThanOrEqual(editor.layout.usedRect(for: container).maxY + (editor.canvas.footnotes[index]?.height ?? 0), editor.canvas.pageSettings.contentHeight + 0.5)
                 count += expected.count
             }
             XCTAssertEqual(count, 12)
+            if let folder = ProcessInfo.processInfo.environment["SCRIBE_SCHEMA_OUTPUT"] {
+                let url = URL(fileURLWithPath: folder, isDirectory: true)
+                try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
+                try XCTUnwrap(combined.dataRepresentation()).write(to: url.appendingPathComponent("Footnotes-\(phase).pdf"))
+            }
         }
-        try check()
+        try check("initial")
         editor.select(NSRange(location: 0, length: 0))
         editor.activeTextView.insertText(String(repeating: "New preceding material. ", count: 60), replacementRange: NSRange(location: 0, length: 0))
-        try check()
-        document.undoManager?.undo(); try check()
+        try check("edited")
+        document.undoManager?.undo(); try check("undo")
         let full = NSRange(location: 0, length: editor.storage.length)
         editor.storage.removeAttribute(.scribeNote, range: full)
         editor.paginate()
