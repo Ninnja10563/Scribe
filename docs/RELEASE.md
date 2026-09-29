@@ -3,7 +3,7 @@ Scribe 0.18.0 adds editable native equations.
 - Insert → Equation provides mathematical source input, structure templates, size controls and a live preview. Format → Edit Equation and the contextual menu reopen an existing equation.
 - Fractions, square/indexed roots, powers, subscripts, sums, products, integrals and Greek symbols use native vector layout. A bundled math font keeps rendering independent of installed fonts.
 - Equations retain editable source through native save/reopen, autosave, undo and copying between Scribe windows. Other rich-text recipients receive a visible PNG; plain-text/Markdown/RTF exports retain readable source.
-- DOCX contains real Office Math objects. Supported objects import as editable equations; unsupported constructs retain readable text with a warning.
+- DOCX contains real Office Math objects. Supported objects import as editable equations; unsupported constructs retain readable text with a warning. Equation font sizes and spacing can vary across other editors; PDF preserves Scribe’s layout.
 - Oversized equations block PDF/printing before an existing export is overwritten. Native saving preserves the source.
 - Native format v12 migrates earlier versions in memory without rewriting the original file.
 
