@@ -67,6 +67,7 @@ import DocumentCore
 @MainActor final class PaginatedEditor: NSObject, NSTextViewDelegate, NSLayoutManagerDelegate, NSTextStorageDelegate {
     let storage = NSTextStorage()
     let layout = NSLayoutManager()
+    private let reviewDrawing = ReviewDrawingAttributes()
     let canvas = PageCanvas()
     let noteControls = PageNoteControls()
     let reviewEditing = NativeReviewEditing()
@@ -408,7 +409,7 @@ import DocumentCore
     func undoManager(for view: NSTextView) -> UndoManager? { owner?.undoManager }
     nonisolated func layoutManager(_ layoutManager: NSLayoutManager, shouldUseTemporaryAttributes attributes: [NSAttributedString.Key: Any], forDrawingToScreen toScreen: Bool, atCharacterIndex index: Int, effectiveRange range: NSRangePointer?) -> [NSAttributedString.Key: Any]? {
         MainActor.assumeIsolated {
-            if toScreen { return attributes }
+            if toScreen { return reviewDrawing.attributes(attributes, storage: layoutManager.textStorage, at: index, effectiveRange: range) }
             guard drawingPrintLinks else { return nil }
             return attributes.filter { [.foregroundColor, .underlineStyle, .underlineColor].contains($0.key) }
         }
