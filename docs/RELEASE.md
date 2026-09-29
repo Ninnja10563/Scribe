@@ -1,13 +1,10 @@
-Scribe 0.14.0 adds a native paragraph ruler.
+Scribe 0.15.0 improves long-document typing layout and image resize gestures.
 
-- Drag first-line, left and right indent markers; a page guide previews the position. Each completed drag is one undoable edit. Escape cancels.
-- Indents follow page centering, zoom and horizontal scrolling. Mixed selections are indicated, and changing one indent preserves the other paragraph settings.
-- View → Focus Ruler (⇧⌘R) provides keyboard access. Arrow keys move by one point; Shift-arrow moves by six. Escape returns to the document. Native accessibility slider actions are also supported.
-- Focus mode hides the ruler and restores its previous visibility. View → Toggle Ruler controls it independently.
-- Empty-paragraph indents survive saving and subsequent typing. Native, DOCX and PDF retain first-line, hanging and right indents.
+- Ordinary text insertions reuse following pages once pagination reaches an unchanged boundary. Paragraph breaks, deletions, formatting, page geometry changes and documents containing tables use the existing full affected-range layout path.
+- Image corner handles respond to vertical as well as horizontal movement while preserving proportions. Escape cancels a resize without adding an undo step.
+- A resize remains valid when shrinking the image moves it to an earlier page. Source image bytes, crop/rotation/opacity and native undo are retained.
+- Selection handles appear only on the page containing the image.
 
-The ruler currently edits ordinary and heading paragraphs. Lists, tables and generated table-of-contents entries use their existing controls. Custom tab stops are not yet supported.
-
-This remains a development release. Floating images, independent sections, track changes, footnotes/endnotes, equations and shapes remain unfinished. Tall cells cannot continue across pages; unsafe PDF/print output is blocked. See docs/FEATURES.md and docs/VALIDATION.md.
+This remains a development release. Page views are not yet virtualized, and the layout measurements do not cover all input, autosave or recovery costs. Floating images, independent sections, track changes, footnotes/endnotes, equations and shapes remain unfinished. Tall cells cannot continue across pages; unsafe PDF/print output is blocked. See docs/FEATURES.md and docs/VALIDATION.md.
 
 For Apple Silicon, macOS 14+. Development builds are ad-hoc signed, not notarized. Physical-Mac input/accessibility and manual Word/Pages validation remain pending.

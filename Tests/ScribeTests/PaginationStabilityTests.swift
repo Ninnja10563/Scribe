@@ -100,7 +100,7 @@ import PDFKit
             }
             XCTAssertEqual(originalLines.map(\.0), freshLines.map(\.0), "\(phase), page \(index)")
             XCTAssertEqual(originalLines.map(\.1), freshLines.map(\.1), "\(phase), page \(index)")
-            if editor.layout.usedRect(for: a) != fresh.layout.usedRect(for: b) {
+            if phase == "Baseline", index == 0, editor.layout.usedRect(for: a) != fresh.layout.usedRect(for: b) {
                 print("Used-rectangle difference \(phase), page \(index): \(editor.layout.usedRect(for: a)) versus \(fresh.layout.usedRect(for: b))")
             }
         }

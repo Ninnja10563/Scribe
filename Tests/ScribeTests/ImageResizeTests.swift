@@ -80,7 +80,10 @@ import DocumentCore
         XCTAssertEqual(editor.textViews.count, 1)
         document.undoManager?.undo()
         XCTAssertEqual(document.snapshot().paragraphs.flatMap(\.runs).compactMap(\.image).first?.height, 160)
+        editor.paginate() // Native undo normally schedules this through the editing debounce.
         XCTAssertEqual(editor.textViews.count, 2)
+        document.undoManager?.redo(); editor.paginate()
+        XCTAssertEqual(editor.textViews.count, 1)
     }
     func testSelectionHandlesAppearOnlyOnImagePageAndGeometryRespectsBounds() throws {
         let document = document(); defer { document.close() }
