@@ -42,8 +42,9 @@ import DocumentCore
         let pasteboard = NSPasteboard.withUniqueName()
         defer { pasteboard.releaseGlobally() }
         editor.activeTextView.setSelectedRange(NSRange(location: location, length: 1))
-        pasteboard.declareTypes([.rtfd], owner: nil)
-        XCTAssertTrue(editor.activeTextView.writeSelection(to: pasteboard, type: .rtfd))
+        let types = editor.activeTextView.writablePasteboardTypes
+        XCTAssertTrue(types.contains(.rtfd), "Native Copy must advertise rich text with image attachments")
+        XCTAssertTrue(editor.activeTextView.writeSelection(to: pasteboard, types: types))
         let richData = try XCTUnwrap(pasteboard.data(forType: .rtfd))
         let rich = try NSAttributedString(data: richData, options: [.documentType: NSAttributedString.DocumentType.rtfd], documentAttributes: nil)
         let copied = try XCTUnwrap(rich.attribute(.attachment, at: 0, effectiveRange: nil) as? NSTextAttachment)
