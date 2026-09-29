@@ -8,9 +8,11 @@ import AppKit
             let item = NSMenuItem(title: title, action: nil, keyEquivalent: "")
             let submenu = NSMenu(title: title); item.submenu = submenu; main.addItem(item); return submenu
         }
-        func item(_ menu: NSMenu, _ title: String, _ action: Selector, _ key: String = "", shift: Bool = false) {
+        func item(_ menu: NSMenu, _ title: String, _ action: Selector, _ key: String = "", shift: Bool = false, option: Bool = false) {
             let item = NSMenuItem(title: title, action: action, keyEquivalent: key)
-            item.keyEquivalentModifierMask = shift ? [.command, .shift] : [.command]; menu.addItem(item)
+            item.keyEquivalentModifierMask = shift ? [.command, .shift] : [.command]
+            if option { item.keyEquivalentModifierMask.insert(.option) }
+            menu.addItem(item)
         }
         let app = menu("Scribe")
         item(app, "About Scribe", #selector(AppDelegate.showAbout)); app.addItem(.separator())
@@ -53,8 +55,8 @@ import AppKit
         item(insert, "Table…", #selector(EditorWindowController.insertTable))
         item(insert, "Image…", #selector(EditorWindowController.insertImage))
         item(insert, "Equation…", #selector(EditorWindowController.insertEquation))
-        item(insert, "Footnote…", #selector(EditorWindowController.insertFootnote))
-        item(insert, "Endnote…", #selector(EditorWindowController.insertEndnote))
+        item(insert, "Footnote…", #selector(EditorWindowController.insertFootnote), "f", option: true)
+        item(insert, "Endnote…", #selector(EditorWindowController.insertEndnote), "e", option: true)
         item(insert, "Page Break", #selector(ScribeTextView.insertPageBreak(_:)), "\r")
         item(insert, "Table of Contents…", #selector(EditorWindowController.insertTableOfContents))
         item(insert, "Table of Contents Options…", #selector(EditorWindowController.modifyTableOfContents))

@@ -1,6 +1,6 @@
 Scribe 0.19.0 adds footnotes and endnotes.
 
-- Insert → Footnote and Insert → Endnote create semantic references with automatic, independent numbering. Format → Edit Note, the reference context menu, or clicking a note on its page opens a native rich-text editor. Cancel preserves the document; Apply is undoable.
+- Insert → Footnote (⌥⌘F) and Insert → Endnote (⌥⌘E) create semantic references with automatic, independent numbering. Format → Edit Note, the reference context menu, or clicking a note on its page opens a native rich-text editor. Cancel preserves the document; Apply is undoable.
 - Footnotes reserve measured space beneath their references. Long notes continue across pages using native line fragments. Endnotes flow through linked text containers after the document body.
 - Deleting or moving references updates ownership and numbering. Undo restores both references and content. Copy/Paste between Scribe documents creates independent notes and preserves their appearance; external clipboard recipients receive readable citation text.
 - Native format v13 preserves structured note content and migrates earlier documents in memory. Native saving, recovery copies and reopening retain notes.
