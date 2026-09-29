@@ -115,7 +115,7 @@ jobs:
       - name: Verify floating Office drawing packages
         run: python scripts/verify-floating-packages.py build/schema
       - name: Verify floating image geometry and paint order
-        run: python scripts/verify-floating-images.py build/schema
+        run: python scripts/verify-floating-images.py build/schema --notes
       - name: Verify budgeted pagination output
         run: python scripts/verify-budgeted-layout.py build/schema
       - name: Verify imported Office review output

@@ -26,3 +26,7 @@ This is a foundation release. “Implemented” means there is working code and 
 Limits: 128 MB native/decompressed archive safety limit; 32 MB and 64 megapixels per decoded image; 100 rows and 20 columns per table; 2,000 page-layout containers. These are explicit implementation bounds, not performance guarantees. An unlayable object is reported and PDF/print is blocked rather than silently truncated.
 
 Published 0.21.0 uses native v15 and adds explicit multiple/minimum/exact paragraph line heights, style controls and Office spacing attributes. Full native and independent Office validation passed. Newer paragraph-review interchange on main remains internal; floating-image work is isolated on its development branch.
+
+### Floating-image development (not released)
+
+Native v16 models margin-relative floating-image anchors. Development tests cover square wrapping through actual TextKit exclusion paths, behind/front rendering shared with PDF, anchor movement during typing, deletion/Undo, repeated assets, footnotes and non-destructive overflow refusal. Independent rendered-PDF checks retain all fixture text and original bitmap geometry. An internal anchored DOCX writer passes Office schema/package checks; its independent Office rendering is pending. Public placement controls, preserving DOCX import, drag/resize and broader boundary/performance validation remain outstanding. Native open/recovery and public DOCX export of floating content stay gated. The published 0.21 DMG does not include these development features.
