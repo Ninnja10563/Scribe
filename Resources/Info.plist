@@ -1,29 +1,77 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0"><dict>
-<key>CFBundleName</key><string>Scribe</string>
-<key>CFBundleDisplayName</key><string>Scribe</string>
-<key>CFBundleIdentifier</key><string>org.scribe.Scribe</string>
-<key>CFBundleIconFile</key><string>Scribe</string>
-<key>CFBundleExecutable</key><string>Scribe</string>
-<key>CFBundlePackageType</key><string>APPL</string>
-<key>CFBundleShortVersionString</key><string>0.21.0</string>
-<key>CFBundleVersion</key><string>24</string>
-<key>LSMinimumSystemVersion</key><string>14.0</string>
-<key>NSHighResolutionCapable</key><true/>
-<key>NSPrincipalClass</key><string>NSApplication</string>
-<key>NSHumanReadableCopyright</key><string>Copyright © 2026 Scribe contributors. MIT License.</string>
-<key>CFBundleDocumentTypes</key><array><dict>
-<key>CFBundleTypeName</key><string>Scribe Document</string>
-<key>CFBundleTypeRole</key><string>Editor</string>
-<key>LSHandlerRank</key><string>Owner</string>
-<key>LSItemContentTypes</key><array><string>org.scribe.document</string></array>
-<key>NSDocumentClass</key><string>Scribe.ScribeFileDocument</string>
-</dict></array>
-<key>UTExportedTypeDeclarations</key><array><dict>
-<key>UTTypeIdentifier</key><string>org.scribe.document</string>
-<key>UTTypeDescription</key><string>Scribe Document</string>
-<key>UTTypeConformsTo</key><array><string>public.json</string></array>
-<key>UTTypeTagSpecification</key><dict><key>public.filename-extension</key><array><string>scribe</string></array></dict>
-</dict></array>
-</dict></plist>
+<plist version="1.0">
+<dict>
+	<key>CFBundleName</key>
+	<string>Scribe</string>
+	<key>CFBundleDisplayName</key>
+	<string>Scribe</string>
+	<key>CFBundleIdentifier</key>
+	<string>org.scribe.Scribe</string>
+	<key>CFBundleIconFile</key>
+	<string>Scribe</string>
+	<key>CFBundleExecutable</key>
+	<string>Scribe</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>0.21.0</string>
+	<key>CFBundleVersion</key>
+	<string>24</string>
+	<key>LSMinimumSystemVersion</key>
+	<string>14.0</string>
+	<key>NSHighResolutionCapable</key>
+	<true/>
+	<key>NSPrincipalClass</key>
+	<string>NSApplication</string>
+	<key>NSHumanReadableCopyright</key>
+	<string>Copyright © 2026 Scribe contributors. MIT License.</string>
+	<key>CFBundleDocumentTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>Scribe Document</string>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>LSHandlerRank</key>
+			<string>Owner</string>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>org.scribe.document</string>
+			</array>
+			<key>NSDocumentClass</key>
+			<string>Scribe.ScribeFileDocument</string>
+		</dict>
+	</array>
+	<key>UTExportedTypeDeclarations</key>
+	<array>
+		<dict>
+			<key>UTTypeIdentifier</key>
+			<string>org.scribe.document</string>
+			<key>UTTypeDescription</key>
+			<string>Scribe Document</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.json</string>
+			</array>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>scribe</string>
+				</array>
+			</dict>
+		</dict>
+	</array>
+	<key>SUPublicEDKey</key>
+	<string>EuVFmkAg7PCcbLN9X48ZHlASEGVYDY+gJ7l6fD7phkE=</string>
+	<key>SUFeedURL</key>
+	<string>https://raw.githubusercontent.com/Ninnja10563/Scribe/updates/appcast.xml</string>
+	<key>SUEnableAutomaticChecks</key>
+	<true/>
+	<key>SUAutomaticallyUpdate</key>
+	<false/>
+	<key>SUAllowsAutomaticUpdates</key>
+	<true/>
+</dict>
+</plist>

@@ -17,6 +17,9 @@ import DocumentCore
         MainMenu.install()
         NSApp.activate(ignoringOtherApps: true)
         if CommandLine.arguments.contains("--smoke-test") { Task { await smokeTest() }; return }
+        ensureDocumentWindow()
+        if CommandLine.arguments.contains("--startup-smoke-test") { verifyStartup(); return }
+        SoftwareUpdates.shared.start()
         Task {
             let snapshots = (try? await ScribeFileDocument.recovery.snapshots()) ?? []
             for snapshot in snapshots {
@@ -32,7 +35,40 @@ import DocumentCore
                     } catch { NSApp.presentError(error) }
                 }
             }
-            if documents.documents.isEmpty { _ = try? documents.openUntitledDocumentAndDisplay(true) }
+            ensureDocumentWindow()
+        }
+    }
+    func ensureDocumentWindow() {
+        if let document = documents.documents.first {
+            if document.windowControllers.isEmpty { document.makeWindowControllers() }
+            document.showWindows()
+            document.windowControllers.first?.window?.deminiaturize(nil)
+            document.windowControllers.first?.window?.makeKeyAndOrderFront(nil)
+        } else {
+            let document = ScribeFileDocument()
+            document.fileType = ScribeFileDocument.typeName
+            documents.addDocument(document)
+            document.makeWindowControllers()
+            document.showWindows()
+        }
+        NSApp.activate(ignoringOtherApps: true)
+    }
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        if !flag { ensureDocumentWindow() }
+        return true
+    }
+    private func verifyStartup() {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1) { [self] in
+            let visible = documents.documents.flatMap(\.windowControllers).contains { $0.window?.isVisible == true }
+            guard visible, let document = documents.documents.first as? ScribeFileDocument,
+                  let editor = document.editorController?.editor else { exit(1) }
+            editor.activeTextView.insertText("Startup typing works", replacementRange: NSRange(location: 0, length: 0))
+            guard document.snapshot().paragraphs.contains(where: { $0.text.contains("Startup typing works") }) else { exit(2) }
+            document.windowControllers.first?.window?.orderOut(nil)
+            _ = applicationShouldHandleReopen(NSApp, hasVisibleWindows: false)
+            guard document.windowControllers.first?.window?.isVisible == true else { exit(3) }
+            print("Normal startup, typing and Dock reopen passed")
+            exit(0)
         }
     }
     func applicationShouldOpenUntitledFile(_ sender: NSApplication) -> Bool { false }

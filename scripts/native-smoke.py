@@ -9,7 +9,7 @@ output = Path(os.environ.get('SCRIBE_SMOKE_OUTPUT', 'build/smoke'))
 output.mkdir(parents=True, exist_ok=True)
 log_path = output / 'launch.log'
 with log_path.open('w') as log:
-    process = subprocess.Popen([sys.argv[1], '--smoke-test'], stdout=log, stderr=subprocess.STDOUT)
+    process = subprocess.Popen([sys.argv[1], sys.argv[2] if len(sys.argv) > 2 else '--smoke-test'], stdout=log, stderr=subprocess.STDOUT)
     try:
         status = process.wait(timeout=90)
     except subprocess.TimeoutExpired:

@@ -11,6 +11,10 @@ app_dir="$PWD/build/Scribe.app"
 mkdir -p "$app_dir/Contents/MacOS" "$app_dir/Contents/Resources"
 cp "$binary_dir/Scribe" "$app_dir/Contents/MacOS/Scribe"
 cp Resources/Info.plist "$app_dir/Contents/Info.plist"
+mkdir -p "$app_dir/Contents/Frameworks"
+sparkle_framework=$(find .build/artifacts -type d -path '*/macos-arm64_x86_64/Sparkle.framework' -print -quit)
+test -n "$sparkle_framework"
+ditto "$sparkle_framework" "$app_dir/Contents/Frameworks/Sparkle.framework"
 cp LICENSE "$app_dir/Contents/Resources/LICENSE"
 cp -R Sources/Scribe/Resources/MathFont "$app_dir/Contents/Resources/"
 swift scripts/make-icon.swift build/Scribe.iconset

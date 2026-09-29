@@ -16,6 +16,7 @@ import AppKit
         }
         let app = menu("Scribe")
         item(app, "About Scribe", #selector(AppDelegate.showAbout)); app.addItem(.separator())
+        SoftwareUpdates.shared.addMenuItems(to: app)
         let services = NSMenu(); let serviceItem = NSMenuItem(title: "Services", action: nil, keyEquivalent: ""); serviceItem.submenu = services; app.addItem(serviceItem); NSApp.servicesMenu = services
         item(app, "Hide Scribe", #selector(NSApplication.hide(_:)), "h")
         app.addItem(.separator()); item(app, "Quit Scribe", #selector(NSApplication.terminate(_:)), "q")
