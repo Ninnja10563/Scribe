@@ -1,11 +1,11 @@
-Scribe 0.21.0 adds explicit paragraph line heights and improves Word document fidelity.
+# Scribe 0.22.0 — Launch and software updates
 
-- Paragraph and style dialogs now offer natural, multiple, minimum and exact line heights. Formatting applies through native layout, style inheritance, Undo and PDF output.
-- Existing additional line gaps retain their meaning. Older Scribe documents migrate without changing their spacing; export explains when additional gaps cannot transfer to Word.
-- DOCX imports and exports use Office's actual line-height rules and units, including document defaults, default paragraph styles and inherited line-height settings.
-- Note clipboard data preserves the new paragraph formatting with a versioned payload.
-- Expanded internal review interchange covers text, inline objects, notes, character formatting and paragraph-boundary revisions. Track Changes remains disabled while the remaining editing and interoperability work is completed.
+Scribe now opens a blank editable document immediately at startup, before recovery scanning. Reopening Scribe from the Dock restores an existing window or opens a document when none remain. A dedicated packaged-app startup check covers window visibility, typing and reopening, separately from the document-rendering smoke test.
 
-Native format advances to v15. Earlier documents continue opening; files saved in v15 require Scribe 0.21 or later. Native and independently rendered LibreOffice fixtures verify the three explicit line-height modes. The macOS suite also checks dialog application, style controls, clipboard preservation and Undo.
+The Scribe menu adds Check for Updates, automatic checking and optional automatic downloading/installation through Sparkle 2.10.0. Update packages are verified with an embedded Ed25519 public key. The release workflow publishes the update feed only after the release DMG exists and required checks pass. Unsaved documents use the normal macOS document termination flow.
 
-This is a development release for Apple Silicon, macOS 14+. Builds are ad-hoc signed, not notarized. Independent sections, floating objects, shapes and other professional features remain in development. Physical-Mac input/accessibility, manual Word/Pages and physical-printer validation remain pending. See docs/FEATURES.md and docs/VALIDATION.md.
+Install this version manually once: older Scribe builds do not contain an updater. Drag Scribe.app from the DMG into Applications. Subsequent compatible releases can use the new updater. Automatic installation is optional and can be changed in the Scribe menu.
+
+This remains an ad-hoc-signed Apple Silicon development release for macOS 14 or later, not a Developer ID-signed or notarized build. Native format v15 remains unchanged. Floating-image development remains on its separate branch; this release does not enable floating images or Track Changes.
+
+Release-candidate validation is in progress. Do not publish this candidate until native startup, updater installation, full tests, launch/render smoke and independent Office validation pass.

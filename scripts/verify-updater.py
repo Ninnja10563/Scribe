@@ -52,7 +52,7 @@ def feed(signature):
     (root/'appcast.xml').write_bytes(ET.tostring(rss,encoding='utf-8',xml_declaration=True))
 def install(label):
     with (root/(label+'.log')).open('w') as log:
-        return subprocess.run([str(cli/'Contents/MacOS/sparkle'),str(old),'--check-immediately','--feed-url',url+'/appcast.xml','--user-agent-name','Scribe CI','--verbose'],stdout=log,stderr=subprocess.STDOUT,timeout=150).returncode
+        return subprocess.run([str(cli/'Contents/MacOS/sparkle'),str(old),'--check-immediately','--feed-url',url+'/appcast.xml?test='+label,'--user-agent-name','Scribe CI','--verbose'],stdout=log,stderr=subprocess.STDOUT,timeout=150).returncode
 try:
     feed(Ed25519PrivateKey.generate().sign(archive.read_bytes()))
     assert install('invalid-signature') != 0, 'Forged update was accepted'
