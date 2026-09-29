@@ -35,6 +35,8 @@ import DocumentCore
             try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
             try PrintRenderer(editor: editor, showsReviewMarkup: true).exportPDF(to: folder.appendingPathComponent("ReviewStructuralMarked.pdf"), title: "Structural review", author: "Writer")
             try PrintRenderer(editor: editor).exportPDF(to: folder.appendingPathComponent("ReviewStructuralPlain.pdf"), title: "Structural review", author: "Writer")
+            document.editorController?.window?.makeKeyAndOrderFront(nil)
+            editor.canvas.layoutSubtreeIfNeeded(); NativeDialogCapture.save(editor.canvas, name: "ReviewStructuralCanvas")
         }
         XCTAssertEqual(document.snapshot(), original)
         XCTAssertEqual(editor.layout.glyphRange(for: editor.layout.textContainers[0]), glyphs)
