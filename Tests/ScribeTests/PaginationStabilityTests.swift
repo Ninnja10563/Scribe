@@ -101,6 +101,15 @@ import PDFKit
     }
     private func compareWithFullLayout(_ editor: PaginatedEditor, document: ScribeFileDocument, phase: String = "Edited") throws {
         let fresh = PaginatedEditor(document: document, projectedContent: editor.storage); defer { fresh.prepareForClose() }
+        if !editor.storage.isEqual(to: fresh.storage) {
+            print("PROJECTION CHANGED DURING FRESH LAYOUT: \(phase)")
+            editor.storage.enumerateAttributes(in: NSRange(location: 0, length: editor.storage.length)) { attributes, range, stop in
+                let other = fresh.storage.attributes(at: range.location, effectiveRange: nil)
+                if !NSDictionary(dictionary: attributes).isEqual(to: other) {
+                    print("FIRST ATTRIBUTE DIFFERENCE \(range): original \(attributes); fresh \(other)"); stop.pointee = true
+                }
+            }
+        }
         XCTAssertEqual(editor.textViews.count, fresh.textViews.count)
         for index in 0..<min(editor.textViews.count, fresh.textViews.count) {
             let a = editor.layout.textContainers[index], b = fresh.layout.textContainers[index]

@@ -127,6 +127,7 @@ import DocumentCore
         let container = NSTextContainer(containerSize: NSSize(width: p.contentWidth, height: p.contentHeight))
         container.widthTracksTextView = false; container.heightTracksTextView = false; container.lineFragmentPadding = 0
         layout.addTextContainer(container)
+        let savedTypingAttributes = textViews.first?.typingAttributes
         let view = ScribeTextView(frame: .zero, textContainer: container)
         view.delegate = self; view.editor = self
         view.registerForDraggedTypes([.fileURL])
@@ -139,7 +140,8 @@ import DocumentCore
         view.isAutomaticLinkDetectionEnabled = true
         view.usesFindBar = true; view.isIncrementalSearchingEnabled = true
         view.isAutomaticQuoteSubstitutionEnabled = true
-        if textViews.isEmpty, storage.length > 0 {
+        if let savedTypingAttributes { view.typingAttributes = savedTypingAttributes }
+        else if storage.length > 0 {
             var attributes = storage.attributes(at: 0, effectiveRange: nil)
             for key in [NSAttributedString.Key.attachment, .scribeImage, .scribePageBreakMarker] { attributes.removeValue(forKey: key) }
             view.typingAttributes = attributes
