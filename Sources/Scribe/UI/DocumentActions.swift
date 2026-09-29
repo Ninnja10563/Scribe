@@ -19,6 +19,9 @@ extension EditorWindowController {
             if format == "docx", model.bookmarks.contains(where: { model.destinationParagraphID(for: DocumentLink.bookmark($0.id)) == nil }) {
                 alert.informativeText += " Bookmarks with deleted destinations are omitted; their linked text is retained."
             }
+            if format == "docx", model.sections.contains(where: { $0.runningContent?.differentOddEvenPages == true && ($0.pageNumbering?.start ?? $0.runningContent?.startingPageNumber ?? 1).isMultiple(of: 2) }) {
+                alert.informativeText += " Odd/even headers with an even starting page number can alternate differently in other editors. PDF preserves Scribe's layout."
+            }
             alert.addButton(withTitle: "Export Copy"); alert.addButton(withTitle: "Cancel")
             guard alert.runModal() == .alertFirstButtonReturn else { return }
         }

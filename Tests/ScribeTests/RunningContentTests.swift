@@ -38,6 +38,10 @@ import DocumentCore
         XCTAssertTrue(first.contains("Cover footer")); XCTAssertFalse(first.contains("Default header")); XCTAssertFalse(first.contains("Even header"))
         XCTAssertTrue(second.contains("Default header")); XCTAssertTrue(second.contains("Default footer")); XCTAssertFalse(second.contains("Cover footer"))
         XCTAssertTrue(third.contains("Even header")); XCTAssertTrue(third.contains("Even footer")); XCTAssertFalse(third.contains("Default header"))
+        let standardDocument = ScribeFileDocument(); standardDocument.model = saved
+        standardDocument.model.sections[0].runningContent?.startingPageNumber = 1
+        let standardEditor = PaginatedEditor(document: standardDocument); defer { standardEditor.prepareForClose() }
+        try PrintRenderer(editor: standardEditor).exportPDF(to: folder.appendingPathComponent("NativeRunningContentStandard.pdf"), title: "Running content", author: "")
         document.undoManager?.undo(); XCTAssertNil(document.model.sections[0].runningContent); XCTAssertEqual(editor.canvas.runningText(isHeader: false, pageIndex: 0), "")
         document.undoManager?.redo(); XCTAssertEqual(editor.canvas.runningText(isHeader: false, pageIndex: 0), "Cover footer")
     }

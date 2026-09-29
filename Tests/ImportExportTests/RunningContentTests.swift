@@ -33,13 +33,17 @@ final class RunningContentInterchangeTests: XCTestCase {
         XCTAssertTrue(body.contains("<w:titlePg/>"))
         XCTAssertTrue(String(data: parts["word/settings.xml"]!, encoding: .utf8)!.contains("<w:evenAndOddHeaders/>"))
         XCTAssertTrue(String(data: parts["word/header1-first.xml"]!, encoding: .utf8)!.contains("<w:p/>"))
-        let reopened = try DOCX.decode(data).document.sections[0]
+        let imported = try DOCX.decode(data)
+        XCTAssertTrue(imported.warnings.contains { $0.contains("physical page order") })
+        let reopened = imported.document.sections[0]
         XCTAssertEqual(reopened.header, "Default header"); XCTAssertEqual(reopened.footer, "Default footer")
         XCTAssertEqual(reopened.runningContent, variants)
         if let folder = ProcessInfo.processInfo.environment["SCRIBE_SCHEMA_OUTPUT"] {
             let url = URL(fileURLWithPath: folder, isDirectory: true)
             try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
             try data.write(to: url.appendingPathComponent("RunningContent.docx"))
+            document.sections[0].runningContent?.startingPageNumber = 1
+            try DOCX.encode(document).write(to: url.appendingPathComponent("RunningContentStandard.docx"))
         }
     }
     func testDisabledVariantTextIsNotActivatedOrLostInDOCX() throws {

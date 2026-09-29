@@ -17,7 +17,7 @@ args = parser.parse_args()
 build = args.build.resolve()
 output = build / 'office-render'
 output.mkdir(parents=True, exist_ok=True)
-sources = [build / 'smoke/Smoke.docx', build / 'schema/MergedTable.docx', build / 'schema/DocumentProperties.docx', build / 'schema/ImageAdjustments.docx', build / 'schema/ImageRotation.docx', build / 'schema/StyleOverrides.docx', build / 'schema/ScriptTypography.docx', build / 'schema/ParagraphIndents.docx', build / 'schema/RunningContent.docx']
+sources = [build / 'smoke/Smoke.docx', build / 'schema/MergedTable.docx', build / 'schema/DocumentProperties.docx', build / 'schema/ImageAdjustments.docx', build / 'schema/ImageRotation.docx', build / 'schema/StyleOverrides.docx', build / 'schema/ScriptTypography.docx', build / 'schema/ParagraphIndents.docx', build / 'schema/RunningContent.docx', build / 'schema/RunningContentStandard.docx']
 result = subprocess.run([
     'libreoffice', '-env:UserInstallation=' + (output / 'profile').as_uri(),
     '--headless', '--norestore', '--convert-to', 'pdf:writer_pdf_Export',
@@ -155,23 +155,28 @@ for phase in ['Baseline', 'Typed', 'MixedBaseline', *['Boundary-' + str(i) for i
             assert x[4] == y[4] and all(abs(x[i]-y[i]) < 0.01 for i in range(4)), f'{phase} page {number}: painted word geometry differs: {x} / {y}'
 print('Baseline and incrementally edited PDFs match full layout word-for-word and coordinate-for-coordinate.')
 
-# Check actual page-specific running text, including a blank first header and numbering start 2.
-for label, path in [('Native', build / 'schema/NativeRunningContent.pdf'), ('LibreOffice', output / 'RunningContent.pdf')]:
-    pdf = pymupdf.open(path)
-    expected = [('', 'Cover footer'), ('Default header', 'Default footer'), ('Even header', 'Even footer')]
-    body_pages = []
-    for index, (header, footer) in enumerate(expected, 1):
-        matches = [page for page in pdf if f'Running content page {index}' in page.get_text()]
-        assert len(matches) == 1, f'{label}: missing/duplicate running-content body page {index}'
-        page = matches[0]; body_pages.append(page.number)
-        text = page.get_text()
-        for candidate in ['Default header', 'Even header']:
-            assert (candidate in text) == (candidate == header), f'{label}: wrong header on body page {index}'
-        for candidate in ['Cover footer', 'Default footer', 'Even footer']:
-            assert (candidate in text) == (candidate == footer), f'{label}: wrong footer on body page {index}'
-        if header:
-            assert page.search_for(header)[0].y0 < 60, f'{label}: header entered the body'
-        assert page.search_for(footer)[0].y0 > page.rect.height - 65, f'{label}: footer entered the body'
-        page.get_pixmap(matrix=pymupdf.Matrix(1, 1)).save(output / f'{label}-RunningContent-{index}.png')
-    assert body_pages == sorted(body_pages), f'{label}: body pages reordered'
-print('Native and LibreOffice retain blank first headers, first-page footers and numbered-page parity.')
+# Word uses numbered-page parity; the standard and this LibreOffice version use physical order.
+# Keep a common start-at-1 fixture plus an explicit, documented start-at-2 compatibility fixture.
+for suffix in ['', 'Standard']:
+    for label, path in [('Native', build / f'schema/NativeRunningContent{suffix}.pdf'), ('LibreOffice', output / f'RunningContent{suffix}.pdf')]:
+        pdf = pymupdf.open(path)
+        following = [('Even header', 'Even footer'), ('Default header', 'Default footer')]
+        if not suffix and label == 'Native':
+            following.reverse()
+        expected = [('', 'Cover footer'), *following]
+        body_pages = []
+        for index, (header, footer) in enumerate(expected, 1):
+            matches = [page for page in pdf if f'Running content page {index}' in page.get_text()]
+            assert len(matches) == 1, f'{label}{suffix}: missing/duplicate running-content body page {index}'
+            page = matches[0]; body_pages.append(page.number)
+            text = page.get_text()
+            for candidate in ['Default header', 'Even header']:
+                assert (candidate in text) == (candidate == header), f'{label}{suffix}: wrong header on body page {index}'
+            for candidate in ['Cover footer', 'Default footer', 'Even footer']:
+                assert (candidate in text) == (candidate == footer), f'{label}{suffix}: wrong footer on body page {index}'
+            if header:
+                assert page.search_for(header)[0].y0 < 60, f'{label}{suffix}: header entered the body'
+            assert page.search_for(footer)[0].y0 > page.rect.height - 65, f'{label}{suffix}: footer entered the body'
+            page.get_pixmap(matrix=pymupdf.Matrix(1, 1)).save(output / f'{label}-RunningContent{suffix}-{index}.png')
+        assert body_pages == sorted(body_pages), f'{label}{suffix}: body pages reordered'
+print('Native and LibreOffice retain first/even variants for start 1; start 2 follows their documented different parity rules.')

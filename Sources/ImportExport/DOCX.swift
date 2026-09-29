@@ -128,6 +128,9 @@ public enum DOCX {
                 if String(data: data, encoding: .utf8)?.contains("fld") == true { delegate.warnings.insert("Running-content fields are imported as their cached text; update page numbering in Scribe if needed.") }
             }
         }
+        if variants.differentOddEvenPages, let start = variants.startingPageNumber, start.isMultiple(of: 2) {
+            delegate.warnings.insert("Odd/even running text uses the displayed page number in Scribe. With this even starting number, editors that use physical page order may display different variants.")
+        }
         if variants != RunningContentVariants() { delegate.document.sections[0].runningContent = variants }
         // Validate bounds and merge references before constructing the full grid.
         try NativeFormat.validate(delegate.document)
