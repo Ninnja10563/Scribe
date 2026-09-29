@@ -32,6 +32,22 @@ import DocumentCore
             options.text.undoManager?.redo(); XCTAssertEqual(try options.note(), joined)
         }
     }
+    func testPastingListsIntoInitiallyPlainNoteKeepsSemanticEditingAvailable() throws {
+        _ = NSApplication.shared
+        let options = NoteOptions(note: DocumentNote(kind: .footnote), styles: ParagraphStyle.defaults)
+        defer { options.close() }
+        var pasted = ScribeDocument(); pasted.sections[0].paragraphs = note(.footnote).paragraphs
+        options.text.replaceSelection(AttributedDocument.render(pasted), action: "Paste")
+        let before = try options.note()
+        XCTAssertEqual(before.paragraphs.map(\.text), ["First", "Second"])
+        XCTAssertTrue(before.paragraphs.allSatisfy { $0.list != nil })
+        options.text.undoManager?.removeAllActions()
+        let separator = (options.text.string as NSString).range(of: "\n").location
+        options.text.setSelectedRange(NSRange(location: separator, length: 0))
+        options.text.deleteForward(nil)
+        XCTAssertEqual(try options.note().paragraphs.map(\.text), ["FirstSecond"])
+        options.text.undoManager?.undo(); XCTAssertEqual(try options.note(), before)
+    }
     func testOrdinaryNoteListReturnContinuesNumberingAndUndoRestores() throws {
         _ = NSApplication.shared
         let original = note(.footnote)

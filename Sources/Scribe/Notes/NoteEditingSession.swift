@@ -4,7 +4,7 @@ import DocumentCore
 
 /// A private native draft. Applying returns semantic note paragraphs; cancelling
 /// closes the draft without touching the source document or its recovery slot.
-@MainActor final class NoteReviewSession {
+@MainActor final class NoteEditingSession {
     let document: ScribeFileDocument
     let editor: PaginatedEditor
     private let original: DocumentNote

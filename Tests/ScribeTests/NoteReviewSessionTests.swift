@@ -9,7 +9,7 @@ import DocumentCore
     func testDraftTracksEditsAndRejectsToOriginalForBothNoteKinds() throws {
         for kind in [DocumentNote.Kind.footnote, .endnote] {
             let original = DocumentNote(kind: kind, text: "Original citation")
-            let session = NoteReviewSession(note: original, styles: ParagraphStyle.defaults, author: .init(name: "Writer"))
+            let session = NoteEditingSession(note: original, styles: ParagraphStyle.defaults, author: .init(name: "Writer"))
             defer { session.close() }
             session.editor.select(NSRange(location: 8, length: 0))
             session.editor.activeTextView.insertText("new ", replacementRange: NSRange(location: NSNotFound, length: 0))
@@ -46,7 +46,7 @@ import DocumentCore
     }
     func testUntrackedFormattingSurvivesRejectingEarlierTrackedFormatting() throws {
         let original = DocumentNote(kind: .footnote, text: "Citation")
-        let session = NoteReviewSession(note: original, styles: ParagraphStyle.defaults, author: .init(name: "Writer"))
+        let session = NoteEditingSession(note: original, styles: ParagraphStyle.defaults, author: .init(name: "Writer"))
         defer { session.close() }
         session.editor.select(NSRange(location: 0, length: 8))
         session.editor.activeTextView.toggleBold(nil)
@@ -72,7 +72,7 @@ import DocumentCore
     }
     func testUntrackedParagraphIndentSurvivesRejectingEarlierAlignment() throws {
         let original = DocumentNote(kind: .endnote, text: "Citation")
-        let session = NoteReviewSession(note: original, styles: ParagraphStyle.defaults, author: .init(name: "Writer"))
+        let session = NoteEditingSession(note: original, styles: ParagraphStyle.defaults, author: .init(name: "Writer"))
         defer { session.close() }
         session.document.performEdit("Alignment") { model in
             var format = (model.paragraphs[0].formatting ?? model.style(for: model.paragraphs[0]).paragraph); format.alignment = .center
@@ -101,7 +101,7 @@ import DocumentCore
     func testLongDraftFlowsAndRetainsCharacterFormattingReview() throws {
         var original = DocumentNote(kind: .endnote)
         original.paragraphs = (1...90).map { Paragraph("Citation \($0). " + String(repeating: "Source details. ", count: 8)) }
-        let session = NoteReviewSession(note: original, styles: ParagraphStyle.defaults, author: .init(name: "Writer"))
+        let session = NoteEditingSession(note: original, styles: ParagraphStyle.defaults, author: .init(name: "Writer"))
         defer { session.close() }
         XCTAssertGreaterThan(session.editor.textViews.count, 2)
         XCTAssertEqual(try session.note().paragraphs, original.paragraphs)
@@ -120,7 +120,7 @@ import DocumentCore
     }
     func testApplyCommitsCompositionButCancelLeavesSourceUntouched() throws {
         let original = DocumentNote(kind: .footnote, text: "Citation")
-        let session = NoteReviewSession(note: original, styles: ParagraphStyle.defaults, author: .init(name: "Writer"))
+        let session = NoteEditingSession(note: original, styles: ParagraphStyle.defaults, author: .init(name: "Writer"))
         session.editor.select(NSRange(location: 8, length: 0))
         session.editor.activeTextView.setMarkedText("語", selectedRange: NSRange(location: 1, length: 0), replacementRange: NSRange(location: NSNotFound, length: 0))
         XCTAssertEqual(session.document.snapshot().paragraphs, original.paragraphs)
