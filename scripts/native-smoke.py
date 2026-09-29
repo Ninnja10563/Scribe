@@ -13,7 +13,7 @@ report = output.resolve() / 'startup-report.txt'
 if launch_services:
     report.unlink(missing_ok=True)
     app = Path(sys.argv[1]).resolve().parents[2]
-    command = ['/usr/bin/open', '-n', '-W', '--stdout', str(output.resolve() / 'app-stdout.log'), '--stderr', str(output.resolve() / 'app-stderr.log'), str(app), '--args', '--startup-smoke-test', '--startup-report', str(report)]
+    command = ['/usr/bin/open', '-n', '-W', '--stdout', str(output.resolve() / 'app-stdout.log'), '--stderr', str(output.resolve() / 'app-stderr.log'), str(app), '--args', '--startup-smoke-test', '--startup-report=' + str(report)]
 else:
     command = [sys.argv[1], sys.argv[2] if len(sys.argv) > 2 else '--smoke-test']
 with log_path.open('w') as log:

@@ -84,8 +84,9 @@ import DocumentCore
             for openDocument in documents.documents { openDocument.updateChangeCount(.changeCleared); openDocument.close() }
             ensureDocumentWindow()
             guard documents.documents.count == 1, documents.documents.first?.windowControllers.first?.window?.isVisible == true else { exit(6) }
-            if let flag = CommandLine.arguments.firstIndex(of: "--startup-report"), flag + 1 < CommandLine.arguments.count {
-                do { try Data("Normal startup, typing and Dock reopen passed".utf8).write(to: URL(fileURLWithPath: CommandLine.arguments[flag + 1]), options: .atomic) }
+            if let report = CommandLine.arguments.first(where: { $0.hasPrefix("--startup-report=") }) {
+                let path = String(report.dropFirst("--startup-report=".count))
+                do { try Data("Normal startup, typing and Dock reopen passed".utf8).write(to: URL(fileURLWithPath: path), options: .atomic) }
                 catch { exit(4) }
             }
             print("Normal startup, typing and Dock reopen passed")
