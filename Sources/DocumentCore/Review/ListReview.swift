@@ -3,7 +3,7 @@ import Foundation
 extension ParagraphFormattingReview {
     /// A continuation shares the original formatting decisions, but a restart
     /// and page-break-before belong only to the first item of a split.
-    func listContinuation() -> ParagraphFormattingReview? {
+    func paragraphContinuation() -> ParagraphFormattingReview? {
         func projected(_ source: ParagraphRevisionState) -> ParagraphRevisionState {
             var state = source; state.pageBreakBefore = false; state.list?.restart = nil; return state
         }
@@ -20,19 +20,22 @@ public extension ScribeDocument {
     /// Return in a list is a semantic split. Generated numbering never enters
     /// revision text, and selected original content is retained as a deletion.
     @discardableResult mutating func splitTrackedListItem(id: UUID, range: NSRange, author: RevisionAuthor) throws -> UUID {
+        guard paragraphs.first(where: { $0.id == id })?.list != nil else { throw DocumentError.invalid("the list item is unavailable") }
+        return try splitTrackedParagraph(id: id, range: range, author: author)
+    }
+    @discardableResult mutating func splitTrackedParagraph(id: UUID, range: NSRange, author: RevisionAuthor) throws -> UUID {
         try NativeFormat.validate(self)
         guard let section = sections.firstIndex(where: { $0.paragraphs.contains { $0.id == id } }),
-              let index = sections[section].paragraphs.firstIndex(where: { $0.id == id }),
-              sections[section].paragraphs[index].list != nil else { throw DocumentError.invalid("the list item is unavailable") }
+              let index = sections[section].paragraphs.firstIndex(where: { $0.id == id }) else { throw DocumentError.invalid("the paragraph is unavailable") }
         let original = sections[section].paragraphs[index], length = original.text.utf16.count
         guard range.location >= 0, range.length >= 0, range.location <= length, range.length <= length - range.location else {
-            throw DocumentError.invalid("the list selection is unavailable")
+            throw DocumentError.invalid("the paragraph selection is unavailable")
         }
         var boundaries: Set<Int> = [0], position = 0
         for character in original.text { position += character.utf16.count; boundaries.insert(position) }
-        guard boundaries.contains(range.location), boundaries.contains(NSMaxRange(range)) else { throw DocumentError.invalid("the list selection splits a character") }
+        guard boundaries.contains(range.location), boundaries.contains(NSMaxRange(range)) else { throw DocumentError.invalid("the paragraph selection splits a character") }
         var candidate = self
-        if length == 0 {
+        if length == 0, original.list != nil {
             guard let target = candidate.splitListItem(id: id, range: range) else { throw DocumentError.invalid("the list cannot be changed") }
             try candidate.recordParagraphFormattingChanges(from: self, identity: .init(author: author))
             self = candidate; return target
@@ -61,13 +64,13 @@ public extension ScribeDocument {
             let before = candidate.paragraphs
             var next = candidate.sections[section].paragraphs[index]
             next.id = UUID(); next.pageBreakBefore = false; next.list?.restart = nil; next.toc = nil
-            next.formattingReview = next.formattingReview?.listContinuation()
+            next.formattingReview = next.formattingReview?.paragraphContinuation()
             candidate.sections[section].paragraphs.insert(next, at: index + 1)
             target = next.id
             let location = DocumentTextIndex(paragraphs: before).range(for: .init(paragraphID: id, offset: 0, length: 0))!.location
             candidate.transformCommentAnchors(from: before, replacing: NSRange(location: location, length: 0), withLength: 1)
         } else {
-            guard let next = candidate.splitListItem(id: id, range: NSRange(location: split, length: 0)) else { throw DocumentError.invalid("the list cannot be split") }
+            guard let next = candidate.splitParagraph(id: id, range: NSRange(location: split, length: 0), emptyListCommand: false) else { throw DocumentError.invalid("the paragraph cannot be split") }
             target = next
         }
         var separator = RunReview(); separator.insertion = insertion

@@ -4,9 +4,9 @@ import DocumentCore
 
 extension ScribeTextView {
     /// Generated markers are not part of the semantic paragraph text.
-    func listContext() -> (index: Int, contentStart: Int, end: Int)? {
+    func listContext(for supplied: NSRange? = nil) -> (index: Int, start: Int, contentStart: Int, end: Int)? {
         guard let storage = textStorage else { return nil }
-        let text = storage.string as NSString, selection = selectedRange()
+        let text = storage.string as NSString, selection = supplied ?? selectedRange()
         guard selection.location <= text.length else { return nil }
         let prefix = text.substring(to: selection.location)
         let index = prefix.components(separatedBy: "\n").count - 1
@@ -22,7 +22,7 @@ extension ScribeTextView {
             let tab = text.range(of: "\t", options: [], range: afterTab)
             if tab.location != NSNotFound { contentStart = NSMaxRange(tab) }
         }
-        return (index, contentStart, end)
+        return (index, location, contentStart, end)
     }
     func insertListNewline() -> Bool {
         guard !hasMarkedText(), let editor, let owner = editor.owner, let context = listContext() else { return false }
