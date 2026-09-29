@@ -21,6 +21,7 @@ import DocumentCore
     func testEmptyAndTrailingNoteParagraphsNavigateToTheirPhysicalPage() throws {
         for kind in [DocumentNote.Kind.footnote, .endnote] {
             for preceding in [0, 1, 90] {
+                FileHandle.standardError.write(Data("Empty note window: \(kind.rawValue), preceding paragraphs: \(preceding)\n".utf8))
                 let document = try fixture(kind: kind, preceding: preceding); defer { document.close() }
                 let owner = document.editorController!, editor = owner.editor
                 owner.window?.makeKeyAndOrderFront(nil); owner.window?.contentView?.layoutSubtreeIfNeeded()

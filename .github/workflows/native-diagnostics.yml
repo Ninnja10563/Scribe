@@ -46,6 +46,29 @@ jobs:
           done
           wait "$test_runner"
           test -s build/schema/NativeProcessSample.txt
+      - name: Diagnose failed targeted tests with Objective-C zombies
+        if: failure()
+        env:
+          NSZombieEnabled: "YES"
+          SCRIBE_SCHEMA_OUTPUT: build/schema
+          TEST_FILTER: ${{ inputs.test_filter }}
+        run: swift test --skip-build --filter "$TEST_FILTER"
+      - name: Retain native crash reports
+        if: failure()
+        run: |
+          python3 - <<'PYCODE'
+          from pathlib import Path
+          import shutil
+          import time
+          time.sleep(2)
+          sources = [Path.home() / 'Library/Logs/DiagnosticReports', Path('/Library/Logs/DiagnosticReports')]
+          destination = Path('build/schema/diagnostics')
+          destination.mkdir(parents=True, exist_ok=True)
+          for source in sources:
+              for path in source.rglob('*'):
+                  if path.is_file() and any(name in path.name.lower() for name in ('scribe', 'xctest', 'swift')):
+                      shutil.copy2(path, destination / path.name)
+          PYCODE
       - name: Retain rendered diagnostics
         if: always()
         uses: actions/upload-artifact@v4
