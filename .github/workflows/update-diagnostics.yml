@@ -18,6 +18,7 @@ jobs:
       - run: python -m pip install cryptography==50.0.1
       - run: ./scripts/build-dmg.sh
       - run: python scripts/native-smoke.py build/Scribe.app/Contents/MacOS/Scribe --startup-smoke-test
+      - run: python scripts/native-smoke.py build/Scribe.app/Contents/MacOS/Scribe --launch-services
       - run: python scripts/verify-updater.py
       - uses: actions/upload-artifact@v4
         if: always()

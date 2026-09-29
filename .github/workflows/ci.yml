@@ -74,6 +74,10 @@ jobs:
         env:
           SCRIBE_SMOKE_OUTPUT: build/startup-smoke
         run: python3 scripts/native-smoke.py build/Scribe.app/Contents/MacOS/Scribe --startup-smoke-test
+      - name: Verify Finder-style Launch Services startup
+        env:
+          SCRIBE_SMOKE_OUTPUT: build/launch-services
+        run: python3 scripts/native-smoke.py build/Scribe.app/Contents/MacOS/Scribe --launch-services
       - name: Launch, paginate, save, export and render
         env:
           SCRIBE_SMOKE_OUTPUT: build/smoke

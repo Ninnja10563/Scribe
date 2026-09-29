@@ -8,8 +8,16 @@ import sys
 output = Path(os.environ.get('SCRIBE_SMOKE_OUTPUT', 'build/smoke'))
 output.mkdir(parents=True, exist_ok=True)
 log_path = output / 'launch.log'
+launch_services = '--launch-services' in sys.argv
+report = output.resolve() / 'startup-report.txt'
+if launch_services:
+    report.unlink(missing_ok=True)
+    app = Path(sys.argv[1]).resolve().parents[2]
+    command = ['/usr/bin/open', '-n', '-W', str(app), '--args', '--startup-smoke-test', '--startup-report', str(report)]
+else:
+    command = [sys.argv[1], sys.argv[2] if len(sys.argv) > 2 else '--smoke-test']
 with log_path.open('w') as log:
-    process = subprocess.Popen([sys.argv[1], sys.argv[2] if len(sys.argv) > 2 else '--smoke-test'], stdout=log, stderr=subprocess.STDOUT)
+    process = subprocess.Popen(command, stdout=log, stderr=subprocess.STDOUT)
     try:
         status = process.wait(timeout=90)
     except subprocess.TimeoutExpired:
@@ -25,5 +33,8 @@ with log_path.open('w') as log:
             process.kill()
             process.wait()
         status = 1
+if launch_services and (not report.exists() or 'Dock reopen passed' not in report.read_text()):
+    print('Launch Services did not produce a successful startup report.', file=sys.stderr)
+    status = 1
 print(log_path.read_text())
 raise SystemExit(status)
