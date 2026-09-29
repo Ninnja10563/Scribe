@@ -5,10 +5,12 @@ import DocumentCore
 /// A separate native text flow follows the body. Linked containers allow long
 /// endnotes to continue across real pages without changing their semantic owner.
 @MainActor final class EndnoteLayout {
+    let labels: [UUID: String]
     let storage: NSTextStorage
     let layout: NSLayoutManager
     let containers: [NSTextContainer]
     init(notes: [NumberedNote], styles: [ParagraphStyle], page: PageSettings, maximumPages: Int) throws {
+        labels = Dictionary(uniqueKeysWithValues: notes.map { ($0.id, "Endnote \($0.number)") })
         guard !notes.isEmpty, maximumPages > 0 else { throw DocumentError.invalid("no space remains for endnote pages") }
         let heading = NSMutableParagraphStyle(); heading.paragraphSpacing = 12
         let value = NSMutableAttributedString(string: "Endnotes\n", attributes: [.font: NSFont.boldSystemFont(ofSize: 18), .foregroundColor: NSColor.black, .paragraphStyle: heading])

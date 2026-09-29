@@ -6,9 +6,20 @@ extension EditorWindowController {
     @objc func insertFootnote() { noteDialog(editing: false) }
     @objc func insertEndnote() { noteDialog(editing: false, kind: .endnote) }
     @objc func editNote() { noteDialog(editing: true) }
-    private func noteDialog(editing: Bool, kind: DocumentNote.Kind = .footnote) {
+    func editNote(id: UUID) {
+        var found: NSRange?
+        editor.storage.enumerateAttribute(.scribeNote, in: NSRange(location: 0, length: editor.storage.length)) { value, range, stop in
+            if let data = value as? Data, let note = try? JSONDecoder().decode(DocumentNote.self, from: data), note.id == id { found = range; stop.pointee = true }
+        }
+        guard let found else { showStatus("The note reference is no longer in the document."); return }
+        let viewport = editor.scrollView.contentView.bounds.origin
+        noteDialog(editing: true, selection: found)
+        editor.scrollView.contentView.scroll(to: viewport)
+        editor.scrollView.reflectScrolledClipView(editor.scrollView.contentView)
+    }
+    private func noteDialog(editing: Bool, kind: DocumentNote.Kind = .footnote, selection: NSRange? = nil) {
         let model = fileDocument.snapshot()
-        let range = editor.activeTextView.selectedRange()
+        let range = selection ?? editor.activeTextView.selectedRange()
         let note: DocumentNote
         if editing {
             guard range.location < editor.storage.length,
@@ -18,6 +29,7 @@ extension EditorWindowController {
         } else { note = DocumentNote(kind: kind) }
         let originalStorage = NSAttributedString(attributedString: editor.storage)
         let options = NoteOptions(note: note, styles: model.styles), alert = NSAlert()
+        defer { options.text.cancelSpellingCheck() }
         alert.messageText = editing ? "Edit Note" : (kind == .footnote ? "Insert Footnote" : "Insert Endnote")
         alert.informativeText = "The note number follows its reference in the document."
         alert.accessoryView = options.view

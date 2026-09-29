@@ -5,7 +5,7 @@ import DocumentCore
 /// A native rich-text editing session. Cancel never changes the document model.
 @MainActor final class NoteOptions {
     let view = NSView(frame: NSRect(x: 0, y: 0, width: 520, height: 240))
-    let text = NSTextView(frame: NSRect(x: 0, y: 0, width: 500, height: 220))
+    let text = ScribeTextView(frame: NSRect(x: 0, y: 0, width: 500, height: 220))
     private let original: DocumentNote
     private let model: ScribeDocument
     init(note: DocumentNote, styles: [ParagraphStyle]) {

@@ -68,6 +68,7 @@ import DocumentCore
     let storage = NSTextStorage()
     let layout = NSLayoutManager()
     let canvas = PageCanvas()
+    let noteControls = PageNoteControls()
     let scrollView = NSScrollView()
     private(set) var paragraphRuler: ParagraphRuler?
     private(set) var textViews: [ScribeTextView] = []
@@ -111,6 +112,7 @@ import DocumentCore
         canvas.pageNumbering = document.model.sections[0].pageNumbering
         canvas.runningContent = document.model.sections[0].runningContent
         canvas.header = document.model.sections[0].header; canvas.footer = document.model.sections[0].footer
+        noteControls.editor = self
         storage.delegate = self
         storage.addLayoutManager(layout); layout.delegate = self
         layout.allowsNonContiguousLayout = true
@@ -133,6 +135,7 @@ import DocumentCore
     deinit { NotificationCenter.default.removeObserver(self) }
     func prepareForClose() {
         relayout?.cancel(); onChange = nil; onSelection = nil
+        noteControls.clear()
         paragraphRuler?.editor = nil; paragraphRuler?.clientView = nil
         NotificationCenter.default.removeObserver(self)
         for view in textViews { view.cancelSpellingCheck(); view.delegate = nil; view.editor = nil }
@@ -296,6 +299,7 @@ import DocumentCore
             let frame = NSRect(x: rect.minX + p.left, y: rect.minY + p.top, width: p.contentWidth, height: layout.textContainers[index].containerSize.height)
             if view.frame != frame { view.frame = frame }
         }
+        noteControls.update(in: canvas)
         canvas.needsDisplay = true
         paragraphRuler?.updateGeometry()
     }

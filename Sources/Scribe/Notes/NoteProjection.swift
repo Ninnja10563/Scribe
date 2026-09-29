@@ -18,8 +18,9 @@ import DocumentCore
         let numbered = try NoteNumbering.resolve(referenceIDs: notes.map(\.id), notes: notes)
         for (note, range) in zip(numbered, ranges) {
             let attributes = storage.attributes(at: range.location, effectiveRange: nil)
-            guard attributes[.scribeNoteNumber] as? Int != note.number else { continue }
             let font = ScriptProjection.logicalFont(in: attributes) ?? .systemFont(ofSize: 12)
+            let cell = (attributes[.attachment] as? NSTextAttachment)?.attachmentCell as? NoteReferenceCell
+            guard attributes[.scribeNoteNumber] as? Int != note.number || cell?.baseFont != font else { continue }
             storage.addAttributes([.attachment: attachment(note, baseFont: font), .scribeNoteNumber: note.number], range: range)
         }
     }
@@ -34,13 +35,14 @@ import DocumentCore
         let label = "\(note.note.kind == .footnote ? "Footnote" : "Endnote") \(note.number)"
         image.accessibilityDescription = label
         let attachment = NSTextAttachment()
-        let cell = NoteReferenceCell(imageCell: image); cell.rise = baseFont.pointSize * 0.3
+        let cell = NoteReferenceCell(imageCell: image); cell.rise = baseFont.pointSize * 0.3; cell.baseFont = baseFont
         cell.setAccessibilityLabel(label); attachment.attachmentCell = cell
         return attachment
     }
 }
 private final class NoteReferenceCell: NSTextAttachmentCell {
     var rise: CGFloat = 0
+    var baseFont: NSFont?
     override func cellBaselineOffset() -> NSPoint { NSPoint(x: 0, y: rise) }
 }
 #endif

@@ -32,6 +32,9 @@ import DocumentCore
                     XCTFail("Missing native note controls"); NSApp.abortModal(); return
                 }
                 text.string = content
+                if capture, let rich = text as? ScribeTextView {
+                    rich.setSelectedRange(NSRange(location: 0, length: 10)); rich.toggleBold(nil)
+                }
                 if capture { NativeDialogCapture.save(view, name: "NoteDialog") }
                 button.performClick(nil)
             }
@@ -41,6 +44,13 @@ import DocumentCore
         let inserted = document.snapshot()
         XCTAssertEqual(inserted.notes.count, 1)
         XCTAssertEqual(inserted.notes.first?.paragraphs.count, 2)
+        XCTAssertTrue(inserted.notes[0].paragraphs[0].runs.contains { $0.format.bold == true })
+        XCTAssertEqual(controller.editor.noteControls.buttons.count, 1)
+        let noteButton = try XCTUnwrap(controller.editor.noteControls.buttons.values.first)
+        XCTAssertTrue(noteButton.accessibilityLabel()?.contains("Footnote 1") == true)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { NSApp.abortModal() }
+        noteButton.performClick(nil)
+        XCTAssertEqual(document.snapshot(), inserted)
         XCTAssertNil(controller.editor.layoutWarning)
         document.undoManager?.undo(); XCTAssertTrue(document.snapshot().notes.isEmpty)
         document.undoManager?.redo(); XCTAssertEqual(document.snapshot().notes, inserted.notes)

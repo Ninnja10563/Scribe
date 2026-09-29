@@ -5,12 +5,15 @@ import DocumentCore
 /// Measured, reusable native glyph layout for one note. Page reservation and the
 /// screen/PDF renderers consume the same height and glyphs.
 @MainActor final class NoteTextLayout {
+    let noteID: UUID
+    let label: String
     let storage: NSTextStorage
     let layout: NSLayoutManager
     let container: NSTextContainer
     let glyphRange: NSRange
     let height: CGFloat
     init(note: NumberedNote, styles: [ParagraphStyle], width: CGFloat) throws {
+        noteID = note.id; label = "\(note.note.kind == .footnote ? "Footnote" : "Endnote") \(note.number)"
         guard width.isFinite, width >= 30, width <= 4000 else { throw DocumentError.invalid("invalid note writing width") }
         var model = ScribeDocument(); model.styles = styles; model.sections[0].paragraphs = note.note.paragraphs
         try NativeFormat.validate(model)

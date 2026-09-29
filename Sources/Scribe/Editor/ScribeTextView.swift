@@ -54,7 +54,7 @@ import DocumentCore
     override func draw(_ dirtyRect: NSRect) { super.draw(dirtyRect); drawImageSelection() }
     override func mouseDown(with event: NSEvent) { if !resizeImageIfNeeded(with: event) { super.mouseDown(with: event) } }
     override func insertText(_ insertString: Any, replacementRange: NSRange) {
-        for key in [NSAttributedString.Key.attachment, .scribeEquation, .scribeImage, .scribeNote] { typingAttributes.removeValue(forKey: key) }
+        for key in [NSAttributedString.Key.attachment, .scribeEquation, .scribeImage, .scribeNote, .scribeNoteNumber] { typingAttributes.removeValue(forKey: key) }
         let range = replacementRange.location == NSNotFound ? selectedRange() : replacementRange
         let ids = commentIDs(forReplacement: range)
         if ids.isEmpty { typingAttributes.removeValue(forKey: .scribeComments) }
@@ -71,6 +71,10 @@ import DocumentCore
         if selectedRange().location < (textStorage?.length ?? 0), textStorage?.attribute(.scribeEquation, at: selectedRange().location, effectiveRange: nil) != nil {
             menu.addItem(.separator())
             menu.addItem(NSMenuItem(title: "Edit Equation…", action: #selector(EditorWindowController.editEquation), keyEquivalent: ""))
+        }
+        if selectedRange().location < (textStorage?.length ?? 0), textStorage?.attribute(.scribeNote, at: selectedRange().location, effectiveRange: nil) != nil {
+            menu.addItem(.separator())
+            menu.addItem(NSMenuItem(title: "Edit Note…", action: #selector(EditorWindowController.editNote), keyEquivalent: ""))
         }
         if selectedImageFrame != nil {
             menu.addItem(.separator())
@@ -156,6 +160,7 @@ import DocumentCore
               let url = urls.first, ["png", "jpg", "jpeg", "heic", "tif", "tiff"].contains(url.pathExtension.lowercased()) else { return nil }
         return url
     }
+    @objc func showFonts() { window?.makeFirstResponder(self); NSFontManager.shared.orderFrontFontPanel(self) }
     @objc func toggleBold(_ sender: Any?) { toggleTrait(.boldFontMask) }
     @objc func toggleItalic(_ sender: Any?) { toggleTrait(.italicFontMask) }
     private func toggleTrait(_ trait: NSFontTraitMask) {

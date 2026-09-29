@@ -5,7 +5,7 @@ import DocumentCore
 @testable import Scribe
 
 @MainActor final class NativeNoteSafetyTests: XCTestCase {
-    func testIncompleteNoteEditorRejectsOpeningAndRecoveryWithoutChangingSource() throws {
+    func testNativeNoteOpeningAndRecoveryPreserveContentAndSourceIdentity() throws {
         _ = NSApplication.shared
         var model = ScribeDocument()
         let note = DocumentNote(kind: .footnote, text: "Preserve this citation.")
@@ -14,11 +14,20 @@ import DocumentCore
         model.sections[0].paragraphs[0].runs = [reference]
         let bytes = try NativeFormat.encode(model)
         let document = ScribeFileDocument(); defer { document.close() }
-        let before = document.model
-        XCTAssertThrowsError(try document.read(from: bytes, ofType: ScribeFileDocument.typeName))
-        XCTAssertEqual(document.model, before)
+        try document.read(from: bytes, ofType: ScribeFileDocument.typeName)
+        XCTAssertEqual(document.model, model)
+        document.makeWindowControllers()
+        XCTAssertNil(document.editorController?.editor.outputWarning)
+        XCTAssertEqual(try NativeFormat.decode(document.data(ofType: ScribeFileDocument.typeName)).notes, [note])
         XCTAssertEqual(try NativeFormat.decode(bytes), model)
-        XCTAssertThrowsError(try ScribeFileDocument.recovering(RecoverySnapshot(document: model, originalURL: nil)))
+        let recovered = try ScribeFileDocument.recovering(RecoverySnapshot(document: model, originalURL: nil))
+        defer { recovered.close() }
+        XCTAssertNotEqual(recovered.model.id, model.id)
+        XCTAssertEqual(recovered.model.notes, [note])
+        recovered.makeWindowControllers()
+        XCTAssertNil(recovered.editorController?.editor.outputWarning)
+        XCTAssertEqual(recovered.snapshot().notes, [note])
+
     }
 }
 #endif
