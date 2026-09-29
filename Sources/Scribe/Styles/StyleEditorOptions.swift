@@ -13,6 +13,7 @@ import DocumentCore
     let useHighlight = NSButton(checkboxWithTitle: "Highlight", target: nil, action: nil)
     let spacing: [NSTextField]
     let view = NSStackView()
+    let preview = NSTextField(labelWithString: "Scribe — The quick brown fox")
     private var faceNames: [String?] = []
     init(style: ParagraphStyle) {
         original = style; name = NSTextField(string: style.name)
@@ -46,9 +47,12 @@ import DocumentCore
         }
         view.orientation = .vertical; view.alignment = .leading; view.spacing = 14
         let title = grid([("Style name", name)])
-        view.addArrangedSubview(title); view.addArrangedSubview(tabs)
+        view.addArrangedSubview(title); view.addArrangedSubview(tabs); view.addArrangedSubview(preview)
+        preview.setAccessibilityLabel("Style preview"); preview.heightAnchor.constraint(equalToConstant: 44).isActive = true
+        for control in [face, size, underline, strike, foreground, highlight, useHighlight] as [NSControl] { control.target = self; control.action = #selector(updatePreview) }
+        updatePreview()
         NSLayoutConstraint.activate([title.widthAnchor.constraint(equalToConstant: 450), tabs.widthAnchor.constraint(equalToConstant: 450), tabs.heightAnchor.constraint(equalToConstant: 345)])
-        view.frame = NSRect(x: 0, y: 0, width: 450, height: 385)
+        view.frame = NSRect(x: 0, y: 0, width: 450, height: 445)
     }
     private func grid(_ rows: [(String, NSView)]) -> NSGridView {
         for (label, control) in rows where !label.isEmpty { control.setAccessibilityLabel(label); control.identifier = NSUserInterfaceItemIdentifier(label) }
@@ -57,7 +61,14 @@ import DocumentCore
         for index in rows.indices { grid.row(at: index).height = 24 }
         return grid
     }
-    @objc private func familyChanged() { populateFaces(selected: nil) }
+    @objc private func familyChanged() { populateFaces(selected: nil); updatePreview() }
+    @objc private func updatePreview() {
+        highlight.isEnabled = useHighlight.state == .on
+        guard let style = try? value(contentWidth: 10000) else { return }
+        var attributes = AttributedDocument.attributes(style: style)
+        if let font = attributes[.font] as? NSFont { attributes[.font] = NSFontManager.shared.convert(font, toSize: min(26, font.pointSize)) }
+        preview.attributedStringValue = NSAttributedString(string: "Scribe — The quick brown fox", attributes: attributes)
+    }
     private func populateFaces(selected: String?) {
         face.removeAllItems(); face.addItem(withTitle: "Automatic"); faceNames = [nil]
         for member in NSFontManager.shared.availableMembers(ofFontFamily: family.titleOfSelectedItem ?? "") ?? [] {
