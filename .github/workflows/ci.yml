@@ -104,7 +104,7 @@ jobs:
       - name: Restore independent Office XML validator
         run: dotnet restore tools/OOXMLValidation --locked-mode
       - name: Validate the release app's DOCX package
-        run: dotnet run --project tools/OOXMLValidation --no-restore -- build/smoke/Smoke.docx build/schema/*.docx
+        run: dotnet run --project tools/OOXMLValidation --no-restore -- build/smoke/*.docx build/schema/*.docx
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'

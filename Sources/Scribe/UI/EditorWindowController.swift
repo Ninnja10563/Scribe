@@ -136,7 +136,7 @@ import DocumentCore
         statsTask?.cancel()
         statsWork?.cancel(); let job = DispatchWorkItem { [weak self] in
             guard let self else { return }
-            let text = self.editor.semanticText.text, revision = self.editor.revision
+            let text = self.editor.semanticText.statisticsText, revision = self.editor.revision
             self.statsTask = Task { [weak self] in
                 let words = await Task.detached { DocumentStatistics(text: text).words }.value
                 guard !Task.isCancelled, let self, !self.isClosing, revision == self.editor.revision else { return }

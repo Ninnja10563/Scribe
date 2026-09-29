@@ -383,7 +383,7 @@ class WordReader: NSObject, XMLParserDelegate {
             if !run.text.isEmpty { paragraph?.runs.append(run) }
             var reference = TextRun("\u{fffc}", format: run.format); reference.noteID = id; reference.format.baseline = nil
             paragraph?.runs.append(reference); run = TextRun("", format: run.format, link: link)
-            if wordAttribute(a, "customMarkFollows") == "1" { warnings.insert("Custom note reference marks use automatic numbering in Scribe.") }
+            if ["1", "true", "on"].contains(wordAttribute(a, "customMarkFollows") ?? "") { warnings.insert("Custom note reference marks use automatic numbering in Scribe.") }
         case "tab": run.text += "\t"
         case "br":
             if wordAttribute(a, "type") == "page" { run.text += "\u{c}" }

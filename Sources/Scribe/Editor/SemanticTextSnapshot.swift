@@ -10,6 +10,7 @@ struct SemanticTextSnapshot: Sendable {
         let content: NSRange
     }
     let text: String
+    let statisticsText: String
     private let segments: [Segment]
 
     @MainActor init(_ storage: NSAttributedString) {
@@ -35,6 +36,13 @@ struct SemanticTextSnapshot: Sendable {
             }
             sourceOffset += value.length + 1
         }
+        var noteText: [String] = [], seen = Set<UUID>()
+        storage.enumerateAttribute(.scribeNote, in: NSRange(location: 0, length: storage.length)) { value, _, _ in
+            guard let data = value as? Data, data.count <= NativeFormat.maximumBytes,
+                  let note = try? JSONDecoder().decode(DocumentNote.self, from: data), seen.insert(note.id).inserted else { return }
+            noteText.append(note.paragraphs.map(\.text).joined(separator: "\n"))
+        }
+        statisticsText = ([result] + noteText).joined(separator: "\n")
         text = result; segments = spans
     }
 

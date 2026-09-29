@@ -46,6 +46,9 @@ final class DOCXNotesReader: NSObject, XMLParserDelegate {
             note.paragraphs[0].runs[0].text.removeFirst()
         }
         notes[id] = note; warnings.formUnion(reader.warnings)
+        if !reader.commentStarts.isEmpty || !reader.commentReferences.isEmpty {
+            warnings.insert("Comments within notes are retained as detached document comments; their note anchors are not retained.")
+        }
         current = nil; currentID = nil
     }
 }

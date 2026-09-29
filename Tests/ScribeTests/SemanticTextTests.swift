@@ -7,6 +7,23 @@ import DocumentCore
 @MainActor final class SemanticTextTests: XCTestCase {
     override func setUp() { super.setUp(); _ = NSApplication.shared }
 
+    func testDocumentStatisticsIncludeNoteContentWithoutChangingBodySearchCoordinates() throws {
+        let document = ScribeFileDocument()
+        let note = DocumentNote(kind: .footnote, text: "Citation words")
+        document.model.notes = [note]
+        var reference = TextRun("\u{fffc}"); reference.noteID = note.id
+        document.model.sections[0].paragraphs[0].runs = [TextRun("Body "), reference]
+        document.makeWindowControllers(); defer { document.close() }
+        let editor = document.editorController!.editor
+        XCTAssertEqual(DocumentStatistics(text: editor.semanticText.statisticsText).words, 3)
+        XCTAssertEqual(DocumentStatistics(text: editor.semanticText.text).words, 1)
+        XCTAssertEqual(editor.semanticText.matches(query: "Body"), [NSRange(location: 0, length: 4)])
+        editor.select(NSRange(location: 5, length: 1))
+        editor.activeTextView.replaceSelection(NSAttributedString(string: ""), action: "Delete Note")
+        XCTAssertEqual(DocumentStatistics(text: editor.semanticText.statisticsText).words, 1)
+        document.undoManager?.undo()
+        XCTAssertEqual(DocumentStatistics(text: editor.semanticText.statisticsText).words, 3)
+    }
     func testGeneratedMarkersAreExcludedAndUnicodeMatchesMapToNativeRanges() {
         var document = ScribeDocument()
         var first = Paragraph("First café 👩🏽‍💻"), second = Paragraph("Second 東京")

@@ -100,9 +100,10 @@ extension EditorWindowController {
         fileDocument.performEdit("Delete Style") { $0.deleteStyle(id: style.id) }
     }
     @objc func documentStatistics() {
-        let stats = DocumentStatistics(text: editor.semanticText.text)
+        let stats = DocumentStatistics(text: editor.semanticText.statisticsText)
         let alert = NSAlert(); alert.messageText = "Document Statistics"
         alert.informativeText = "\(stats.words.formatted()) words\n\(stats.characters.formatted()) characters\n\(stats.charactersWithoutSpaces.formatted()) characters excluding spaces\n\(stats.paragraphs.formatted()) paragraphs\n\(editor.canvas.pageCount) pages"
+        if editor.semanticText.statisticsText != editor.semanticText.text { alert.informativeText += "\n\nIncludes footnotes and endnotes." }
         alert.runModal()
     }
 }
