@@ -43,6 +43,14 @@ with ZipFile(root / 'Smoke.docx') as package:
     if native.get('bookmarks'):
         assert {'Writing_workspace'} <= bookmark_names
         assert 'Writing_workspace' in internal_links, 'Missing named Word bookmark link'
+    if native.get('formatVersion', 0) >= 7:
+        assert native['tables'][0]['minimumRowHeights'][2] == 42
+        style = next(cell for cell in native['tables'][0]['cellStyles'] if cell['row'] == 2 and cell['column'] == 1)
+        assert style['background'] == '#E7EFF8' and style['verticalAlignment'] == 'center'
+        cells = body.findall('.//w:tbl/w:tr', namespace)[2].findall('w:tc', namespace)
+        properties = cells[1].find('w:tcPr', namespace)
+        assert properties.find('w:vAlign', namespace).get(value_key) == 'center'
+        assert properties.find('w:shd', namespace).get('{' + namespace['w'] + '}fill') == 'E7EFF8'
     comments = native.get('comments', [])
     assert len(word.comments) == len(comments), 'Missing review text'
     for actual, expected in zip(word.comments, comments):
@@ -79,6 +87,9 @@ with pymupdf.open(root / 'Smoke.pdf') as full, pymupdf.open(root / 'Selected-pag
         spans = [span for block in full[0].get_text('dict')['blocks'] for line in block.get('lines', []) for span in line['spans']]
         toc_links = [span for span in spans if 'A considered place to write' in span['text'] and span['size'] < 20]
         assert toc_links and all((span['color'] & 255) > ((span['color'] >> 16) & 255) for span in toc_links), 'PDF links lost their editor styling'
+    if native.get('formatVersion', 0) >= 7:
+        target = (231 / 255, 239 / 255, 248 / 255)
+        assert any(drawing.get('fill') and all(abs(a - b) < 0.01 for a, b in zip(drawing['fill'], target)) for drawing in full[0].get_drawings()), 'Cell background missing from rendered PDF'
     text = '\n'.join(page.get_text() for page in full)
     for marker in ('IV.', 'a.', 'V.', 'IX.', 'Paragraph 80.', f'Page {len(full)} of {len(full)}'):
         assert marker in text, f'Missing output: {marker}'

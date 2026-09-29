@@ -30,6 +30,8 @@ public struct DocumentTable: Codable, Equatable, Sendable, Identifiable {
     public var borderColor = "#B8BCC2"
     public var headerBackground = "#EFF1F3"
     public var firstRowIsHeader = true
+    public var cellStyles: [TableCellStyle]?
+    public var minimumRowHeights: [Double?]?
     public init(rows: Int, columns: Int, width: Double) {
         self.rows = rows; columnWidths = Array(repeating: width / Double(max(1, columns)), count: max(1, columns))
     }
@@ -72,6 +74,10 @@ public extension ScribeDocument {
             }
             sections[s].paragraphs.insert(contentsOf: newRow, at: insertionIndex)
         }
+        tables[t].cellStyles = tables[t].cellStyles?.map { value in
+            var style = value; if style.row >= insertionRow { style.row += 1 }; return style
+        }
+        tables[t].minimumRowHeights?.insert(nil, at: insertionRow)
         tables[t].rows += 1
     }
     mutating func deleteTableRow(tableID: UUID, row: Int) {
@@ -85,6 +91,10 @@ public extension ScribeDocument {
                 if let cell = sections[s].paragraphs[p].tableCell, cell.tableID == tableID, cell.row > row { sections[s].paragraphs[p].tableCell?.row -= 1 }
             }
         }
+        tables[t].cellStyles = tables[t].cellStyles?.filter { $0.row != row }.map { value in
+            var style = value; if style.row > row { style.row -= 1 }; return style
+        }
+        tables[t].minimumRowHeights?.remove(at: row)
         tables[t].rows -= 1
     }
     mutating func addTableColumn(tableID: UUID, after column: Int) {
@@ -104,6 +114,9 @@ public extension ScribeDocument {
                 sections[s].paragraphs.insert(p, at: index)
             }
         }
+        tables[t].cellStyles = tables[t].cellStyles?.map { value in
+            var style = value; if style.column >= insertion { style.column += 1 }; return style
+        }
         tables[t].columnWidths = Array(repeating: total / Double(tables[t].columnWidths.count + 1), count: tables[t].columnWidths.count + 1)
     }
     mutating func deleteTableColumn(tableID: UUID, column: Int) {
@@ -117,6 +130,9 @@ public extension ScribeDocument {
             }
         }
         let total = tables[t].columnWidths.reduce(0, +)
+        tables[t].cellStyles = tables[t].cellStyles?.filter { $0.column != column }.map { value in
+            var style = value; if style.column > column { style.column -= 1 }; return style
+        }
         tables[t].columnWidths = Array(repeating: total / Double(tables[t].columnWidths.count - 1), count: tables[t].columnWidths.count - 1)
     }
     mutating func deleteTable(id: UUID) {

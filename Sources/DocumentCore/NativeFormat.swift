@@ -35,6 +35,7 @@ public enum NativeFormat {
             // v3 → v4: legacy comment anchors remain single-paragraph ranges.
             // v4 → v5: absent fontFace retains family/trait-based font selection.
             if version < 6 { json["tablesOfContents"] = [] }
+            // v6 → v7: absent cellStyles and minimumRowHeights inherit table defaults.
             json["formatVersion"] = ScribeDocument.currentVersion
             migrated = try JSONSerialization.data(withJSONObject: json)
         }
@@ -64,12 +65,26 @@ public enum NativeFormat {
         }
         guard Set(document.tables.map(\.id)).count == document.tables.count else { throw DocumentError.invalid("duplicate table identifiers") }
         for table in document.tables {
-            var colors = TextFormatting(); colors.foreground = table.borderColor; colors.highlight = table.headerBackground
-            try validateText(colors)
             guard (1...100).contains(table.rows), (1...20).contains(table.columnWidths.count),
                   table.columnWidths.allSatisfy({ $0.isFinite && (12...4000).contains($0) }),
                   table.padding.isFinite, (0...50).contains(table.padding),
                   table.borderWidth.isFinite, (0...10).contains(table.borderWidth) else { throw DocumentError.invalid("invalid table geometry") }
+            if let heights = table.minimumRowHeights {
+                guard heights.count == table.rows, heights.compactMap({ $0 }).allSatisfy({ $0.isFinite && (1...4000).contains($0) }) else { throw DocumentError.invalid("invalid table row heights") }
+            }
+            if let cells = table.cellStyles {
+                guard cells.count <= 2000, cells.allSatisfy({ (0..<table.rows).contains($0.row) && table.columnWidths.indices.contains($0.column) }),
+                      Set(cells.map { "\($0.row):\($0.column)" }).count == cells.count else { throw DocumentError.invalid("invalid table cell styles") }
+                for cell in cells {
+                    var colors = TextFormatting(); colors.foreground = cell.borderColor; colors.highlight = cell.background
+                    try validateText(colors)
+                    if let padding = cell.padding, !padding.isFinite || !(0...50).contains(padding) { throw DocumentError.invalid("invalid cell padding") }
+                    if let border = cell.borderWidth, !border.isFinite || !(0...10).contains(border) { throw DocumentError.invalid("invalid cell border") }
+                }
+            }
+            var colors = TextFormatting(); colors.foreground = table.borderColor; colors.highlight = table.headerBackground
+            try validateText(colors)
+
         }
         for style in document.styles {
             try validateText(style.text)

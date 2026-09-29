@@ -64,6 +64,12 @@ import ImportExport
             for index in document.model.sections[0].paragraphs.indices where document.model.sections[0].paragraphs[index].tableCell != nil {
                 document.model.sections[0].paragraphs[index].runs = [TextRun(cellValues[cellIndex])]; cellIndex += 1
             }
+            if let tableID = document.model.tables.first?.id {
+                var cell = TableCellStyle(row: 2, column: 1)
+                cell.background = "#E7EFF8"; cell.padding = 10; cell.borderWidth = 1; cell.borderColor = "#456789"; cell.verticalAlignment = .center
+                try document.model.setCellStyles([cell], tableID: tableID)
+                try document.model.setMinimumRowHeight(42, row: 2, tableID: tableID)
+            }
             let chart = NSImage(size: NSSize(width: 240, height: 80), flipped: false) { rect in
                 NSColor(white: 0.96, alpha: 1).setFill(); rect.fill()
                 NSColor(srgbRed: 0.25, green: 0.38, blue: 0.49, alpha: 1).setFill()

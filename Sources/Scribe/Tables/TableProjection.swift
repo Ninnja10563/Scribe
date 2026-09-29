@@ -22,12 +22,23 @@ import DocumentCore
         if let cached = blocks[key] { block = cached }
         else {
             block = NSTextTableBlock(table: table, startingRow: reference.row, rowSpan: 1, startingColumn: reference.column, columnSpan: 1)
-            block.setContentWidth(max(1, definition.columnWidths[reference.column] - definition.padding * 2 - definition.borderWidth * 2), type: .absoluteValueType)
-            block.setWidth(definition.padding, type: .absoluteValueType, for: .padding)
-            block.setWidth(definition.borderWidth, type: .absoluteValueType, for: .border)
-            block.setBorderColor(NSColor(hex: definition.borderColor))
-            block.verticalAlignment = .topAlignment
-            if definition.firstRowIsHeader && reference.row == 0 { block.backgroundColor = NSColor(hex: definition.headerBackground) }
+            let style = definition.cellStyle(row: reference.row, column: reference.column)
+            let padding = style?.padding ?? definition.padding, border = style?.borderWidth ?? definition.borderWidth
+            block.setContentWidth(max(1, definition.columnWidths[reference.column] - padding * 2 - border * 2), type: .absoluteValueType)
+            block.setWidth(padding, type: .absoluteValueType, for: .padding)
+            block.setWidth(border, type: .absoluteValueType, for: .border)
+            block.setBorderColor(NSColor(hex: style?.borderColor ?? definition.borderColor))
+            switch style?.verticalAlignment ?? .top {
+            case .top: block.verticalAlignment = .topAlignment
+            case .center: block.verticalAlignment = .middleAlignment
+            case .bottom: block.verticalAlignment = .bottomAlignment
+            }
+            if let background = style?.background ?? (definition.firstRowIsHeader && reference.row == 0 ? definition.headerBackground : nil) {
+                block.backgroundColor = NSColor(hex: background)
+            }
+            if let heights = definition.minimumRowHeights, heights.indices.contains(reference.row), let height = heights[reference.row] {
+                block.setValue(max(1, height - 2 * padding - 2 * border), type: .absoluteValueType, for: .minimumHeight)
+            }
             blocks[key] = block
         }
         let style = (attributes[.paragraphStyle] as? NSParagraphStyle ?? .default).mutableCopy() as! NSMutableParagraphStyle

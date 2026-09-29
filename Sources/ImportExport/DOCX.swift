@@ -127,7 +127,7 @@ public enum DOCX {
     }
 }
 
-private func wordAttribute(_ a: [String: String], _ key: String = "val") -> String? { a["w:\(key)"] ?? a[key] }
+func wordAttribute(_ a: [String: String], _ key: String = "val") -> String? { a["w:\(key)"] ?? a[key] }
 private func flag(_ a: [String: String]) -> Bool { !["0", "false", "off"].contains(wordAttribute(a) ?? "1") }
 private func applyRun(_ name: String, _ a: [String: String], _ f: inout TextFormatting) {
     switch name {
@@ -222,6 +222,7 @@ private class WordReader: NSObject, XMLParserDelegate {
     var files: [String: Data] = [:], targets: [String: String] = [:]
     var headerID: String?, footerID: String?
     var tableDepth = 0, tableIndex: Int?, row = -1, column = -1
+    private let tableFormatting = DOCXTableFormattingReader()
     var inDrawing = false, drawingTarget: String?, drawingWidth = 100.0, drawingHeight = 100.0, drawingAlt = ""
     func parser(_ parser: XMLParser, didStartElement name: String, namespaceURI: String?, qualifiedName: String?, attributes a: [String: String]) {
         if inDrawing {
@@ -316,6 +317,7 @@ private class WordReader: NSObject, XMLParserDelegate {
         case "sectPr": if !paragraphs.isEmpty && paragraph != nil { warnings.insert("Section settings are flattened to one page layout.") }
         default: if inRun { applyRun(name, a, &run.format) }
         }
+        if tableDepth == 1, let t = tableIndex { tableFormatting.start(name, a, table: &document.tables[t], row: row, column: column, warnings: &warnings) }
     }
     private func inspectFieldInstruction(_ code: String) {
         if code.split(whereSeparator: \.isWhitespace).first?.uppercased() == "TOC" {
@@ -328,6 +330,10 @@ private class WordReader: NSObject, XMLParserDelegate {
     }
     func parser(_ parser: XMLParser, didEndElement name: String, namespaceURI: String?, qualifiedName: String?) {
         guard namespaceURI == DOCX.wordNS else { return }
+        if tableDepth == 1, let t = tableIndex {
+            if name == "tbl" { document.tables[t].rows = max(1, row + 1) }
+            tableFormatting.end(name, table: &document.tables[t], warnings: &warnings)
+        }
         switch name {
         case "t": collecting = false
         case "instrText":
