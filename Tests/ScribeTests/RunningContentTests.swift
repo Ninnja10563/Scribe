@@ -71,7 +71,10 @@ import DocumentCore
         XCTAssertNotNil(editor.outputWarning)
     }
     func testNativeDialogEditsVariantsAndCancelPreservesExistingValues() throws {
-        let document = ScribeFileDocument(); document.makeWindowControllers(); defer { document.close() }
+        let document = ScribeFileDocument()
+        var imported = RunningContentVariants(); imported.startingPageNumber = 2
+        document.model.sections[0].runningContent = imported
+        document.makeWindowControllers(); defer { document.close() }
         let controller = document.editorController!
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
             func descendants(_ view: NSView) -> [NSView] { [view] + view.subviews.flatMap(descendants) }
@@ -88,6 +91,7 @@ import DocumentCore
         }
         controller.editHeaderFooter()
         XCTAssertEqual(document.model.sections[0].runningContent?.firstHeader, "Cover heading")
+        XCTAssertEqual(document.model.sections[0].runningContent?.startingPageNumber, 2)
         XCTAssertEqual(controller.editor.canvas.runningText(isHeader: true, pageIndex: 0), "Cover heading")
         let before = document.snapshot()
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { NSApp.abortModal() }
