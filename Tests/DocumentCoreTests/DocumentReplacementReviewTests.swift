@@ -74,6 +74,18 @@ final class DocumentReplacementReviewTests: XCTestCase {
         try document.resolveAllRevisions(accepting: false)
         XCTAssertEqual(document.paragraphs, [paragraph])
     }
+    func testInsertedNoteSurvivesAcceptanceAndIsRemovedOnRejection() throws {
+        var document = ScribeDocument(); document.sections[0].paragraphs = [Paragraph("AB"), Paragraph("CD")]
+        let original = document, note = DocumentNote(kind: .footnote, text: "Source")
+        var reference = TextRun("\u{FFFC}"); reference.noteID = note.id
+        _ = try document.replaceTrackedRange(selection(document, start: 1, end: 1), with: [reference], author: author, insertedNotes: [note])
+        XCTAssertEqual(try NativeFormat.decode(NativeFormat.encode(document)), document)
+        var rejected = document; try rejected.resolveAllRevisions(accepting: false)
+        XCTAssertEqual(rejected.paragraphs, original.paragraphs); XCTAssertTrue(rejected.notes.isEmpty)
+        try document.resolveAllRevisions(accepting: true)
+        XCTAssertEqual(document.paragraphs.map(\.text), ["A\u{FFFC}D"])
+        XCTAssertEqual(document.notes, [note]); try NativeFormat.validate(document)
+    }
     func testInvalidScalarBoundaryDoesNotMutateDocument() throws {
         var document = ScribeDocument(); document.sections[0].paragraphs = [Paragraph("A😀"), Paragraph("B")]
         let before = document
