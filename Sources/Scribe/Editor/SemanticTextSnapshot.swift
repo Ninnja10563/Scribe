@@ -14,8 +14,10 @@ struct SemanticTextSnapshot: Sendable {
     private struct NoteText: Sendable { let id: UUID; let text: String; let reference: NSRange }
     private let notes: [NoteText]
     private let segments: [Segment]
+    private let sourceLength: Int
 
     @MainActor init(_ storage: NSAttributedString) {
+        sourceLength = storage.length
         var result = "", spans: [Segment] = [], sourceOffset = 0, contentOffset = 0
         let components = storage.string.components(separatedBy: "\n")
         for (index, component) in components.enumerated() {
@@ -59,7 +61,13 @@ struct SemanticTextSnapshot: Sendable {
         DocumentSearch.matches(in: text, query: query, options: options).compactMap { sourceRange($0) }
     }
     func sourceRange(forContentRange range: NSRange) -> NSRange? {
-        sourceRange(range)
+        if range.length == 0 {
+            guard range.location >= 0, range.location <= text.utf16.count else { return nil }
+            if range.location == text.utf16.count { return NSRange(location: sourceLength, length: 0) }
+            guard let span = segment(containing: range.location) else { return nil }
+            return NSRange(location: span.source.location + range.location - span.content.location, length: 0)
+        }
+        return sourceRange(range)
     }
     private func sourceRange(_ range: NSRange) -> NSRange? {
         guard range.length > 0, let first = segment(containing: range.location),

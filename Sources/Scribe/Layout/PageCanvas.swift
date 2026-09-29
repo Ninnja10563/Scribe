@@ -409,7 +409,9 @@ import DocumentCore
     func textViewDidChangeSelection(_ notification: Notification) {
         // Linked text views broadcast the same selection. Only the focused view identifies
         // its page reliably; passive navigation records its target explicitly in select().
-        if let view = notification.object as? ScribeTextView, canvas.window?.firstResponder === view { selectionView = view }
+        if let view = notification.object as? ScribeTextView, canvas.window?.firstResponder === view {
+            selectionView = view; owner?.editorController?.reviewNavigation.nativeSelectionChanged()
+        }
         onSelection?()
     }
     func undoManager(for view: NSTextView) -> UndoManager? { owner?.undoManager }

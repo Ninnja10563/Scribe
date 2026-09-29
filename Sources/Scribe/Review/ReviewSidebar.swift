@@ -100,6 +100,7 @@ import DocumentCore
                         excerpt = String(text.substring(with: range).prefix(160))
                     }
                 }
+                if excerpt.isEmpty, location.kind == .paragraphFormatting { excerpt = "Empty paragraph formatting" }
                 if location.noteID != nil { excerpt = "Note: " + excerpt }
             }
         }

@@ -60,7 +60,12 @@ import DocumentCore
         editor.select(reference, focus: false)
         let p = editor.canvas.pageSettings
         guard let note = renderedNotes(in: editor)[id], let range = note.sourceRange(semantic) else { return nil }
-        let glyphs = note.layout.glyphRange(forCharacterRange: range, actualCharacterRange: nil)
+        // An empty paragraph has no searchable extent. Use its caret line,
+        // including the extra line after a final newline, for navigation.
+        let caret = range.length == 0
+        let extraContainer = caret && range.location == note.storage.length ? note.layout.extraLineFragmentTextContainer : nil
+        let drawable = caret ? NSRange(location: min(range.location, max(0, note.storage.length - 1)), length: min(1, note.storage.length)) : range
+        let glyphs = note.layout.glyphRange(forCharacterRange: drawable, actualCharacterRange: nil)
         for index in editor.canvas.footnotes.keys.sorted() {
             guard let page = editor.canvas.footnotes[index] else { continue }
             let rect = editor.canvas.pageRect(index)
@@ -68,7 +73,9 @@ import DocumentCore
             for fragment in page.notes {
                 let overlap = NSIntersectionRange(fragment.glyphs, glyphs)
                 if fragment.note.noteID == id, overlap.length > 0 {
-                    let bounds = note.layout.boundingRect(forGlyphRange: overlap, in: fragment.note.container)
+                    let bounds = extraContainer === fragment.note.container ? note.layout.extraLineFragmentRect
+                        : (caret ? note.layout.lineFragmentRect(forGlyphAt: overlap.location, effectiveRange: nil)
+                                 : note.layout.boundingRect(forGlyphRange: overlap, in: fragment.note.container))
                     editor.canvas.scrollToVisible(NSRect(x: rect.minX + p.left + bounds.minX, y: y - fragment.top + bounds.minY, width: bounds.width, height: bounds.height).insetBy(dx: -12, dy: -12))
                     return index + 1
                 }
@@ -78,9 +85,11 @@ import DocumentCore
         if let endnotes = editor.canvas.endnotes, endnotes.storage === note.storage {
             for (index, container) in endnotes.containers.enumerated() {
                 let overlap = NSIntersectionRange(endnotes.layout.glyphRange(for: container), glyphs)
-                guard overlap.length > 0 else { continue }
+                guard extraContainer.map({ $0 === container }) ?? (overlap.length > 0) else { continue }
                 let rect = editor.canvas.pageRect(editor.canvas.bodyPageCount + index)
-                let bounds = note.layout.boundingRect(forGlyphRange: overlap, in: container)
+                let bounds = extraContainer === container ? note.layout.extraLineFragmentRect
+                    : (caret ? note.layout.lineFragmentRect(forGlyphAt: overlap.location, effectiveRange: nil)
+                             : note.layout.boundingRect(forGlyphRange: overlap, in: container))
                 editor.canvas.scrollToVisible(NSRect(x: rect.minX + p.left + bounds.minX, y: rect.minY + p.top + bounds.minY, width: bounds.width, height: bounds.height).insetBy(dx: -12, dy: -12))
                 return editor.canvas.bodyPageCount + index + 1
             }

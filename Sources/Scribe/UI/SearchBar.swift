@@ -13,6 +13,7 @@ import DocumentCore
     private(set) var currentMatch: DocumentSearchMatch?
     private let presentation = NoteSearchPresentation()
     private var notePage: Int?
+    func clearNotePresentation() { notePage = nil }
     var selectedNotePage: Int? {
         guard !isHidden, let currentMatch, case .note = currentMatch, let editor,
               isSelected(currentMatch, selection: editor.activeTextView.selectedRange()),
@@ -71,6 +72,7 @@ import DocumentCore
     private func navigate(forward: Bool) {
         refreshMatchesForNavigation()
         guard let editor, !matches.isEmpty else { return }
+        editor.owner?.editorController?.reviewNavigation.nativeSelectionChanged()
         let selection = editor.activeTextView.selectedRange()
         let match: DocumentSearchMatch
         if let currentMatch, isSelected(currentMatch, selection: selection), let index = matches.firstIndex(of: currentMatch) {

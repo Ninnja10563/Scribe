@@ -160,8 +160,9 @@ import DocumentCore
         if let warning = editor.outputWarning { status.stringValue = warning; return }
         let view = editor.activeTextView
         let selection = view.selectedRange()
-        let page = searchBar.selectedNotePage ?? editor.textViews.firstIndex(where: { $0 === view }).map { $0 + 1 } ?? 1
-        let selectedWords = searchBar.selectedNotePage == nil && selection.length > 0 && NSMaxRange(selection) <= editor.storage.length ? DocumentStatistics(text: editor.semanticText.text(inSourceRange: selection)).words : nil
+        let notePage = searchBar.selectedNotePage ?? reviewNavigation.selectedNotePage
+        let page = notePage ?? editor.textViews.firstIndex(where: { $0 === view }).map { $0 + 1 } ?? 1
+        let selectedWords = notePage == nil && selection.length > 0 && NSMaxRange(selection) <= editor.storage.length ? DocumentStatistics(text: editor.semanticText.text(inSourceRange: selection)).words : nil
         status.stringValue = "Page \(page) of \(editor.canvas.pageCount)    ·    \(cachedWords.formatted()) words\(selectedWords.map { " (\($0) selected)" } ?? "")    ·    \(DocumentSpelling.label(for: fileDocument.model.language))    ·    \(Int((editor.zoom * 100).rounded()))%"
         let selectedStyle = selection.location < editor.storage.length ? editor.storage.attribute(.scribeStyle, at: selection.location, effectiveRange: nil) : view.typingAttributes[.scribeStyle]
         if let id = selectedStyle as? String, let style = fileDocument.model.styles.first(where: { $0.id == id }) { stylePicker.selectItem(withTitle: style.name) }
