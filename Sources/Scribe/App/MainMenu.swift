@@ -67,6 +67,7 @@ import AppKit
         item(format, "Highlight", #selector(ScribeTextView.toggleHighlight(_:)))
         item(format, "Superscript", #selector(NSTextView.superscript(_:)))
         item(format, "Subscript", #selector(NSTextView.`subscript`(_:)))
+        item(format, "Normal Baseline", #selector(NSTextView.unscript(_:)))
         item(format, "Show Fonts", #selector(EditorWindowController.showFonts), "t")
         item(format, "Show Colours", #selector(NSApplication.orderFrontColorPanel(_:)))
         format.addItem(.separator())
