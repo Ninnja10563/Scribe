@@ -196,6 +196,14 @@ import DocumentCore
         }
         return super.shouldChangeText(in: affectedCharRange, replacementString: replacementString)
     }
+    func applyLocalParagraphReplacement(_ replacement: LocalParagraphReplacement, action: String) {
+        applyingReviewReplacement = true
+        defer { applyingReviewReplacement = false }
+        super.insertText(replacement.value, replacementRange: replacement.range)
+        setSelectedRange(NSRange(location: replacement.caret, length: 0))
+        typingAttributes = replacement.typingAttributes
+        undoManager?.setActionName(action == "Typing" ? "New Paragraph" : action)
+    }
     private func applyTrackedReplacement(_ value: NSAttributedString, range: NSRange, action: String) {
         guard let editor else { return }
         if value.string == "\n", insertTrackedParagraphBreak(replacing: range, action: action) { return }

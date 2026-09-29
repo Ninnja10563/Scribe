@@ -41,6 +41,42 @@ import DocumentCore
         XCTAssertEqual(typed.paragraphs[1].id, empty.paragraphs[1].id)
         XCTAssertEqual(typed.paragraphs[1].runs[0].format.italic, true)
     }
+    func testNativeUndoRedoRestoresEmptyParagraphIdentityAndTypingMetadata() throws {
+        let document = document(Paragraph("", style: "caption")); defer { document.close() }
+        let editor = document.editorController!.editor, before = document.snapshot()
+        editor.activeTextView.insertNewline(nil)
+        let after = document.snapshot()
+        document.undoManager?.undo()
+        XCTAssertEqual(document.snapshot().paragraphs, before.paragraphs)
+        document.undoManager?.redo()
+        XCTAssertEqual(document.snapshot().paragraphs, after.paragraphs)
+        XCTAssertEqual(editor.activeTextView.selectedRange(), NSRange(location: 1, length: 0))
+    }
+    func testNativeUndoRedoRestoresMidParagraphCaret() throws {
+        let document = document(Paragraph("ABC")); defer { document.close() }
+        let editor = document.editorController!.editor
+        editor.select(NSRange(location: 1, length: 0)); editor.activeTextView.insertNewline(nil)
+        XCTAssertEqual(editor.activeTextView.selectedRange(), NSRange(location: 2, length: 0))
+        document.undoManager?.undo()
+        XCTAssertEqual(document.snapshot().paragraphs[0].text, "ABC")
+        XCTAssertEqual(editor.activeTextView.selectedRange(), NSRange(location: 1, length: 0))
+        document.undoManager?.redo()
+        XCTAssertEqual(document.snapshot().paragraphs.map(\.text), ["A", "BC"])
+        XCTAssertEqual(editor.activeTextView.selectedRange(), NSRange(location: 2, length: 0))
+    }
+    func testLocalReturnPreservesUncapturedEditsInOtherParagraphs() throws {
+        let document = document(Paragraph("One")); defer { document.close() }
+        document.performEdit("Fixture", recordReview: false) { $0.sections[0].paragraphs.append(Paragraph("Two")) }
+        let editor = document.editorController!.editor
+        editor.select(NSRange(location: editor.storage.length, length: 0))
+        editor.activeTextView.insertText("X", replacementRange: editor.activeTextView.selectedRange())
+        editor.select(NSRange(location: 1, length: 0)); editor.activeTextView.insertNewline(nil)
+        var model = document.snapshot(); try NativeFormat.validate(model)
+        XCTAssertEqual(model.paragraphs.map(\.text), ["O", "ne", "TwoX"])
+        XCTAssertLessThan(editor.reviewEditing.lastParagraphValidationLength, editor.storage.length)
+        try model.resolveAllRevisions(accepting: false)
+        XCTAssertEqual(model.paragraphs.map(\.text), ["One", "Two"])
+    }
     func testExplicitNewlineReplacementTreatsLiteralTabsAsContent() throws {
         let document = document(Paragraph("\tField\tvalue")); defer { document.close() }
         let editor = document.editorController!.editor

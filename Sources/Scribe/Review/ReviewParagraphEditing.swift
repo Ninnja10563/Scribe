@@ -9,7 +9,17 @@ extension ScribeTextView {
     func insertTrackedParagraphBreak(replacing range: NSRange, action: String) -> Bool {
         guard !hasMarkedText(), let editor, let owner = editor.owner,
               let author = editor.reviewEditing.author, range.location >= 0, range.length >= 0,
-              let context = listContext(for: range) else { return false }
+              range.location <= editor.storage.length, range.length <= editor.storage.length - range.location else { return false }
+        do {
+            if let local = try LocalParagraphReplacement.make(in: self, replacing: range) {
+                applyLocalParagraphReplacement(local, action: action)
+                editor.reviewEditing.lastParagraphValidationLength = local.validatedLength
+                editor.reviewEditing.lastParagraphReplacementLength = local.range.length
+                editor.reviewEditing.resetGrouping()
+                return true
+            }
+        } catch { presentError(error); return true }
+        guard let context = listContext(for: range) else { return false }
         var model = owner.snapshot()
         let before = model
         guard model.paragraphs.indices.contains(context.index) else { return false }
@@ -22,6 +32,8 @@ extension ScribeTextView {
             let target = try model.splitTrackedParagraph(id: paragraph.id,
                 range: NSRange(location: range.location - start, length: range.length), author: author)
             owner.applyReviewedStructure(model, replacing: before, name: action == "Typing" ? "New Paragraph" : action)
+            editor.reviewEditing.lastParagraphValidationLength = editor.storage.length
+            editor.reviewEditing.lastParagraphReplacementLength = owner.lastStructureReplacementLength
             editor.reviewEditing.resetGrouping()
             editor.jump(to: target)
             if let next = listContext(), let paragraph = model.paragraphs.first(where: { $0.id == target }) {

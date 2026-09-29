@@ -8,6 +8,8 @@ import DocumentCore
     var author: RevisionAuthor? { didSet { if author != oldValue { resetGrouping() } } }
     func resetGrouping() { lastInsertion = nil }
     private(set) var lastValidationLength = 0
+    var lastParagraphValidationLength = 0
+    var lastParagraphReplacementLength = 0
     private var lastInsertion: (identity: RevisionIdentity, caret: Int, date: Date)?
     func replacement(in editor: PaginatedEditor, range: NSRange, with value: NSAttributedString) throws -> NSAttributedString? {
         guard let author else { return nil }

@@ -25,9 +25,9 @@ import DocumentCore
             let committed = ProcessInfo.processInfo.systemUptime
             editor.paginate()
             measurements.append(["position": position, "pages": editor.canvas.pageCount,
-                "returnSeconds": committed - began, "replacedUTF16Length": document.lastStructureReplacementLength,
+                "returnSeconds": committed - began, "validatedUTF16Length": editor.reviewEditing.lastParagraphValidationLength, "replacedUTF16Length": editor.reviewEditing.lastParagraphReplacementLength,
                 "subsequentLayoutSeconds": ProcessInfo.processInfo.systemUptime - committed])
-            XCTAssertLessThan(document.lastStructureReplacementLength, 2048)
+            XCTAssertLessThan(editor.reviewEditing.lastParagraphReplacementLength, 2048)
             var end = 0
             for container in editor.layout.textContainers {
                 let range = editor.layout.glyphRange(for: container)
