@@ -125,7 +125,7 @@ DOCX writes actual Office Math fractions, radicals, scripts, delimiters and n-ar
 
 Office Math n-ary operators require a real operand: exporting an empty `m:e` produces a placeholder box in LibreOffice. The writer groups following row terms up to a relation or another large operator into that operand. Standalone operators use limit/script structures without inventing an operand. Normal text uses `m:nor`. Independent Office rendering remains essential in addition to schema validation; equation font size and spacing can differ between engines.
 
-## Footnotes and endnotes (0.19 candidate)
+## Footnotes and endnotes (0.19)
 
 Native format v13 stores note paragraphs independently from body references, with explicit v12 migration and validation of one reference per note. The attributed body carries note content alongside reference attachments so native deletion and Undo preserve ownership. Numbers are derived from live reference order, with separate footnote/endnote series.
 
@@ -133,10 +133,10 @@ Footnote page fitting chooses actual TextKit line prefixes, verifies references 
 
 DOCX note interchange uses actual footnote/endnote parts, body references, automatic note labels, part-scoped relationships, and shared paragraph/run formatting. Images, equations, external links and links back to body bookmarks use the ordinary interchange modules. Normal-note IDs are independent of display numbering; missing, duplicate and nested references are rejected. Unreferenced definitions and unsupported numbering/placement settings are disclosed. The implementation follows Microsoft's [footnote model](https://learn.microsoft.com/en-us/dotnet/api/documentformat.openxml.wordprocessing.footnote?view=openxml-3.0.1). Independent SDK validation, an original python-docx/lxml fixture, and rendered LibreOffice output complement semantic round-trip tests.
 
-Note creation/editing, opening, recovery and exports are enabled on the development branch. A final full build, native app launch, rendered-output inspection and release validation are required before publishing 0.19. The latest published release remains 0.18.
+Note creation/editing, opening, recovery and exports shipped in 0.19 after native and rendered-output validation. Subsequent 0.20 updates improved semantic note drafts and lifecycle behavior. The latest published release is 0.21.
 
-## Explicit line-height semantics (development)
+## Explicit line-height semantics (0.21)
 
 `ParagraphFormatting.lineSpacing` remains additional spacing in points. Native format v15 adds optional `ParagraphLineHeight` with multiple, minimum and exact modes; older documents migrate in memory without changing their additional spacing. Styles and direct formatting share the same model, native paragraph projection/capture and review replay. Paragraph and style dialogs expose the modes. Note clipboard payload v3 preserves the new formatting; old payloads remain readable.
 
-DOCX uses `w:spacing` with 240ths of a line for multiples and twips for minimum/exact heights. Defaults and based-on line-height settings are inherited before direct properties. Additional gaps combined with explicit height cannot be represented exactly in Office XML; broader style inheritance and paragraph-spacing collapse remain limitations. Portable tests and Office schema validation pass; targeted macOS controls, Undo and measured PDF output passed. Full CI 36602269058 and independent Office rendering passed. This development format is not part of published 0.20.
+DOCX uses `w:spacing` with 240ths of a line for multiples and twips for minimum/exact heights. Defaults and based-on line-height settings are inherited before direct properties. Additional gaps combined with explicit height cannot be represented exactly in Office XML; broader style inheritance and paragraph-spacing collapse remain limitations. Portable tests and Office schema validation pass; targeted macOS controls, Undo and measured PDF output passed. Full CI 36602269058 and independent Office rendering passed. Native v15 shipped in 0.21; 0.20 remains on v14.

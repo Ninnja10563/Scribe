@@ -6,3 +6,5 @@ build/
 xcuserdata/
 tools/OOXMLValidation/bin/
 tools/OOXMLValidation/obj/
+__pycache__/
+*.pyc

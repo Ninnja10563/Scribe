@@ -1,4 +1,4 @@
-# Feature status — 0.21.0 candidate
+# Feature status — 0.21.0
 
 This is a foundation release. “Implemented” means there is working code and an exposed editing path, not that the feature has the interoperability coverage of a mature word processor.
 
@@ -25,4 +25,4 @@ This is a foundation release. “Implemented” means there is working code and 
 
 Limits: 128 MB native/decompressed archive safety limit; 32 MB and 64 megapixels per decoded image; 100 rows and 20 columns per table; 2,000 page-layout containers. These are explicit implementation bounds, not performance guarantees. An unlayable object is reported and PDF/print is blocked rather than silently truncated.
 
-Development branch: native v15 adds explicit multiple/minimum/exact paragraph line heights, style controls and Office spacing attributes. Full native and independent Office validation passed; the published release remains 0.20.0 until the candidate is released.
+Published 0.21.0 uses native v15 and adds explicit multiple/minimum/exact paragraph line heights, style controls and Office spacing attributes. Full native and independent Office validation passed. Newer paragraph-review interchange on main remains internal; floating-image work is isolated on its development branch.
