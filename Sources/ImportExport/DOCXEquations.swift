@@ -50,8 +50,8 @@ enum DOCXEquations {
         }
     }
     private static func textRun(_ text: String, italic: Bool, normal: Bool, size: Double) -> String {
-        let normalProperty = normal ? "<m:nor m:val=\"1\"/>" : ""
-        return "<m:r><m:rPr>\(normalProperty)<m:sty m:val=\"\(italic ? "i" : "p")\"/></m:rPr><w:rPr><w:sz w:val=\"\(Int((size * 2).rounded()))\"/></w:rPr><m:t xml:space=\"preserve\">\(DOCX.xml(text))</m:t></m:r>"
+        let properties = normal ? "<m:nor m:val=\"1\"/>" : "<m:sty m:val=\"\(italic ? "i" : "p")\"/>"
+        return "<m:r><m:rPr>\(properties)</m:rPr><w:rPr><w:sz w:val=\"\(Int((size * 2).rounded()))\"/></w:rPr><m:t xml:space=\"preserve\">\(DOCX.xml(text))</m:t></m:r>"
     }
     private static func operatorParts(_ value: MathExpression) -> (String, MathExpression?, MathExpression?)? {
         if case .largeOperator(let symbol) = value { return (symbol, nil, nil) }
