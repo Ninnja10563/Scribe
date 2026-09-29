@@ -22,6 +22,7 @@ import ImportExport
     override init() { super.init(); hasUndoManager = true }
     static func recovering(_ snapshot: RecoverySnapshot) throws -> ScribeFileDocument {
         try NativeFormat.validate(snapshot.document)
+        guard snapshot.document.notes.isEmpty else { throw DocumentError.invalid("note editing is not available in this development build; the recovery copy is preserved") }
         guard snapshot.document.sections.count == 1 else { throw DocumentError.invalid("this version cannot edit multiple native sections without losing their layout") }
         let recovered = ScribeFileDocument()
         recovered.model = snapshot.document
@@ -59,6 +60,7 @@ import ImportExport
     override func data(ofType typeName: String) throws -> Data { try NativeFormat.encode(snapshot()) }
     override func read(from data: Data, ofType typeName: String) throws {
         let decoded = try NativeFormat.decode(data)
+        guard decoded.notes.isEmpty else { throw DocumentError.invalid("note editing is not available in this development build; the source document is preserved") }
         guard decoded.sections.count == 1 else { throw DocumentError.invalid("this version cannot edit multiple native sections without losing their layout") }
         MainActor.assumeIsolated { model = decoded }
     }

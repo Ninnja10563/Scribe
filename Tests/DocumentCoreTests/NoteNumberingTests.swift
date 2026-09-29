@@ -25,6 +25,36 @@ final class NoteNumberingTests: XCTestCase {
         XCTAssertNotEqual(copy.paragraphs[0].id, copy.paragraphs[1].id)
         XCTAssertEqual(copy.plainText, "Citation — résumé 👩🏽‍💻\nAdditional explanation.")
     }
+    func testNativeNotesRetainStructuredContentAndMigrateVersionTwelve() throws {
+        var document = ScribeDocument()
+        let note = DocumentNote(kind: .footnote, text: "A source citation.")
+        document.notes = [note]
+        var reference = TextRun("\u{FFFC}"); reference.noteID = note.id
+        document.sections[0].paragraphs[0].runs = [TextRun("A statement."), reference]
+        XCTAssertEqual(try NativeFormat.decode(NativeFormat.encode(document)), document)
+        XCTAssertTrue(document.plainText.contains("[Footnote 1]"))
+        XCTAssertTrue(document.plainText.contains("1. A source citation."))
+        document.notes[0].paragraphs[0].runs[0].noteID = note.id
+        XCTAssertThrowsError(try NativeFormat.encode(document), "Recursive notes must be rejected")
+        let legacy = ScribeDocument()
+        var json = try XCTUnwrap(JSONSerialization.jsonObject(with: NativeFormat.encode(legacy)) as? [String: Any])
+        json["formatVersion"] = 12; json.removeValue(forKey: "notes")
+        let source = try JSONSerialization.data(withJSONObject: json)
+        XCTAssertEqual(try NativeFormat.decode(source), legacy)
+        XCTAssertNil((try JSONSerialization.jsonObject(with: source) as? [String: Any])?["notes"])
+    }
+    func testOrphanedAndDuplicatedNoteReferencesCannotBeSaved() throws {
+        var document = ScribeDocument()
+        let note = DocumentNote(kind: .endnote, text: "A final reference.")
+        document.notes = [note]
+        XCTAssertThrowsError(try NativeFormat.encode(document))
+        var reference = TextRun("\u{FFFC}"); reference.noteID = note.id
+        document.sections[0].paragraphs[0].runs = [reference, reference]
+        XCTAssertThrowsError(try NativeFormat.encode(document))
+        document.sections[0].paragraphs[0].runs = [reference]
+        document.notes[0].paragraphs[0].id = document.paragraphs[0].id
+        XCTAssertThrowsError(try NativeFormat.encode(document))
+    }
     func testDanglingDuplicateAndEmptyNotesAreRejected() throws {
         var note = DocumentNote(kind: .footnote)
         XCTAssertThrowsError(try NoteNumbering.resolve(referenceIDs: [UUID()], notes: [note]))

@@ -10,7 +10,11 @@ public struct DocumentNote: Codable, Equatable, Sendable, Identifiable {
     public init(id: UUID = UUID(), kind: Kind, text: String = "") {
         self.id = id; self.kind = kind; paragraphs = [Paragraph(text)]
     }
-    public var plainText: String { paragraphs.map(\.text).joined(separator: "\n") }
+    public var plainText: String {
+        paragraphs.map { paragraph in
+            paragraph.runs.map { $0.equation.map { "[Equation: \($0.source)]" } ?? $0.image.map { $0.altText.isEmpty ? "[Image]" : "[Image: \($0.altText)]" } ?? $0.text }.joined()
+        }.joined(separator: "\n")
+    }
 }
 
 /// Recomputed from reference order, so moving or deleting a reference cannot

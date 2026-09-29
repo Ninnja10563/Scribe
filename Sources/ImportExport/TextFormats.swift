@@ -43,12 +43,15 @@ public enum TextFormats {
         return runs.isEmpty ? [TextRun("")] : runs
     }
     public static func exportMarkdown(_ document: ScribeDocument) -> String {
-        document.paragraphs.map { p in
+        let numbered = (try? NoteNumbering.resolve(referenceIDs: document.paragraphs.flatMap(\.runs).compactMap(\.noteID), notes: document.notes)) ?? []
+        let labels = Dictionary(uniqueKeysWithValues: numbered.map { ($0.id, ($0.note.kind == .footnote ? "footnote" : "endnote") + String($0.number)) })
+        let body = document.paragraphs.map { p in
             let style = document.style(for: p)
             var prefix = style.headingLevel.map { String(repeating: "#", count: $0) + " " } ?? ""
             if p.styleID == "quote" { prefix = "> " }
             if let list = p.list { prefix = String(repeating: "  ", count: list.level) + (list.kind == .bullet ? "- " : "1. ") }
             return prefix + p.runs.map { run in
+                if let id = run.noteID, let label = labels[id] { return "[^\(label)]" }
                 if let equation = run.equation {
                     let longest = equation.source.split(whereSeparator: { $0 != "`" }).map(\.count).max() ?? 0
                     let fence = String(repeating: "`", count: longest + 1)
@@ -61,5 +64,12 @@ public enum TextFormats {
                 return text
             }.joined()
         }.joined(separator: "\n")
+        let definitions = numbered.map { value in
+            var content = ScribeDocument(); content.styles = document.styles
+            content.sections[0].paragraphs = value.note.paragraphs
+            let text = exportMarkdown(content).components(separatedBy: "\n").joined(separator: "\n    ")
+            return "[^\(labels[value.id]!)]: " + text
+        }.joined(separator: "\n\n")
+        return body + (definitions.isEmpty ? "" : "\n\n" + definitions)
     }
 }

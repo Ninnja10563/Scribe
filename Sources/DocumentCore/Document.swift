@@ -1,7 +1,7 @@
 import Foundation
 
 public struct ScribeDocument: Codable, Equatable, Sendable {
-    public static let currentVersion = 12
+    public static let currentVersion = 13
     public var formatVersion = currentVersion
     public var id = UUID()
     public var title = "Untitled"
@@ -13,17 +13,32 @@ public struct ScribeDocument: Codable, Equatable, Sendable {
     public var bookmarks: [Bookmark] = []
     public var tables: [DocumentTable] = []
     public var tablesOfContents: [DocumentTOC] = []
+    public var notes: [DocumentNote] = []
     public init() {}
     public var paragraphs: [Paragraph] { sections.flatMap(\.paragraphs) }
     public var plainText: String {
         var result = "", previous: TableCellReference?
+        let numberedNotes = (try? NoteNumbering.resolve(referenceIDs: paragraphs.flatMap(\.runs).compactMap(\.noteID), notes: notes)) ?? []
+        let noteNumbers = Dictionary(uniqueKeysWithValues: numberedNotes.map { ($0.id, $0) })
         for (index, paragraph) in paragraphs.enumerated() {
             if index > 0 {
                 let sameRow = paragraph.tableCell != nil && previous?.tableID == paragraph.tableCell?.tableID && previous?.row == paragraph.tableCell?.row && previous?.column != paragraph.tableCell?.column
                 result += sameRow ? "\t" : "\n"
             }
-            result += paragraph.runs.map { $0.equation.map { "[Equation: \($0.source)]" } ?? $0.image.map { $0.altText.isEmpty ? "[Image]" : "[Image: \($0.altText)]" } ?? $0.text }.joined()
+            result += paragraph.runs.map { run in
+                if let id = run.noteID, let numbered = noteNumbers[id] {
+                    return "[\(numbered.note.kind == .footnote ? "Footnote" : "Endnote") \(numbered.number)]"
+                }
+                return run.equation.map { "[Equation: \($0.source)]" } ?? run.image.map { $0.altText.isEmpty ? "[Image]" : "[Image: \($0.altText)]" } ?? run.text
+            }.joined()
             previous = paragraph.tableCell
+        }
+        for kind in DocumentNote.Kind.allCases {
+            let entries = numberedNotes.filter { $0.note.kind == kind }
+            if !entries.isEmpty {
+                result += "\n\n" + (kind == .footnote ? "Footnotes" : "Endnotes") + "\n"
+                result += entries.map { "\($0.number). \($0.note.plainText)" }.joined(separator: "\n\n")
+            }
         }
         return result
     }
@@ -77,6 +92,7 @@ public struct TextRun: Codable, Equatable, Sendable {
     public var link: String?
     public var image: InlineImage?
     public var equation: Equation?
+    public var noteID: UUID?
     public init(_ text: String, format: TextFormatting = TextFormatting(), link: String? = nil) {
         self.text = text; self.format = format; self.link = link
     }

@@ -41,6 +41,7 @@ public enum NativeFormat {
             // v9 → v10: absent clearHighlight retains inherited highlight semantics.
             // v10 → v11: absent runningContent uses the legacy header/footer on every page.
             // v11 → v12: absent equation retains legacy text and image runs.
+            if version < 13 { json["notes"] = [] } // v12 → v13: earlier documents have no note registry.
             json["formatVersion"] = ScribeDocument.currentVersion
             migrated = try JSONSerialization.data(withJSONObject: json)
         }
@@ -107,6 +108,7 @@ public enum NativeFormat {
             try validateParagraph(style.paragraph)
             if let level = style.headingLevel, !(1...9).contains(level) { throw DocumentError.invalid("invalid heading level") }
         }
+        try NoteValidation.validate(document)
         let paragraphs = document.paragraphs
         guard Set(paragraphs.compactMap { $0.toc?.tableID }) == tocIDs else { throw DocumentError.invalid("orphaned table of contents definition") }
         guard Set(paragraphs.map(\.id)).count == paragraphs.count else { throw DocumentError.invalid("duplicate paragraph identifiers") }
@@ -134,6 +136,9 @@ public enum NativeFormat {
             }
             for run in p.runs {
                 try validateText(run.format)
+                if run.noteID != nil {
+                    guard run.text == "\u{FFFC}", run.image == nil, run.equation == nil else { throw DocumentError.invalid("invalid note reference") }
+                }
                 if run.equation != nil {
                     guard run.text == "\u{FFFC}", run.image == nil else { throw DocumentError.invalid("invalid inline equation") }
                 }

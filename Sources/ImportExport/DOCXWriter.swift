@@ -23,6 +23,7 @@ final class DOCXWriter {
     }
     func encode() throws -> Data {
         try NativeFormat.validate(document)
+        guard document.notes.isEmpty else { throw DocumentError.invalid("DOCX note interchange is not available in this development build") }
         let linked = Set(document.paragraphs.flatMap(\.runs).compactMap { $0.link.flatMap(DocumentLink.paragraphID) })
         for paragraph in document.paragraphs where linked.contains(paragraph.id) { bookmarkIDs[paragraph.id] = bookmarkIDs.count }
         namedBookmarks = DOCXBookmarks(document, startingID: bookmarkIDs.count, reservedNames: Set(bookmarkIDs.keys.map(DocumentLink.officeBookmark)))
