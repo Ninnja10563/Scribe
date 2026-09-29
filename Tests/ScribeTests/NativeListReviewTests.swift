@@ -79,6 +79,23 @@ import DocumentCore
         try model.resolveAllRevisions(accepting: true)
         XCTAssertEqual(model.paragraphs.map(\.text), ["A"])
     }
+    func testReturnThenBackspaceOutdentAndJoinEditsOwnDraftWithoutLosingUndo() async throws {
+        let document = document("AB"); defer { document.close() }
+        let editor = document.editorController!.editor
+        editor.selectListContent(id: document.model.paragraphs[0].id)
+        let start = try XCTUnwrap(editor.activeTextView.listContext()?.contentStart)
+        editor.select(NSRange(location: start + 1, length: 0)); editor.activeTextView.insertNewline(nil)
+        try await Task.sleep(nanoseconds: 30_000_000)
+        editor.activeTextView.deleteBackward(nil)
+        let outdented = document.snapshot(); try NativeFormat.validate(outdented)
+        XCTAssertNil(outdented.paragraphs[1].list); XCTAssertEqual(outdented.pendingRevisionIDs.count, 2)
+        try await Task.sleep(nanoseconds: 30_000_000)
+        editor.activeTextView.deleteBackward(nil)
+        try await Task.sleep(nanoseconds: 30_000_000)
+        let joined = document.snapshot(); try NativeFormat.validate(joined)
+        XCTAssertEqual(joined.paragraphs.map(\.text), ["AB"]); XCTAssertFalse(joined.hasPendingRevisions)
+        document.undoManager?.undo(); XCTAssertEqual(document.snapshot().paragraphs, outdented.paragraphs)
+    }
     func testEmptyListReturnTracksExitAndUndo() throws {
         let document = document(""); defer { document.close() }
         let editor = document.editorController!.editor

@@ -72,6 +72,20 @@ final class ListReviewTests: XCTestCase {
         XCTAssertEqual(document.paragraphs[0].breakReview, review)
         XCTAssertEqual(document.pendingRevisionIDs, [review.insertion!.id])
     }
+    func testOwnContinuationFormattingCanBeDiscardedButAnotherAuthorsCannot() throws {
+        var document = document("AB")
+        _ = try document.splitTrackedListItem(id: document.paragraphs[0].id, range: NSRange(location: 1, length: 0), author: author)
+        let split = document
+        document.sections[0].paragraphs[1].list = nil
+        try document.recordParagraphFormattingChanges(from: split, identity: .init(author: author))
+        XCTAssertTrue(try document.removeOwnInsertedSeparator(after: document.paragraphs[0].id, authorID: author.id))
+        XCTAssertEqual(document.paragraphs.map(\.text), ["AB"]); XCTAssertFalse(document.hasPendingRevisions)
+        document = split; document.sections[0].paragraphs[1].list = nil
+        try document.recordParagraphFormattingChanges(from: split, identity: .init(author: .init(name: "Another reviewer")))
+        let protected = document
+        XCTAssertThrowsError(try document.removeOwnInsertedSeparator(after: document.paragraphs[0].id, authorID: author.id))
+        XCTAssertEqual(document, protected)
+    }
     func testEmptyReturnTracksOutdentAndInvalidUnicodeIsAtomic() throws {
         var document = document("")
         let original = document

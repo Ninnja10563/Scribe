@@ -90,6 +90,16 @@ public extension ScribeDocument {
         try NativeFormat.validate(self)
         var candidate = self
         let isolated = RevisionIdentity(author: insertion.author, date: insertion.date)
+        let previousIDs = Set(candidate.sections[section].paragraphs[index].formattingReview?.pendingIDs ?? [])
+        if let review = candidate.sections[section].paragraphs[index + 1].formattingReview {
+            let unique = review.changes.filter { !$0.accepted && !previousIDs.contains($0.identity.id) }
+            // Formatting drafted on the continuation after this author's split
+            // can disappear with that draft paragraph. Other authors' changes,
+            // or decisions predating the split, must remain explicitly resolved.
+            if unique.allSatisfy({ $0.identity.author.id == authorID && $0.identity.date >= insertion.date }) {
+                candidate.sections[section].paragraphs[index + 1].formattingReview = nil
+            }
+        }
         candidate.sections[section].paragraphs[index].breakReview?.insertion = isolated
         try candidate.resolveRevision(isolated.id, accepting: false)
         self = candidate
