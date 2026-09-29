@@ -5,6 +5,7 @@ import DocumentCore
 @MainActor final class ScribeTextView: NSTextView {
     weak var editor: PaginatedEditor?
     private var applyingReviewReplacement = false
+    private(set) var reviewComposition: ReviewComposition?
     private(set) var spellingTask: Task<Void, Never>?
     override func superscript(_ sender: Any?) { setScriptLevel(1) }
     override func `subscript`(_ sender: Any?) { setScriptLevel(-1) }
@@ -66,7 +67,54 @@ import DocumentCore
     }
     override func draw(_ dirtyRect: NSRect) { super.draw(dirtyRect); drawImageSelection() }
     override func mouseDown(with event: NSEvent) { if !resizeImageIfNeeded(with: event) { super.mouseDown(with: event) } }
+    override func setMarkedText(_ string: Any, selectedRange: NSRange, replacementRange: NSRange) {
+        guard editor?.reviewEditing.author != nil, !applyingReviewReplacement, let storage = textStorage else {
+            super.setMarkedText(string, selectedRange: selectedRange, replacementRange: replacementRange); return
+        }
+        if reviewComposition == nil {
+            let range = replacementRange.location == NSNotFound ? self.selectedRange() : replacementRange
+            reviewComposition = ReviewComposition(storage: storage, range: range, typingAttributes: typingAttributes)
+        }
+        applyingReviewReplacement = true
+        let manager = undoManager, registering = undoManager?.isUndoRegistrationEnabled == true
+        if registering { manager?.disableUndoRegistration() }
+        defer { if registering { manager?.enableUndoRegistration() }; applyingReviewReplacement = false }
+        super.setMarkedText(string, selectedRange: selectedRange, replacementRange: replacementRange)
+        if hasMarkedText() { reviewComposition?.markedRange = markedRange() }
+        else if let composition = reviewComposition {
+            let length = (string as? NSAttributedString)?.length ?? ((string as? String ?? "") as NSString).length
+            composition.markedRange = NSRange(location: composition.markedRange.location, length: length)
+        }
+    }
+    override func unmarkText() {
+        guard !applyingReviewReplacement, let composition = reviewComposition, let storage = textStorage,
+              NSMaxRange(composition.markedRange) <= storage.length else { super.unmarkText(); return }
+        let committed = storage.attributedSubstring(from: composition.markedRange)
+        guard let range = restoreReviewComposition() else { return }
+        insertText(committed, replacementRange: range)
+    }
+    override func cancelOperation(_ sender: Any?) {
+        if reviewComposition != nil { _ = restoreReviewComposition(); editor?.paginate() }
+        else { super.cancelOperation(sender) }
+    }
+    private func restoreReviewComposition() -> NSRange? {
+        guard let composition = reviewComposition, let storage = textStorage,
+              composition.markedRange.location >= 0, NSMaxRange(composition.markedRange) <= storage.length else { return nil }
+        applyingReviewReplacement = true
+        let manager = undoManager, registering = undoManager?.isUndoRegistrationEnabled == true
+        if registering { manager?.disableUndoRegistration() }
+        defer { if registering { manager?.enableUndoRegistration() }; applyingReviewReplacement = false }
+        super.unmarkText()
+        storage.replaceCharacters(in: composition.markedRange, with: composition.original)
+        typingAttributes = composition.typingAttributes; reviewComposition = nil
+        setSelectedRange(composition.originalRange)
+        return composition.originalRange
+    }
     override func insertText(_ insertString: Any, replacementRange: NSRange) {
+        if reviewComposition != nil, !applyingReviewReplacement {
+            guard let range = restoreReviewComposition() else { return }
+            insertText(insertString, replacementRange: range); return
+        }
         for key in [NSAttributedString.Key.attachment, .scribeEquation, .scribeImage, .scribeNote, .scribeNoteNumber, .scribeReview, .scribeBreakReview] { typingAttributes.removeValue(forKey: key) }
         let range = replacementRange.location == NSNotFound ? selectedRange() : replacementRange
         let ids = commentIDs(forReplacement: range)

@@ -338,7 +338,7 @@ import DocumentCore
         relayout?.cancel()
         let job = DispatchWorkItem { [weak self] in self?.paginate() }
         relayout = job; DispatchQueue.main.asyncAfter(deadline: .now() + 0.04, execute: job)
-        onChange?()
+        if !textViews.contains(where: { $0.reviewComposition != nil }) { onChange?() }
     }
     func rememberSelection(_ view: ScribeTextView) { selectionView = view }
     func textViewDidChangeSelection(_ notification: Notification) {
