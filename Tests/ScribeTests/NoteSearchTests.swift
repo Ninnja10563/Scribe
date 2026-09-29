@@ -1,6 +1,7 @@
 #if canImport(AppKit)
 import AppKit
 import XCTest
+import PDFKit
 import DocumentCore
 @testable import Scribe
 
@@ -57,6 +58,38 @@ import DocumentCore
         XCTAssertEqual(document.snapshot().paragraphs, before.paragraphs)
         document.undoManager?.redo()
         XCTAssertEqual(document.snapshot().notes, changed.notes)
+    }
+    func testSearchHighlightDoesNotChangePDFRendering() throws {
+        let document = document(); defer { document.close() }
+        let editor = document.editorController!.editor
+        let directory = ProcessInfo.processInfo.environment["SCRIBE_SCHEMA_OUTPUT"].map { URL(fileURLWithPath: $0, isDirectory: true) } ?? FileManager.default.temporaryDirectory
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let plain = directory.appendingPathComponent("NoteSearch-plain.pdf")
+        let highlighted = directory.appendingPathComponent("NoteSearch-highlighted.pdf")
+        try PrintRenderer(editor: editor).exportPDF(to: plain, title: "Find notes", author: "")
+        let presentation = NoteSearchPresentation()
+        presentation.highlight(editor.semanticText.documentMatches(query: "café"), in: editor)
+        try PrintRenderer(editor: editor).exportPDF(to: highlighted, title: "Find notes", author: "")
+        let first = try XCTUnwrap(PDFDocument(url: plain)), second = try XCTUnwrap(PDFDocument(url: highlighted))
+        XCTAssertEqual(first.pageCount, second.pageCount)
+        for index in 0..<first.pageCount {
+            let size = NSSize(width: 600, height: 800)
+            XCTAssertEqual(first.page(at: index)?.thumbnail(of: size, for: .mediaBox).tiffRepresentation,
+                           second.page(at: index)?.thumbnail(of: size, for: .mediaBox).tiffRepresentation)
+        }
+        presentation.clear()
+    }
+    func testFindRevealsContinuationPage() throws {
+        let document = document(); defer { document.close() }
+        var note = document.model.notes[0]
+        note.paragraphs = (0..<90).map { Paragraph("Citation paragraph \($0) continues with useful source information.") }
+        note.paragraphs.append(Paragraph("Unique continuation target"))
+        try document.editorController!.applyNote(note, replacing: NSRange(location: 10, length: 1), action: "Edit Note")
+        let editor = document.editorController!.editor
+        let match = try XCTUnwrap(editor.semanticText.documentMatches(query: "Unique continuation target").first)
+        let page = try XCTUnwrap(NoteSearchPresentation().reveal(match, in: editor))
+        XCTAssertGreaterThan(page, 1)
+        XCTAssertLessThanOrEqual(page, editor.canvas.bodyPageCount)
     }
     func testInvalidNoteReplacementIsAtomic() throws {
         let document = document(); defer { document.close() }
