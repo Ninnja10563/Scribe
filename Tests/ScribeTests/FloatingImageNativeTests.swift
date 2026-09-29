@@ -74,6 +74,47 @@ import DocumentCore
         XCTAssertTrue(editor.floatingImages.entries.isEmpty)
         XCTAssertTrue(editor.layout.textContainers.allSatisfy { $0.exclusionPaths.isEmpty })
     }
+    func testTypingBeforeAnchorMovesItToLaterPagesAndDeletionUndoRestoresIt() throws {
+        let document = ScribeFileDocument(); document.model = source(.square)
+        document.makeWindowControllers(); defer { document.close() }
+        let editor = try XCTUnwrap(document.editorController?.editor)
+        let original = document.snapshot()
+        document.undoManager?.removeAllActions()
+        editor.select(NSRange(location: 0, length: 0))
+        editor.activeTextView.insertText(String(repeating: "Preceding material flows onto later pages. ", count: 250) + "\n", replacementRange: NSRange(location: 0, length: 0))
+        editor.paginate()
+        XCTAssertNil(editor.layoutWarning)
+        let moved = try XCTUnwrap(editor.floatingImages.entries.first)
+        XCTAssertGreaterThan(moved.page, 0)
+        XCTAssertTrue(editor.layout.textContainers[0].exclusionPaths.isEmpty)
+        XCTAssertEqual(editor.layout.textContainers[moved.page].exclusionPaths.count, 1)
+        document.undoManager?.undo(); editor.paginate()
+        XCTAssertNil(editor.layoutWarning)
+        XCTAssertEqual(document.snapshot().paragraphs, original.paragraphs)
+        XCTAssertEqual(editor.floatingImages.entries.first?.page, 0)
+        document.undoManager?.removeAllActions()
+        editor.select(NSRange(location: 7, length: 1))
+        editor.activeTextView.insertText("", replacementRange: NSRange(location: 7, length: 1))
+        editor.paginate()
+        XCTAssertNil(editor.layoutWarning)
+        XCTAssertTrue(editor.floatingImages.entries.isEmpty)
+        XCTAssertTrue(editor.layout.textContainers.allSatisfy { $0.exclusionPaths.isEmpty })
+        document.undoManager?.undo(); editor.paginate()
+        XCTAssertNil(editor.layoutWarning)
+        XCTAssertEqual(document.snapshot().paragraphs, original.paragraphs)
+        XCTAssertEqual(editor.floatingImages.entries.count, 1)
+    }
+    func testOverflowBlocksPDFWithoutReplacingAnExistingFile() throws {
+        let document = ScribeFileDocument(); document.model = source(.square)
+        document.model.sections[0].paragraphs[0].runs[1].image?.placement?.x = 440
+        let editor = PaginatedEditor(document: document); defer { editor.prepareForClose() }
+        XCTAssertNotNil(editor.layoutWarning)
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".pdf")
+        let sentinel = Data("Existing PDF must survive".utf8)
+        try sentinel.write(to: url); defer { try? FileManager.default.removeItem(at: url) }
+        XCTAssertThrowsError(try PrintRenderer(editor: editor).exportPDF(to: url, title: "Overflow", author: "Scribe"))
+        XCTAssertEqual(try Data(contentsOf: url), sentinel)
+    }
     func testClipboardKeepsPlacementAndExternalCopyContainsAVisibleImage() throws {
         let source = source(.inFrontOfText), rendered = AttributedDocument.render(source)
         let selected = rendered.attributedSubstring(from: NSRange(location: 7, length: 1))
