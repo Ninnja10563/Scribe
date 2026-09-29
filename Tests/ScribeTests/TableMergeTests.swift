@@ -7,6 +7,30 @@ import DocumentCore
 
 @MainActor final class TableMergeTests: XCTestCase {
     override func setUp() { super.setUp(); _ = NSApplication.shared }
+    func testLargeTableIncrementalLayoutWithCachedCellValidation() throws {
+        let document = ScribeFileDocument()
+        document.model.insertTable(rows: 100, columns: 5, after: document.model.paragraphs[0].id)
+        for p in document.model.sections[0].paragraphs.indices {
+            if let cell = document.model.sections[0].paragraphs[p].tableCell {
+                document.model.sections[0].paragraphs[p].runs = [TextRun("Cell \(cell.row),\(cell.column) café")]
+            }
+        }
+        let began = Date.timeIntervalSinceReferenceDate
+        let editor = PaginatedEditor(document: document)
+        let initial = Date.timeIntervalSinceReferenceDate - began
+        defer { editor.prepareForClose(); document.close() }
+        XCTAssertNil(editor.layoutWarning)
+        XCTAssertGreaterThanOrEqual(editor.canvas.pageCount, 5)
+        let end = (editor.storage.string as NSString).range(of: "Cell 99,4 café")
+        XCTAssertNotEqual(end.location, NSNotFound)
+        let edited = Date.timeIntervalSinceReferenceDate
+        editor.storage.replaceCharacters(in: NSRange(location: NSMaxRange(end), length: 0), with: " edited")
+        editor.paginate()
+        let duration = Date.timeIntervalSinceReferenceDate - edited
+        XCTAssertNil(editor.layoutWarning)
+        XCTAssertTrue(editor.storage.string.contains("Cell 99,4 café edited"))
+        print("Table layout: 500 cells; \(editor.canvas.pageCount) pages; initial \(initial)s; end edit \(duration)s")
+    }
     func testTallMergedCellBlocksClippedPDFWithoutOverwritingExistingOutput() throws {
         let document = ScribeFileDocument()
         document.model.insertTable(rows: 40, columns: 1, after: document.model.paragraphs[0].id)
