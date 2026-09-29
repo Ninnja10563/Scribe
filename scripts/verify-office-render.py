@@ -144,7 +144,7 @@ for label, path in [('Native', build / 'schema/ParagraphIndents.pdf'), ('LibreOf
 print('Native and LibreOffice PDFs retain first-line, hanging and right paragraph indents authored through the ruler.')
 
 # Reused page containers must paint the same words at the same coordinates as full layout.
-for phase in ['Baseline', 'Typed']:
+for phase in ['Baseline', 'Typed', 'MixedBaseline', *['Boundary-' + str(i) for i in range(12)]]:
     incremental = pymupdf.open(build / ('schema/Incremental-' + phase + '.pdf'))
     full = pymupdf.open(build / ('schema/Full-' + phase + '.pdf'))
     assert len(incremental) == len(full), f'{phase}: incremental page count differs'

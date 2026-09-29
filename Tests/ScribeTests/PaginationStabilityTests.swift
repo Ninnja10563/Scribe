@@ -64,6 +64,7 @@ import PDFKit
             return paragraph
         }
         let editor = PaginatedEditor(document: document); defer { editor.prepareForClose() }
+        try compareWithFullLayout(editor, document: document, phase: "MixedBaseline")
         for iteration in 0..<12 {
             let page = min(editor.textViews.count - 1, iteration)
             let glyphs = editor.layout.glyphRange(for: editor.layout.textContainers[page])
@@ -71,7 +72,7 @@ import PDFKit
             let position = max(0, NSMaxRange(range) - 1)
             let inserted = iteration % 2 == 0 ? "x" : String(repeating: " measured ", count: 12)
             editor.storage.replaceCharacters(in: NSRange(location: position, length: 0), with: inserted)
-            editor.paginate(); try compareWithFullLayout(editor, document: document)
+            editor.paginate(); try compareWithFullLayout(editor, document: document, phase: "Boundary-\(iteration)")
         }
         editor.storage.replaceCharacters(in: NSRange(location: 0, length: 3), with: "")
         editor.paginate(); try compareWithFullLayout(editor, document: document)
@@ -81,8 +82,7 @@ import PDFKit
         try compareWithFullLayout(editor, document: document)
     }
     private func compareWithFullLayout(_ editor: PaginatedEditor, document: ScribeFileDocument, phase: String = "Edited") throws {
-        let fresh = PaginatedEditor(document: document); defer { fresh.prepareForClose() }
-        fresh.storage.setAttributedString(editor.storage); fresh.paginate()
+        let fresh = PaginatedEditor(document: document, projectedContent: editor.storage); defer { fresh.prepareForClose() }
         XCTAssertEqual(editor.textViews.count, fresh.textViews.count)
         for index in 0..<min(editor.textViews.count, fresh.textViews.count) {
             let a = editor.layout.textContainers[index], b = fresh.layout.textContainers[index]

@@ -89,7 +89,7 @@ import DocumentCore
         if let selected = selectionView, selected.superview === canvas { return selected }
         return textViews.first!
     }
-    init(document: ScribeFileDocument) {
+    init(document: ScribeFileDocument, projectedContent: NSAttributedString? = nil) {
         owner = document
         super.init()
         canvas.pageSettings = document.model.sections[0].page
@@ -98,7 +98,7 @@ import DocumentCore
         storage.delegate = self
         storage.addLayoutManager(layout); layout.delegate = self
         layout.allowsNonContiguousLayout = true
-        storage.setAttributedString(AttributedDocument.render(document.model))
+        storage.setAttributedString(projectedContent ?? AttributedDocument.render(document.model))
         scrollView.documentView = canvas
         scrollView.hasVerticalScroller = true; scrollView.hasHorizontalScroller = true
         scrollView.autohidesScrollers = true; scrollView.allowsMagnification = true
