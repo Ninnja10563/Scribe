@@ -5,6 +5,7 @@ import DocumentCore
 @MainActor final class PageCanvas: NSView {
     var pageSettings = PageSettings()
     var pageCount = 1
+    var footnotes: [Int: FootnoteLayout.Page] = [:]
     let gap: CGFloat = 24
     var header = ""
     var footer = ""
@@ -29,6 +30,9 @@ import DocumentCore
             RunningContentLayout.draw(runningText(isHeader: true, pageIndex: i), at: NSPoint(x: rect.minX + pageSettings.left, y: rect.minY + 30), width: pageSettings.contentWidth)
             RunningContentLayout.draw(runningText(isHeader: false, pageIndex: i), at: NSPoint(x: rect.minX + pageSettings.left, y: rect.maxY - 38), width: pageSettings.contentWidth)
             drawPageNumber(index: i, origin: rect.origin)
+            if let notes = footnotes[i] {
+                notes.draw(at: NSPoint(x: rect.minX + pageSettings.left, y: rect.maxY - pageSettings.bottom - notes.height), width: pageSettings.contentWidth)
+            }
             if let guide = indentGuide, guide.page == i {
                 let line = NSBezierPath(); line.lineWidth = 0.75
                 line.move(to: NSPoint(x: rect.minX + pageSettings.left + guide.offset, y: rect.minY + pageSettings.top))
@@ -167,7 +171,22 @@ import DocumentCore
         var stabilized = false
         // TextKit invalidates from the edited glyph; existing page containers are reused.
         layoutWarning = nil
-        let start = max(0, min(firstDirtyPage, textViews.count - 1))
+        let hasNotes = storage.containsNoteReferences
+        var noteLayout: FootnoteLayout?
+        if hasNotes {
+            paginationStability.invalidate()
+            do { noteLayout = try FootnoteLayout(storage: storage, styles: owner?.model.styles ?? ParagraphStyle.defaults, width: canvas.pageSettings.contentWidth) }
+            catch { layoutWarning = error.localizedDescription }
+        }
+        let hadNotes = !canvas.footnotes.isEmpty
+        if hasNotes || hadNotes {
+            for container in layout.textContainers {
+                container.containerSize.height = canvas.pageSettings.contentHeight
+                layout.textContainerChangedGeometry(container)
+            }
+        }
+        canvas.footnotes.removeAll()
+        let start = hasNotes || hadNotes ? 0 : max(0, min(firstDirtyPage, textViews.count - 1))
         var required = start + 1
         var lastEnd = -1
         for index in start..<2000 {
@@ -184,6 +203,16 @@ import DocumentCore
                 layout.textContainerChangedGeometry(container)
                 layout.ensureLayout(for: container)
                 range = layout.glyphRange(for: container)
+            }
+            if let noteLayout {
+                required = index + 1
+                do {
+                    canvas.footnotes[index] = try noteLayout.fit(layout: layout, container: container, pageHeight: canvas.pageSettings.contentHeight)
+                    range = layout.glyphRange(for: container)
+                } catch {
+                    layoutWarning = error.localizedDescription
+                    break
+                }
             }
             overflowingPages.remove(index)
             layout.enumerateLineFragments(forGlyphRange: range) { _, used, lineContainer, _, stop in
@@ -250,7 +279,7 @@ import DocumentCore
         if canvas.frame.size != size { canvas.setFrameSize(size) }
         for (index, view) in textViews.enumerated() {
             let rect = canvas.pageRect(index)
-            let frame = NSRect(x: rect.minX + p.left, y: rect.minY + p.top, width: p.contentWidth, height: p.contentHeight)
+            let frame = NSRect(x: rect.minX + p.left, y: rect.minY + p.top, width: p.contentWidth, height: layout.textContainers[index].containerSize.height)
             if view.frame != frame { view.frame = frame }
         }
         canvas.needsDisplay = true
@@ -271,7 +300,7 @@ import DocumentCore
             let isInsertion = editedMask.contains(.editedCharacters) && delta > 0 && delta <= 128 && editedRange.length == delta && NSMaxRange(editedRange) <= textStorage.length
             let text = isInsertion ? (textStorage.string as NSString).substring(with: editedRange) : ""
             let hasFlowControl = text.unicodeScalars.contains { CharacterSet.controlCharacters.contains($0) || $0.value == 0x2028 || $0.value == 0x2029 || $0.value == 0xfffc }
-            if isInsertion && !hasFlowControl && layoutWarning == nil && owner?.model.tables.isEmpty == true {
+            if isInsertion && !hasFlowControl && layoutWarning == nil && owner?.model.tables.isEmpty == true && !textStorage.containsNoteReferences {
                 paginationStability.insert(at: editedRange.location, length: delta, previousEnds: ends, startingClean: firstDirtyPage == Int.max)
             } else { paginationStability.invalidate() }
             firstDirtyPage = min(firstDirtyPage, max(0, page - 1))
@@ -344,6 +373,15 @@ import DocumentCore
         if let found { select(NSRange(location: navigationLocation(in: found), length: 0), focus: focus); return true }
         if owner?.snapshot().paragraphs.last?.id == id { select(NSRange(location: storage.length, length: 0), focus: focus); return true }
         return false
+    }
+}
+extension NSAttributedString {
+    var containsNoteReferences: Bool {
+        var found = false
+        enumerateAttribute(.scribeNote, in: NSRange(location: 0, length: length)) { value, _, stop in
+            if value != nil { found = true; stop.pointee = true }
+        }
+        return found
     }
 }
 #endif

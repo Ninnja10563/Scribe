@@ -35,6 +35,9 @@ import DocumentCore
             editor.layout.drawBackground(forGlyphRange: range, at: origin)
             editor.layout.drawGlyphs(forGlyphRange: range, at: origin)
         }
+        if let notes = editor.canvas.footnotes[index] {
+            notes.draw(at: NSPoint(x: p.left, y: p.height - p.bottom - notes.height), width: p.contentWidth)
+        }
         RunningContentLayout.draw(editor.canvas.runningText(isHeader: true, pageIndex: index), at: NSPoint(x: p.left, y: 30), width: p.contentWidth)
         editor.canvas.drawPageNumber(index: index, origin: .zero)
         RunningContentLayout.draw(editor.canvas.runningText(isHeader: false, pageIndex: index), at: NSPoint(x: p.left, y: p.height - 38), width: p.contentWidth)
