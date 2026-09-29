@@ -13,6 +13,18 @@ import DocumentCore
         let manager = sender as? NSFontManager ?? NSFontManager.shared
         transformLogicalFonts(action: "Font") { manager.convert($0) }
     }
+    override func underline(_ sender: Any?) {
+        if editor?.reviewEditing.author == nil { super.underline(sender) }
+        else { toggleAttribute(.underlineStyle) }
+    }
+    override func changeColor(_ sender: Any?) {
+        guard editor?.reviewEditing.author != nil else { super.changeColor(sender); return }
+        let color = (sender as? NSColorPanel)?.color ?? NSColorPanel.shared.color
+        if selectedRange().length == 0 {
+            var attributes = typingAttributes; attributes[.foregroundColor] = color
+            applyTypingAttributes(attributes, action: "Text Colour")
+        } else { transformSelection(action: "Text Colour") { $0.addAttribute(.foregroundColor, value: color, range: NSRange(location: 0, length: $0.length)) } }
+    }
     override func updateRuler() { editor?.paragraphRuler?.refresh() }
     override func updateFontPanel() {
         super.updateFontPanel()
@@ -61,7 +73,9 @@ import DocumentCore
         if ids.isEmpty { typingAttributes.removeValue(forKey: .scribeComments) }
         else { typingAttributes[.scribeComments] = ids }
         if editor?.reviewEditing.author != nil, !applyingReviewReplacement, undoManager?.isUndoing != true, undoManager?.isRedoing != true {
-            let value = (insertString as? NSAttributedString) ?? NSAttributedString(string: (insertString as? String) ?? "", attributes: typingAttributes)
+            let value = NSMutableAttributedString(attributedString: (insertString as? NSAttributedString) ?? NSAttributedString(string: (insertString as? String) ?? "", attributes: typingAttributes))
+            value.removeAttribute(.scribeComments, range: NSRange(location: 0, length: value.length))
+            if !ids.isEmpty { value.addAttribute(.scribeComments, value: ids, range: NSRange(location: 0, length: value.length)) }
             applyTrackedReplacement(value, range: range, action: "Typing"); return
         }
         if let attributed = insertString as? NSAttributedString {

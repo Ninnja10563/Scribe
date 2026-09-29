@@ -74,6 +74,32 @@ import DocumentCore
         XCTAssertEqual(document.snapshot().pendingRevisionIDs, changed.pendingRevisionIDs)
         try NativeFormat.validate(document.snapshot())
     }
+    func testTypingUndoCoalescesAcrossRunLoopEvents() async throws {
+        let document = document("Body "); defer { document.close() }
+        let editor = document.editorController!.editor, view = editor.activeTextView
+        editor.select(NSRange(location: 5, length: 0)); document.undoManager?.removeAllActions()
+        for character in ["h", "e", "l", "l", "o"] {
+            view.insertText(character, replacementRange: view.selectedRange())
+            try await Task.sleep(nanoseconds: 30_000_000)
+        }
+        XCTAssertEqual(document.snapshot().paragraphs[0].text, "Body hello")
+        document.undoManager?.undo()
+        XCTAssertEqual(document.snapshot().paragraphs[0].text, "Body ", "A contiguous typing burst should be one native undo action")
+        XCTAssertFalse(document.snapshot().hasPendingRevisions)
+    }
+    func testUnderlineAndColourCommandsKeepIndependentFormattingHistory() throws {
+        let document = document("Text"); defer { document.close() }
+        let editor = document.editorController!.editor, view = editor.activeTextView
+        editor.select(NSRange(location: 0, length: 4)); view.underline(nil)
+        let first = document.snapshot().pendingRevisionIDs
+        XCTAssertEqual(first.count, 1)
+        NSColorPanel.shared.color = .red; view.changeColor(NSColorPanel.shared)
+        var model = document.snapshot()
+        XCTAssertEqual(model.pendingRevisionIDs.count, 2)
+        try model.resolveRevision(first[0], accepting: false)
+        XCTAssertNil(model.paragraphs[0].runs[0].format.underline)
+        XCTAssertEqual(model.paragraphs[0].runs[0].format.foreground, "#FF0000")
+    }
     func testRichReplacementKeepsInsertionFormatting() throws {
         let document = document("Old"); defer { document.close() }
         let editor = document.editorController!.editor
