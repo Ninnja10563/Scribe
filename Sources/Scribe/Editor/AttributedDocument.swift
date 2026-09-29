@@ -8,6 +8,7 @@ extension NSAttributedString.Key {
     static let scribeStyle = NSAttributedString.Key("org.scribe.paragraphStyle")
     static let scribeParagraphID = NSAttributedString.Key("org.scribe.paragraphID")
     static let scribeCell = NSAttributedString.Key("org.scribe.tableCell")
+    static let scribeNoteNumber = NSAttributedString.Key("org.scribe.noteNumber")
     static let scribeNote = NSAttributedString.Key("org.scribe.note")
     static let scribeEquation = NSAttributedString.Key("org.scribe.equation")
     static let scribeImage = NSAttributedString.Key("org.scribe.image")
@@ -42,6 +43,7 @@ extension NSAttributedString.Key {
                 if let link = run.link { attrs[.link] = link }
                 if let id = run.noteID, let note = notes[id] {
                     attrs[.attachment] = NoteProjection.attachment(note, baseFont: ScriptProjection.logicalFont(in: attrs) ?? .systemFont(ofSize: 12))
+                    attrs[.scribeNoteNumber] = note.number
                     attrs[.scribeNote] = try? JSONEncoder().encode(note.note)
                 }
                 if let equation = run.equation {

@@ -156,7 +156,7 @@ import DocumentCore
         if let savedTypingAttributes { view.typingAttributes = savedTypingAttributes }
         else if storage.length > 0 {
             var attributes = storage.attributes(at: 0, effectiveRange: nil)
-            for key in [NSAttributedString.Key.attachment, .scribeImage, .scribeEquation, .scribeNote, .scribePageBreakMarker] { attributes.removeValue(forKey: key) }
+            for key in [NSAttributedString.Key.attachment, .scribeImage, .scribeEquation, .scribeNote, .scribeNoteNumber, .scribePageBreakMarker] { attributes.removeValue(forKey: key) }
             view.typingAttributes = attributes
         } else if let document = owner?.model, let paragraph = document.paragraphs.first {
             view.typingAttributes = AttributedDocument.editingAttributes(for: paragraph, in: document)
@@ -175,7 +175,9 @@ import DocumentCore
         var noteLayout: FootnoteLayout?
         if hasNotes {
             paginationStability.invalidate()
-            do { noteLayout = try FootnoteLayout(storage: storage, styles: owner?.model.styles ?? ParagraphStyle.defaults, width: canvas.pageSettings.contentWidth) }
+            do {
+                try NoteProjection.refreshNumbers(in: storage)
+                noteLayout = try FootnoteLayout(storage: storage, styles: owner?.model.styles ?? ParagraphStyle.defaults, width: canvas.pageSettings.contentWidth) }
             catch { layoutWarning = error.localizedDescription }
         }
         let hadNotes = !canvas.footnotes.isEmpty
