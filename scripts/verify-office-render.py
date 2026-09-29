@@ -17,7 +17,7 @@ args = parser.parse_args()
 build = args.build.resolve()
 output = build / 'office-render'
 output.mkdir(parents=True, exist_ok=True)
-sources = [build / 'smoke/Smoke.docx', build / 'schema/MergedTable.docx', build / 'schema/DocumentProperties.docx', build / 'schema/ImageAdjustments.docx', build / 'schema/ImageRotation.docx', build / 'schema/StyleOverrides.docx', build / 'schema/ScriptTypography.docx']
+sources = [build / 'smoke/Smoke.docx', build / 'schema/MergedTable.docx', build / 'schema/DocumentProperties.docx', build / 'schema/ImageAdjustments.docx', build / 'schema/ImageRotation.docx', build / 'schema/StyleOverrides.docx', build / 'schema/ScriptTypography.docx', build / 'schema/ParagraphIndents.docx']
 result = subprocess.run([
     'libreoffice', '-env:UserInstallation=' + (output / 'profile').as_uri(),
     '--headless', '--norestore', '--convert-to', 'pdf:writer_pdf_Export',
@@ -130,3 +130,15 @@ for label, path in [('Native', build / 'schema/ScriptTypography.pdf'), ('LibreOf
     assert not page.get_images(), f'{label}: script text should remain vector text'
     page.get_pixmap(matrix=pymupdf.Matrix(2, 2)).save(output / (label + '-ScriptTypography.png'))
 print('Native and LibreOffice retain the logical font size and render vector superscripts/subscripts above and below the baseline.')
+
+for label, path in [('Native', build / 'schema/ParagraphIndents.pdf'), ('LibreOffice', output / 'ParagraphIndents.pdf')]:
+    pdf = pymupdf.open(path)
+    assert len(pdf) == 1, f'{label}: unexpected paragraph-indent pagination'
+    page = pdf[0]
+    boxes = {text: page.search_for(text)[0] for text in ['FIRST', 'CONTINUE', 'HANG', 'INDENT', 'RIGHT right-aligned paragraph.']}
+    assert abs(boxes['FIRST'].x0-boxes['CONTINUE'].x0-36) < 1, f'{label}: first-line indent lost'
+    assert abs(boxes['INDENT'].x0-boxes['HANG'].x0-48) < 1, f'{label}: hanging indent lost'
+    assert abs(boxes['CONTINUE'].x0-72) < 1, f'{label}: ordinary left margin shifted'
+    assert abs(boxes['RIGHT right-aligned paragraph.'].x1-(page.rect.width-72-36)) < 2, f'{label}: right indent lost'
+    page.get_pixmap(matrix=pymupdf.Matrix(1, 1)).save(output / (label + '-ParagraphIndents.png'))
+print('Native and LibreOffice PDFs retain first-line, hanging and right paragraph indents authored through the ruler.')

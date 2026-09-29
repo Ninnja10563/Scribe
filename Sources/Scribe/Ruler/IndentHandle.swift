@@ -39,6 +39,8 @@ import DocumentCore
         if isMixed { path.lineWidth = 1.5; path.stroke() } else { path.fill() }
         if window?.firstResponder === self { NSColor.keyboardFocusIndicatorColor.setStroke(); NSBezierPath(ovalIn: bounds.insetBy(dx: 1, dy: 1)).stroke() }
     }
+    override func becomeFirstResponder() -> Bool { needsDisplay = true; return super.becomeFirstResponder() }
+    override func resignFirstResponder() -> Bool { needsDisplay = true; return super.resignFirstResponder() }
     override func mouseDown(with event: NSEvent) {
         guard isEnabled, let ruler else { return }
         ruler.refresh(); window?.makeFirstResponder(self)
@@ -61,6 +63,10 @@ import DocumentCore
         guard isEnabled else { super.keyDown(with: event); return }
         let step = event.modifierFlags.contains(.shift) ? 6.0 : 1.0
         switch event.keyCode {
+        case 48:
+            if event.modifierFlags.contains(.shift) { window?.selectPreviousKeyView(self) }
+            else { window?.selectNextKeyView(self) }
+        case 53: window?.makeFirstResponder(ruler?.editor?.activeTextView)
         case 123: adjust(by: indent == .right ? step : -step)
         case 124: adjust(by: indent == .right ? -step : step)
         case 125: adjust(by: -step)

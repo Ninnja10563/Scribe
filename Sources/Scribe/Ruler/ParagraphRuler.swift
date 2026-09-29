@@ -77,7 +77,8 @@ import DocumentCore
         if let revision, revision != editor.revision { refresh(); return }
         if let selection, selection != editor.activeTextView.selectedRange() { refresh(); return }
         let indices = editor.selectedParagraphIndices(), snapshot = owner.snapshot()
-        let ids = Set(indices.compactMap { snapshot.paragraphs.indices.contains($0) ? snapshot.paragraphs[$0].id : nil })
+        let paragraphs = snapshot.paragraphs
+        let ids = Set(indices.compactMap { paragraphs.indices.contains($0) ? paragraphs[$0].id : nil })
         do {
             var after = snapshot
             try after.setParagraphIndent(handle.indent, to: min(handle.maximum, max(0, value)), paragraphIDs: ids)

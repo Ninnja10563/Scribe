@@ -12,6 +12,7 @@ import DocumentCore
         let manager = sender as? NSFontManager ?? NSFontManager.shared
         transformLogicalFonts(action: "Font") { manager.convert($0) }
     }
+    override func updateRuler() { editor?.paragraphRuler?.refresh() }
     override func updateFontPanel() {
         super.updateFontPanel()
         let range = selectedRange()

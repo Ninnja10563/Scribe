@@ -177,6 +177,10 @@ import DocumentCore
     @objc func bulletList() { editor.applyList(ListDescriptor()) }
     @objc func numberedList() { editor.applyList(ListDescriptor(kind: .decimal)) }
     @objc func toggleSidebar() { sidebar.isHidden.toggle() }
+    @objc func focusRuler() {
+        editor.scrollView.rulersVisible = true; editor.paragraphRuler?.refresh()
+        if let handle = editor.paragraphRuler?.handles.first(where: { $0.isEnabled }) { window?.makeFirstResponder(handle) }
+    }
     @objc func toggleRuler() {
         editor.scrollView.rulersVisible.toggle(); editor.paragraphRuler?.refresh(); editor.viewportChanged()
     }

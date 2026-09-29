@@ -96,6 +96,35 @@ import ImportExport
         try handle.mouseUp(with: event(.leftMouseUp, point: target, window: window))
         XCTAssertNil(document.snapshot().paragraphs[0].formatting); XCTAssertNil(document.snapshot().paragraphs[1].formatting)
     }
+    func testKeyboardRulerAndExportedParagraphGeometry() throws {
+        let document = ScribeFileDocument(); document.model.title = "Paragraph indents"
+        document.model.sections[0].paragraphs = [
+            Paragraph("FIRST first line.\u{2028}CONTINUE remaining lines."),
+            Paragraph("HANG hanging first line.\u{2028}INDENT remaining lines."),
+            Paragraph("RIGHT right-aligned paragraph.")]
+        document.makeWindowControllers(); defer { document.close() }
+        let controller = document.editorController!, editor = controller.editor, window = controller.window!
+        controller.showWindow(nil); window.contentView?.layoutSubtreeIfNeeded()
+        let ruler = try XCTUnwrap(editor.paragraphRuler)
+        controller.focusRuler()
+        let handle = try XCTUnwrap(window.firstResponder as? IndentHandle)
+        let arrow = try XCTUnwrap(NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: [.shift], timestamp: 0, windowNumber: window.windowNumber, context: nil, characters: "\u{f703}", charactersIgnoringModifiers: "\u{f703}", isARepeat: false, keyCode: 124))
+        for _ in 0..<6 { handle.keyDown(with: arrow) }
+        XCTAssertEqual(document.snapshot().paragraphs[0].formatting?.firstLineIndent, 36)
+        XCTAssertTrue(window.firstResponder === handle)
+        editor.jump(to: document.model.paragraphs[1].id); ruler.refresh()
+        ruler.commit(try XCTUnwrap(ruler.handles.first { $0.indent == .left }), value: 48)
+        editor.jump(to: document.model.paragraphs[2].id)
+        editor.activeTextView.alignRight(nil); ruler.refresh()
+        ruler.commit(try XCTUnwrap(ruler.handles.first { $0.indent == .right }), value: 36)
+        let snapshot = document.snapshot()
+        let directory = ProcessInfo.processInfo.environment["SCRIBE_SCHEMA_OUTPUT"].map { URL(fileURLWithPath: $0, isDirectory: true) } ?? FileManager.default.temporaryDirectory
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        try DOCX.encode(snapshot).write(to: directory.appendingPathComponent("ParagraphIndents.docx"))
+        try PrintRenderer(editor: editor).exportPDF(to: directory.appendingPathComponent("ParagraphIndents.pdf"), title: snapshot.title, author: "")
+        let restored = try DOCX.decode(DOCX.encode(snapshot)).document
+        XCTAssertEqual(restored.paragraphs.map(\.formatting), snapshot.paragraphs.map(\.formatting))
+    }
     func testMixedSelectionPreservesIndependentSpacingAndDisablesForLists() throws {
         let document = ScribeFileDocument(); document.model.sections[0].paragraphs = [Paragraph("One"), Paragraph("Two")]
         var format = ParagraphFormatting(); format.firstLineIndent = 24; format.spaceBefore = 18

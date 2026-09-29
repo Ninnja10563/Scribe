@@ -45,6 +45,7 @@ import AppKit
         let view = menu("View")
         item(view, "Toggle Outline", #selector(EditorWindowController.toggleSidebar), "1", shift: true)
         item(view, "Toggle Ruler", #selector(EditorWindowController.toggleRuler))
+        item(view, "Focus Ruler", #selector(EditorWindowController.focusRuler), "r", shift: true)
         item(view, "Focus Mode", #selector(EditorWindowController.toggleFocus), "f", shift: true)
         item(view, "Enter Full Screen", #selector(NSWindow.toggleFullScreen(_:)))
         let insert = menu("Insert")
