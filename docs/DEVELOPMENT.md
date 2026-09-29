@@ -75,3 +75,9 @@ Native v8 adds rectangular spans. The anchor cell owns the original paragraphs, 
 ## Document properties and spelling (v0.10 development)
 
 The existing title, author and language fields now have native controls and DOCX interchange; no native schema change is needed. `und` requests automatic language detection. Explicit language requests supply an [orthography option](https://developer.apple.com/documentation/appkit/nsspellchecker/optionkey/orthography) and remove automatic orthography checking through the [text-view delegate](https://developer.apple.com/documentation/appkit/nstextviewdelegate/textview(_:willchecktextin:options:types:)). They do not change `NSSpellChecker`'s shared language preference. DOCX stores real Dublin Core metadata and a Word `docDefaults` language; style/run-specific languages are not represented by the current single-language model and disclose approximation.
+
+## Native style editing and typography follow-up
+
+Style definitions now have separate native Text/Paragraph controls, creation from current formatting and a single document transaction for create-and-apply. Empty-paragraph geometry also uses document transactions, so it is undoable and marked for autosave. Native v10 separates inherited highlighting from explicit removal; capture does not convert inherited highlight/baseline properties into accidental direct overrides.
+
+Rendered validation exposed the next typography work: AppKit's semantic superscript attribute alone does not provide the desired reduced glyphs in the shared layout. The next projection will retain logical font sizes in the model while adding native scaled fonts and baseline offsets. Capture, font-panel editing and rich clipboard export must normalize those projection attributes to avoid shrinking fonts on each save or paste. This work is separate from the 0.12 release candidate.
