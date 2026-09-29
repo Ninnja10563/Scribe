@@ -338,6 +338,8 @@ class WordReader: NSObject, XMLParserDelegate {
     var inRun = false, sawDocument = false
     var collectingInstruction = false, instruction = ""
     private var fieldInstructions: [String] = []
+    private var skippedReviewDepth = 0
+    private let reviewImportWarning = "Tracked changes are imported without review history. Deleted run content is omitted; revised paragraph and table structure may be approximated."
     var files: [String: Data] = [:], targets: [String: String] = [:]
     var headerIDs: [String: String] = [:], footerIDs: [String: String] = [:]
     var differentFirstPage = false
@@ -349,6 +351,12 @@ class WordReader: NSObject, XMLParserDelegate {
     private let imageReader = DOCXImageReader()
     private let equationReader = DOCXEquationReader()
     func parser(_ parser: XMLParser, didStartElement name: String, namespaceURI: String?, qualifiedName: String?, attributes a: [String: String]) {
+        if skippedReviewDepth > 0 { skippedReviewDepth += 1; return }
+        if namespaceURI == DOCX.wordNS, ["del", "moveFrom", "rPrChange", "pPrChange"].contains(name) {
+            warnings.insert(reviewImportWarning)
+            skippedReviewDepth = 1
+            return
+        }
         if equationReader.active || (namespaceURI == DOCXEquations.namespace && name == "oMath") {
             if !equationReader.active { equationReader.defaultSize = paragraph.map { document.style(for: $0).text.fontSize ?? 12 } ?? 12 }
             equationReader.start(name, namespace: namespaceURI, attributes: a, parser: parser); return
@@ -461,7 +469,7 @@ class WordReader: NSObject, XMLParserDelegate {
         case "footerReference": footerIDs[wordAttribute(a, "type") ?? "default"] = a["r:id"] ?? a["id"]
         case "titlePg": differentFirstPage = flag(a)
         case "pgNumType": runningNumberStart = wordAttribute(a, "start").flatMap(Int.init)
-        case "ins", "del": warnings.insert("Tracked changes are flattened; review history is not retained.")
+        case "ins", "moveTo": warnings.insert(reviewImportWarning)
         case "sectPr": differentFirstPage = false; if !paragraphs.isEmpty && paragraph != nil { warnings.insert("Section settings are flattened to one page layout.") }
         default: if inRun { applyRun(name, a, &run.format) }
         }
@@ -473,11 +481,13 @@ class WordReader: NSObject, XMLParserDelegate {
         }
     }
     func parser(_ parser: XMLParser, foundCharacters text: String) {
+        guard skippedReviewDepth == 0 else { return }
         if equationReader.active { equationReader.characters(text, parser: parser); return }
         if collecting { run.text += text }
         if collectingInstruction { instruction += text }
     }
     func parser(_ parser: XMLParser, didEndElement name: String, namespaceURI: String?, qualifiedName: String?) {
+        if skippedReviewDepth > 0 { skippedReviewDepth -= 1; return }
         if equationReader.active {
             if let result = equationReader.end() {
                 paragraph?.runs.append(result.run)

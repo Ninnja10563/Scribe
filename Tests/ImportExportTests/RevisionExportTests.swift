@@ -33,6 +33,9 @@ final class RevisionExportTests: XCTestCase {
         XCTAssertTrue(xml.contains("<w:br w:type=\"page\"/><w:delText"))
         XCTAssertTrue(xml.contains("<w:hyperlink r:id="))
         XCTAssertEqual(document, original)
+        let imported = try DOCX.decode(bytes)
+        XCTAssertEqual(imported.document.paragraphs[0].text, "Before New 👩🏽‍💻 & <text>After")
+        XCTAssertTrue(imported.warnings.contains { $0.contains("without review history") })
         if let folder = ProcessInfo.processInfo.environment["SCRIBE_SCHEMA_OUTPUT"] {
             let url = URL(fileURLWithPath: folder, isDirectory: true)
             try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
@@ -52,6 +55,9 @@ final class RevisionExportTests: XCTestCase {
         XCTAssertThrowsError(try DOCX.encode(document))
         let bytes = try DOCXWriter(document, revisions: .textChanges).encode()
         let parts = try ZipArchive.decode(bytes)
+        let imported = try DOCX.decode(bytes)
+        XCTAssertEqual(imported.document.notes.map(\.plainText), ["footnote new", "endnote new"])
+        XCTAssertTrue(imported.warnings.contains { $0.contains("without review history") })
         for name in ["footnotes", "endnotes"] {
             let xml = try XCTUnwrap(parts["word/\(name).xml"]).string
             XCTAssertTrue(xml.contains("<w:ins")); XCTAssertTrue(xml.contains("<w:del"))
