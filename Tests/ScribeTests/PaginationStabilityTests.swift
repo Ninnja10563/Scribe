@@ -63,7 +63,11 @@ import PDFKit
     }
     func testInitialAndReflowedLayoutAgreeAndKeepTrailingEmptyPage() throws {
         let document = ScribeFileDocument()
-        document.model.sections[0].paragraphs = (0..<80).map { Paragraph(String(repeating: "Paragraph spacing at page boundaries. ", count: 8), style: $0 % 7 == 0 ? "heading2" : "normal") }
+        document.model.sections[0].paragraphs = (0..<90).map { index in
+            var paragraph = Paragraph("Paragraph \(index). " + String(repeating: "Wrapping must retain every line and page. ", count: 7), style: index % 9 == 0 ? "heading2" : "normal")
+            paragraph.pageBreakBefore = index > 0 && index % 23 == 0
+            return paragraph
+        }
         let editor = PaginatedEditor(document: document); defer { editor.prepareForClose() }
         let before = editor.layout.textContainers.map { editor.layout.glyphRange(for: $0) }
         let copy = NSAttributedString(attributedString: editor.storage)
@@ -101,29 +105,11 @@ import PDFKit
     }
     private func compareWithFullLayout(_ editor: PaginatedEditor, document: ScribeFileDocument, phase: String = "Edited") throws {
         let fresh = PaginatedEditor(document: document, projectedContent: editor.storage); defer { fresh.prepareForClose() }
-        if !editor.storage.isEqual(to: fresh.storage) {
-            print("PROJECTION CHANGED DURING FRESH LAYOUT: \(phase)")
-            editor.storage.enumerateAttributes(in: NSRange(location: 0, length: editor.storage.length)) { attributes, range, stop in
-                let other = fresh.storage.attributes(at: range.location, effectiveRange: nil)
-                if !NSDictionary(dictionary: attributes).isEqual(to: other) {
-                    print("FIRST ATTRIBUTE DIFFERENCE \(range): original \(attributes); fresh \(other)"); stop.pointee = true
-                }
-            }
-        }
+        XCTAssertTrue(editor.storage.isEqual(to: fresh.storage))
         XCTAssertEqual(editor.textViews.count, fresh.textViews.count)
-        var reportedGeometry = false
         for index in 0..<min(editor.textViews.count, fresh.textViews.count) {
             let a = editor.layout.textContainers[index], b = fresh.layout.textContainers[index]
             editor.layout.ensureLayout(for: a); fresh.layout.ensureLayout(for: b)
-            if !reportedGeometry, editor.layout.glyphRange(for: a) != fresh.layout.glyphRange(for: b) {
-                reportedGeometry = true
-                print("GEOMETRY \(phase) page \(index): original \(a.containerSize), view \(editor.textViews[index].frame.size), padding \(a.lineFragmentPadding), tracks \(a.widthTracksTextView)/\(a.heightTracksTextView); fresh \(b.containerSize), view \(fresh.textViews[index].frame.size), padding \(b.lineFragmentPadding), tracks \(b.widthTracksTextView)/\(b.heightTracksTextView)")
-                print("TYPESETTERS original \(editor.layout.typesetterBehavior.rawValue), leading \(editor.layout.usesFontLeading), screen \(editor.layout.usesScreenFonts); fresh \(fresh.layout.typesetterBehavior.rawValue), leading \(fresh.layout.usesFontLeading), screen \(fresh.layout.usesScreenFonts); context \(String(describing: NSGraphicsContext.current?.isDrawingToScreen))")
-                let glyph = NSMaxRange(editor.layout.glyphRange(for: a)) - 1
-                if glyph >= 0 {
-                    print("LAST LINE original \(editor.layout.lineFragmentRect(forGlyphAt: glyph, effectiveRange: nil)), used \(editor.layout.lineFragmentUsedRect(forGlyphAt: glyph, effectiveRange: nil)); fresh \(fresh.layout.lineFragmentRect(forGlyphAt: glyph, effectiveRange: nil)), used \(fresh.layout.lineFragmentUsedRect(forGlyphAt: glyph, effectiveRange: nil))")
-                }
-            }
             XCTAssertEqual(editor.layout.glyphRange(for: a), fresh.layout.glyphRange(for: b), "Page \(index)")
             // Compare glyph baselines, not aggregate usedRect trailing paragraph space.
             var originalLines: [(Int, NSPoint)] = [], freshLines: [(Int, NSPoint)] = []
@@ -137,9 +123,7 @@ import PDFKit
             }
             XCTAssertEqual(originalLines.map(\.0), freshLines.map(\.0), "\(phase), page \(index)")
             XCTAssertEqual(originalLines.map(\.1), freshLines.map(\.1), "\(phase), page \(index)")
-            if phase == "Baseline", index == 0, editor.layout.usedRect(for: a) != fresh.layout.usedRect(for: b) {
-                print("Used-rectangle difference \(phase), page \(index): \(editor.layout.usedRect(for: a)) versus \(fresh.layout.usedRect(for: b))")
-            }
+
         }
         if phase != "Edited", let directory = ProcessInfo.processInfo.environment["SCRIBE_SCHEMA_OUTPUT"] {
             let folder = URL(fileURLWithPath: directory, isDirectory: true)

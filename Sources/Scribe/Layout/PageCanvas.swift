@@ -97,7 +97,7 @@ import DocumentCore
         canvas.header = document.model.sections[0].header; canvas.footer = document.model.sections[0].footer
         storage.delegate = self
         storage.addLayoutManager(layout); layout.delegate = self
-        layout.allowsNonContiguousLayout = false
+        layout.allowsNonContiguousLayout = true
         storage.setAttributedString(projectedContent ?? AttributedDocument.render(document.model))
         scrollView.documentView = canvas
         scrollView.hasVerticalScroller = true; scrollView.hasHorizontalScroller = true
@@ -159,12 +159,6 @@ import DocumentCore
         // TextKit invalidates from the edited glyph; existing page containers are reused.
         layoutWarning = nil
         let start = max(0, min(firstDirtyPage, textViews.count - 1))
-        if pageCharacterRanges.indices.contains(start) {
-            // Drop old line-fragment boundaries throughout the affected suffix. TextKit's
-            // narrower automatic invalidation can retain stale paragraph-spacing decisions.
-            let location = min(pageCharacterRanges[start].location, storage.length)
-            layout.invalidateGlyphs(forCharacterRange: NSRange(location: location, length: storage.length - location), changeInLength: 0, actualCharacterRange: nil)
-        }
         var required = start + 1
         var lastEnd = -1
         for index in start..<2000 {

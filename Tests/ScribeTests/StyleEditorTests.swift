@@ -36,6 +36,23 @@ import DocumentCore
         XCTAssertEqual((view.textStorage?.attribute(.font, at: 0, effectiveRange: nil) as? NSFont)?.pointSize, 31)
         XCTAssertEqual(document.snapshot().paragraphs[0].styleID, "heading1")
     }
+    func testAddingPagesPreservesCurrentTypingFontAndSelection() throws {
+        let document = ScribeFileDocument()
+        let editor = PaginatedEditor(document: document); defer { editor.prepareForClose() }
+        let view = editor.activeTextView
+        let content = NSAttributedString(string: String(repeating: "Text flowing onto another page. ", count: 400), attributes: AttributedDocument.attributes(style: .normal))
+        editor.storage.setAttributedString(content)
+        view.setSelectedRange(NSRange(location: 12, length: 0))
+        var attributes = view.typingAttributes
+        attributes[.font] = NSFont.systemFont(ofSize: 31)
+        view.typingAttributes = attributes
+        editor.paginate()
+        XCTAssertGreaterThan(editor.textViews.count, 2)
+        XCTAssertEqual(view.selectedRange(), NSRange(location: 12, length: 0))
+        for page in editor.textViews { XCTAssertEqual((page.typingAttributes[.font] as? NSFont)?.pointSize, 31) }
+        view.insertText("Typed", replacementRange: view.selectedRange())
+        XCTAssertEqual((editor.storage.attribute(.font, at: 12, effectiveRange: nil) as? NSFont)?.pointSize, 31)
+    }
     func testModifyDefinitionUpdatesInheritedFormattingAndPreservesOverrides() throws {
         let document = ScribeFileDocument()
         document.model.sections[0].paragraphs = [Paragraph("First heading", style: "heading1"), Paragraph("Second heading", style: "heading1"), Paragraph("Direct heading", style: "heading1")]
