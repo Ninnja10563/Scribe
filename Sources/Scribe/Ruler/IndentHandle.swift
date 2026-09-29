@@ -52,14 +52,17 @@ import DocumentCore
         let raw = ruler.value(at: ruler.convert(event.locationInWindow, from: nil), for: indent)
         value = min(maximum, max(0, event.modifierFlags.contains(.option) ? raw : raw.rounded()))
         ruler.updateGeometry(); updateAccessibility()
+        if let editor = ruler.editor, let page = editor.textViews.firstIndex(where: { $0 === editor.activeTextView }) {
+            editor.canvas.indentGuide = (page, indent == .right ? editor.canvas.pageSettings.contentWidth - value : value)
+        }
     }
     override func mouseUp(with event: NSEvent) {
         guard isDragging else { return }
-        isDragging = false
+        isDragging = false; ruler?.editor?.canvas.indentGuide = nil
         ruler?.commit(self, value: value, revision: dragRevision, selection: dragSelection)
     }
     override func keyDown(with event: NSEvent) {
-        if event.keyCode == 53, isDragging { isDragging = false; value = originalValue; ruler?.refresh(); return }
+        if event.keyCode == 53, isDragging { isDragging = false; value = originalValue; ruler?.editor?.canvas.indentGuide = nil; ruler?.refresh(); return }
         guard isEnabled else { super.keyDown(with: event); return }
         let step = event.modifierFlags.contains(.shift) ? 6.0 : 1.0
         switch event.keyCode {

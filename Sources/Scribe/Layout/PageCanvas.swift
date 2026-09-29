@@ -9,6 +9,7 @@ import DocumentCore
     var header = ""
     var footer = ""
     var pageNumbering: PageNumbering?
+    var indentGuide: (page: Int, offset: Double)? { didSet { needsDisplay = true } }
     override var isFlipped: Bool { true }
     var pageSize: NSSize { NSSize(width: pageSettings.width, height: pageSettings.height) }
     func pageRect(_ index: Int) -> NSRect {
@@ -28,6 +29,12 @@ import DocumentCore
             (header as NSString).draw(at: NSPoint(x: rect.minX + pageSettings.left, y: rect.minY + 30), withAttributes: attrs)
             (footer as NSString).draw(at: NSPoint(x: rect.minX + pageSettings.left, y: rect.maxY - 38), withAttributes: attrs)
             drawPageNumber(index: i, origin: rect.origin)
+            if let guide = indentGuide, guide.page == i {
+                let line = NSBezierPath(); line.lineWidth = 0.75
+                line.move(to: NSPoint(x: rect.minX + pageSettings.left + guide.offset, y: rect.minY + pageSettings.top))
+                line.line(to: NSPoint(x: rect.minX + pageSettings.left + guide.offset, y: rect.maxY - pageSettings.bottom))
+                NSColor.controlAccentColor.withAlphaComponent(0.6).setStroke(); line.stroke()
+            }
         }
     }
     func drawPageNumber(index: Int, origin: NSPoint) {

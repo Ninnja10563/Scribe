@@ -26,7 +26,10 @@ import ImportExport
         try handle.mouseDragged(with: event(.leftMouseDragged, point: target, window: window))
         XCTAssertEqual(document.snapshot().paragraphs[0].formatting?.headIndent, 0)
         XCTAssertFalse(document.undoManager!.canUndo)
+        XCTAssertEqual(editor.canvas.indentGuide?.offset, 36)
+        NativeDialogCapture.save(window.contentView!, name: "ParagraphRulerDrag")
         try handle.mouseUp(with: event(.leftMouseUp, point: target, window: window))
+        XCTAssertNil(editor.canvas.indentGuide)
         let result = document.snapshot().paragraphs[0].formatting
         XCTAssertEqual(result?.headIndent, 36); XCTAssertEqual(result?.firstLineIndent, 18)
         XCTAssertEqual(result?.spaceBefore, 12); XCTAssertEqual(result?.alignment, .justified)
