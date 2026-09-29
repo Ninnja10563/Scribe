@@ -51,6 +51,7 @@ import DocumentCore
     let layout = NSLayoutManager()
     let canvas = PageCanvas()
     let scrollView = NSScrollView()
+    private(set) var paragraphRuler: ParagraphRuler?
     private(set) var textViews: [ScribeTextView] = []
     private(set) var layoutWarning: String?
     private weak var selectionView: ScribeTextView?
@@ -95,6 +96,11 @@ import DocumentCore
         scrollView.minMagnification = 0.025; scrollView.maxMagnification = 2
         scrollView.drawsBackground = true; scrollView.backgroundColor = .windowBackgroundColor
         addPage(); paginate()
+        let ruler = ParagraphRuler(editor: self); paragraphRuler = ruler
+        scrollView.horizontalRulerView = ruler; scrollView.hasHorizontalRuler = true
+        scrollView.rulersVisible = true; ruler.refresh()
+        scrollView.contentView.postsBoundsChangedNotifications = true
+        NotificationCenter.default.addObserver(self, selector: #selector(rulerViewportChanged), name: NSView.boundsDidChangeNotification, object: scrollView.contentView)
         NotificationCenter.default.addObserver(self, selector: #selector(viewportChanged), name: NSView.frameDidChangeNotification, object: scrollView.contentView)
         scrollView.contentView.postsFrameChangedNotifications = true
         NotificationCenter.default.addObserver(self, selector: #selector(userMagnificationChanged), name: NSScrollView.didEndLiveMagnifyNotification, object: scrollView)
@@ -102,6 +108,7 @@ import DocumentCore
     deinit { NotificationCenter.default.removeObserver(self) }
     func prepareForClose() {
         relayout?.cancel(); onChange = nil; onSelection = nil
+        paragraphRuler?.editor = nil; paragraphRuler?.clientView = nil
         NotificationCenter.default.removeObserver(self)
         for view in textViews { view.cancelSpellingCheck(); view.delegate = nil; view.editor = nil }
         layout.delegate = nil; storage.delegate = nil; owner = nil
@@ -195,6 +202,7 @@ import DocumentCore
         canvas.pageCount = textViews.count; resizeCanvas()
         onSelection?()
     }
+    @objc private func rulerViewportChanged() { paragraphRuler?.updateGeometry() }
     @objc func viewportChanged() { refreshZoom(); resizeCanvas() }
     func resizeCanvas() {
         let p = canvas.pageSettings
@@ -207,6 +215,7 @@ import DocumentCore
             if view.frame != frame { view.frame = frame }
         }
         canvas.needsDisplay = true
+        paragraphRuler?.updateGeometry()
     }
     func setPageSettings(_ settings: PageSettings) {
         canvas.pageSettings = settings

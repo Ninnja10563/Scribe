@@ -8,6 +8,7 @@ import DocumentCore
     let sidebar = NSView()
     let commentsSidebar = CommentsSidebar()
     private var commentsBeforeFocus = false
+    private var rulerBeforeFocus = true
     let status = NSTextField(labelWithString: "")
     let stylePicker = NSPopUpButton()
     let zoomPicker = NSPopUpButton()
@@ -143,6 +144,7 @@ import DocumentCore
     private var cachedWords = 0
     func updateStatus() {
         guard !isClosing else { return }
+        editor.paragraphRuler?.refresh()
         if let warning = editor.layoutWarning { status.stringValue = warning; return }
         let view = editor.activeTextView
         let selection = view.selectedRange()
@@ -175,7 +177,12 @@ import DocumentCore
     @objc func bulletList() { editor.applyList(ListDescriptor()) }
     @objc func numberedList() { editor.applyList(ListDescriptor(kind: .decimal)) }
     @objc func toggleSidebar() { sidebar.isHidden.toggle() }
+    @objc func toggleRuler() {
+        editor.scrollView.rulersVisible.toggle(); editor.paragraphRuler?.refresh(); editor.viewportChanged()
+    }
     @objc func toggleFocus() {
+        if !isFocused { rulerBeforeFocus = editor.scrollView.rulersVisible; editor.scrollView.rulersVisible = false }
+        else { editor.scrollView.rulersVisible = rulerBeforeFocus }
         if !isFocused { commentsBeforeFocus = !commentsSidebar.isHidden; commentsSidebar.isHidden = true }
         else { commentsSidebar.isHidden = !commentsBeforeFocus }
         isFocused.toggle(); sidebar.isHidden = isFocused; toolbar.isHidden = isFocused; if isFocused { searchBar.isHidden = true }; window?.makeFirstResponder(editor.activeTextView) }
