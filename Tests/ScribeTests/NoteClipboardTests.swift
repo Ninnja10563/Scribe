@@ -32,6 +32,8 @@ import DocumentCore
         XCTAssertEqual(first.plainText, note.plainText)
         XCTAssertEqual(first.paragraphs[0].runs[0].format.italic, true)
         XCTAssertTrue(Set(first.paragraphs.map(\.id)).isDisjoint(with: Set(note.paragraphs.map(\.id))))
+        // Separate native user events close the implicit undo group.
+        RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.02))
         editor.activeTextView.paste(nil); editor.paginate()
         let pasted = destination.snapshot()
         XCTAssertEqual(pasted.notes.count, 2)
