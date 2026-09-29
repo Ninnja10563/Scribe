@@ -35,6 +35,25 @@ import DocumentCore
         XCTAssertTrue(after.paragraphs[0].text.hasPrefix("👩🏽‍💻 café "))
         XCTAssertEqual(after.pendingRevisionIDs.count, 1)
     }
+    func testShortReplacementPreservesCommentAnchorsAndUnrelatedRichText() throws {
+        let document = document(); defer { document.close() }
+        let paragraphID = document.model.paragraphs[0].id
+        document.performEdit("Comment") { model in
+            model.comments = [Comment(anchor: .init(paragraphID: paragraphID, offset: 0, length: 4), text: "Keep reference", author: "Reviewer")]
+            var second = Paragraph("Unrelated rich text"); second.runs[0].format.italic = true
+            model.sections[0].paragraphs.append(second)
+        }
+        let editor = document.editorController!.editor, before = document.snapshot()
+        editor.activeTextView.insertText("New", replacementRange: NSRange(location: 0, length: 4))
+        let after = document.snapshot(); try NativeFormat.validate(after)
+        XCTAssertEqual(after.paragraphs[1], before.paragraphs[1])
+        XCTAssertEqual(after.comments[0].id, before.comments[0].id)
+        XCTAssertNotEqual(after.comments[0].isDetached, true)
+        XCTAssertEqual(RevisionText(runs: after.paragraphs[0].runs).finalText, "New")
+        var rejected = after; try rejected.resolveAllRevisions(accepting: false)
+        XCTAssertEqual(rejected.paragraphs[0].text, "Body")
+        XCTAssertEqual(rejected.comments[0].anchor, before.comments[0].anchor)
+    }
     func testObjectInsertionStillRejectsInvalidReferencePayload() throws {
         let document = document(); defer { document.close() }
         let editor = document.editorController!.editor, original = NSAttributedString(attributedString: document.editorController!.editor.storage)
