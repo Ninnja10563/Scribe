@@ -28,6 +28,25 @@ import DocumentCore
         document.undoManager?.undo(); XCTAssertEqual(document.snapshot().paragraphs, original.paragraphs)
         document.undoManager?.redo(); XCTAssertEqual(document.snapshot().paragraphs, changed.paragraphs)
     }
+    func testDeletingPastedBreakDoesNotFreezeOriginalTextFormatting() throws {
+        let document = document(); defer { document.close() }
+        let editor = document.editorController!.editor, original = document.snapshot()
+        var source = ScribeDocument(), title = Paragraph("X"), quote = Paragraph("Y")
+        title.styleID = "title"; quote.styleID = "quote"; source.sections[0].paragraphs = [title, quote]
+        editor.select(NSRange(location: 1, length: 0))
+        editor.activeTextView.replaceSelection(AttributedDocument.render(source), action: "Paste")
+        let pasted = document.snapshot()
+        let insertion = try XCTUnwrap(pasted.paragraphs[0].breakReview?.insertion?.id)
+        let separator = (editor.storage.string as NSString).range(of: "\n").location
+        editor.select(NSRange(location: separator, length: 0)); document.undoManager?.removeAllActions()
+        editor.activeTextView.deleteForward(nil)
+        let joined = document.snapshot(); try NativeFormat.validate(joined)
+        XCTAssertEqual(joined.paragraphs.map(\.text), ["AXYB"])
+        var rejected = joined; try rejected.resolveRevision(insertion, accepting: false)
+        XCTAssertEqual(rejected.paragraphs, original.paragraphs)
+        document.undoManager?.undo(); XCTAssertEqual(document.snapshot().paragraphs, pasted.paragraphs)
+        document.undoManager?.redo(); XCTAssertEqual(document.snapshot().paragraphs, joined.paragraphs)
+    }
     func testActualRTFPastePreservesParagraphAlignmentAndRejectsAsAGroup() throws {
         let document = document(); defer { document.close() }
         let editor = document.editorController!.editor, original = document.snapshot()
