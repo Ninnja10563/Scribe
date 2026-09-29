@@ -77,6 +77,30 @@ import DocumentCore
         try model.resolveAllRevisions(accepting: false)
         XCTAssertEqual(model.paragraphs.map(\.text), ["One", "Two"])
     }
+    func testTrailingEmptyParagraphKeepsFocusAndTypingStyleAfterPageReflow() throws {
+        let document = ScribeFileDocument(); defer { document.close() }
+        var paragraph = Paragraph("Line\u{2028}Line\u{2028}Line\u{2028}Line")
+        paragraph.runs[0].format.bold = true; paragraph.runs[0].format.italic = true
+        document.model.sections[0].paragraphs = [paragraph]
+        document.model.sections[0].page.height = 216
+        document.makeWindowControllers()
+        let editor = document.editorController!.editor
+        editor.reviewEditing.author = .init(name: "Writer")
+        editor.select(NSRange(location: editor.storage.length, length: 0))
+        editor.activeTextView.insertNewline(nil); editor.paginate()
+        XCTAssertGreaterThanOrEqual(editor.canvas.pageCount, 2)
+        let extra = try XCTUnwrap(editor.layout.extraLineFragmentTextContainer)
+        XCTAssertTrue(editor.activeTextView.textContainer === extra)
+        XCTAssertEqual(editor.activeTextView.selectedRange().location, editor.storage.length)
+        let empty = document.snapshot(); try NativeFormat.validate(empty)
+        XCTAssertEqual(empty.paragraphs.last?.runs.first?.format.bold, true)
+        XCTAssertEqual(empty.paragraphs.last?.runs.first?.format.italic, true)
+        editor.activeTextView.insertText("X", replacementRange: editor.activeTextView.selectedRange())
+        let typed = document.snapshot(); try NativeFormat.validate(typed)
+        XCTAssertEqual(typed.paragraphs.last?.id, empty.paragraphs.last?.id)
+        XCTAssertEqual(typed.paragraphs.last?.text, "X")
+        XCTAssertEqual(typed.paragraphs.last?.runs.first?.format.bold, true)
+    }
     func testExplicitNewlineReplacementTreatsLiteralTabsAsContent() throws {
         let document = document(Paragraph("\tField\tvalue")); defer { document.close() }
         let editor = document.editorController!.editor
