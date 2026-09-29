@@ -97,9 +97,49 @@ extension AppDelegate {
                 view.cacheDisplay(in: view.bounds, to: bitmap)
                 if let png = bitmap.representation(using: .png, properties: [:]) { try png.write(to: folder.appendingPathComponent("Scribe-Dark.png")) }
             }
+            try await smokeNotes(to: folder)
             print("Scribe launch smoke test passed: \(pages) pages, native save, DOCX re-import, PDF and window rendering")
             NSApp.terminate(nil)
         } catch { fputs("Smoke test failed: \(error)\n", stderr); exit(1) }
     }
+    private func smokeNotes(to folder: URL) async throws {
+        let document = ScribeFileDocument(); defer { document.close() }
+        document.model.title = "Notes in Scribe"
+        document.model.sections[0].pageNumbering = PageNumbering()
+        let foot = DocumentNote(kind: .footnote, text: "A footnote stays with its reference and shares the document's native page layout.")
+        let end = DocumentNote(kind: .endnote, text: "An endnote follows the main text. Its number links back to the original reference in exported PDF files.")
+        document.model.notes = [foot, end]
+        var paragraph = Paragraph("References are part of the document ")
+        for note in [foot, end] {
+            var reference = TextRun("\u{fffc}"); reference.noteID = note.id
+            paragraph.runs += [reference, TextRun(" ")]
+        }
+        document.model.sections[0].paragraphs = [Paragraph("Notes in Scribe", style: "title"), paragraph]
+        documents.addDocument(document); document.makeWindowControllers(); document.showWindows()
+        let controller = document.editorController!
+        controller.zoomPicker.selectItem(withTitle: "75%"); controller.changeZoom()
+        guard controller.editor.canvas.pageCount == 2, controller.editor.noteControls.buttons.count == 2 else { throw DocumentError.invalid("note pages or editing controls are missing") }
+        let native = folder.appendingPathComponent("Notes-smoke.scribe")
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+            document.save(to: native, ofType: ScribeFileDocument.typeName, for: .saveOperation) { error in
+                if let error { continuation.resume(throwing: error) } else { continuation.resume() }
+            }
+        }
+        let reopened = ScribeFileDocument(); defer { reopened.close() }
+        try reopened.read(from: Data(contentsOf: native), ofType: ScribeFileDocument.typeName)
+        guard reopened.model.notes == [foot, end] else { throw DocumentError.invalid("native note saving lost content") }
+        try PrintRenderer(editor: controller.editor).exportPDF(to: folder.appendingPathComponent("Notes-smoke.pdf"), title: document.model.title, author: "")
+        let word = try DOCX.encode(document.snapshot())
+        try word.write(to: folder.appendingPathComponent("Notes-smoke.docx"))
+        guard try DOCX.decode(word).document.notes.map(\.plainText) == [foot, end].map(\.plainText) else { throw DocumentError.invalid("DOCX note round-trip lost content") }
+        try await Task.sleep(nanoseconds: 100_000_000)
+        controller.window?.displayIfNeeded()
+        if let view = controller.window?.contentView, let bitmap = view.bitmapImageRepForCachingDisplay(in: view.bounds) {
+            view.cacheDisplay(in: view.bounds, to: bitmap)
+            if let png = bitmap.representation(using: .png, properties: [:]) { try png.write(to: folder.appendingPathComponent("Scribe-Notes.png")) }
+        }
+        print("Native note launch check passed: saving, reopening, DOCX, PDF and editing controls"); fflush(stdout)
+    }
+
 }
 #endif

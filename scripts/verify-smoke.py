@@ -112,3 +112,18 @@ for name in ['Scribe.png', 'Scribe-Dark.png']:
     white = sum(min(samples[i:i+3]) > 252 for i in range(0, len(samples), pix.n))
     assert white / (pix.width * pix.height) > 0.15, f'{name}: document page missing from the actual window capture'
 print('Light and dark native window captures retain visible document pages.')
+
+
+note_model = json.loads((root / 'Notes-smoke.scribe').read_text())
+assert [note['kind'] for note in note_model['notes']] == ['footnote', 'endnote']
+with pymupdf.open(root / 'Notes-smoke.pdf') as notes:
+    assert len(notes) == 2
+    assert 'A footnote stays with its reference' in notes[0].get_text()
+    assert 'An endnote follows the main text' in notes[1].get_text()
+    assert any(link.get('kind') == pymupdf.LINK_GOTO and link.get('page') == 1 for link in notes[0].get_links())
+    assert any(link.get('kind') == pymupdf.LINK_GOTO and link.get('page') == 0 for link in notes[1].get_links())
+    assert 'Page 2 of 2' in notes[1].get_text()
+with ZipFile(root / 'Notes-smoke.docx') as package:
+    assert {'word/footnotes.xml', 'word/endnotes.xml'} <= set(package.namelist())
+assert (root / 'Scribe-Notes.png').is_file()
+print('Actual application note save/reopen, Office parts, PDF pages and bidirectional links verified.')
