@@ -56,7 +56,7 @@ import DocumentCore
     }
     @objc private func edit(_ sender: NSButton) {
         guard let raw = sender.identifier?.rawValue, let id = UUID(uuidString: raw) else { return }
-        editor?.owner?.editorController?.editNote(id: id)
+        editor?.owner?.editorController?.openNote(id: id)
     }
     func clear() {
         for button in buttons.values { button.target = nil; button.removeFromSuperview() }

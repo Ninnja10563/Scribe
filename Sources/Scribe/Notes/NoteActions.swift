@@ -6,7 +6,7 @@ extension EditorWindowController {
     @objc func insertFootnote() { noteDialog(editing: false) }
     @objc func insertEndnote() { noteDialog(editing: false, kind: .endnote) }
     @objc func editNote() { noteDialog(editing: true) }
-    func editNote(id: UUID) {
+    func openNote(id: UUID) {
         var found: NSRange?
         editor.storage.enumerateAttribute(.scribeNote, in: NSRange(location: 0, length: editor.storage.length)) { value, range, stop in
             if let data = value as? Data, let note = try? JSONDecoder().decode(DocumentNote.self, from: data), note.id == id { found = range; stop.pointee = true }
