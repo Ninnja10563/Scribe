@@ -97,6 +97,9 @@ for label, path in [('Native', build / 'schema/StyleOverrides.pdf'), ('LibreOffi
         boxes = page.search_for(text)
         assert len(boxes) == 1, f'{label}: missing styled text {text}'
         rect = boxes[0] * 2
+        # Inspect inside the text bounds, excluding the adjacent paragraph separator.
+        # TextKit can paint a highlighted newline through the remaining line width.
+        rect = pymupdf.Rect(rect.x0 + 2, rect.y0 + 2, rect.x1 - 2, rect.y1 - 2)
         yellow = red = 0
         for y in range(max(0,int(rect.y0)), min(pix.height,int(rect.y1)+1)):
             for x in range(max(0,int(rect.x0)), min(pix.width,int(rect.x1)+1)):
