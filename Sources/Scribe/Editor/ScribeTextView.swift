@@ -116,7 +116,7 @@ import DocumentCore
         let pasteboard = NSPasteboard.general
         if let data = pasteboard.data(forType: .rtfd),
            let value = try? NSAttributedString(data: data, options: [.documentType: NSAttributedString.DocumentType.rtfd], documentAttributes: nil) {
-            let restored = pasteboard.data(forType: InlineObjectClipboard.type).flatMap { try? InlineObjectClipboard.restore($0, in: value) } ?? value
+            let restored = pasteboard.data(forType: InlineObjectClipboard.type).flatMap { try? InlineObjectClipboard.restore($0, in: value, styles: editor?.owner?.model.styles ?? ParagraphStyle.defaults) } ?? value
             let normalized = AttributedDocument.capture(restored, preserving: ScribeDocument())
             replaceSelection(AttributedDocument.render(normalized), action: "Paste"); return
         }

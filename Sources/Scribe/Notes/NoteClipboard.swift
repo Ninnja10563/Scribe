@@ -26,12 +26,13 @@ import DocumentCore
         return result
     }
     /// Freeze the source appearance without importing conflicting named styles.
-    static func normalized(_ note: DocumentNote, styles: [ParagraphStyle]) -> DocumentNote {
+    static func normalized(_ note: DocumentNote, styles: [ParagraphStyle], targetStyles: [ParagraphStyle] = ParagraphStyle.defaults) -> DocumentNote {
         var isolated = ScribeDocument(); isolated.styles = styles; isolated.sections[0].paragraphs = note.paragraphs
         let projection = NSMutableAttributedString(attributedString: AttributedDocument.render(isolated))
         projection.removeAttribute(.scribeStyle, range: NSRange(location: 0, length: projection.length))
         var result = note
-        result.paragraphs = AttributedDocument.capture(projection, preserving: ScribeDocument()).paragraphs
+        var target = ScribeDocument(); target.styles = targetStyles
+        result.paragraphs = AttributedDocument.capture(projection, preserving: target).paragraphs
         return result
     }
     static func newCopy(_ note: DocumentNote) -> DocumentNote {

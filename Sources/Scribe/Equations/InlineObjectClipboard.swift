@@ -37,7 +37,7 @@ import DocumentCore
         guard data.count <= NativeFormat.maximumBytes else { throw DocumentError.tooLarge }
         return data
     }
-    static func restore(_ data: Data, in value: NSAttributedString) throws -> NSAttributedString {
+    static func restore(_ data: Data, in value: NSAttributedString, styles: [ParagraphStyle] = ParagraphStyle.defaults) throws -> NSAttributedString {
         guard data.count <= NativeFormat.maximumBytes else { throw DocumentError.tooLarge }
         let payload = try JSONDecoder().decode(Payload.self, from: data)
         try validate(payload)
@@ -60,7 +60,7 @@ import DocumentCore
             result.removeAttribute(.scribeNote, range: range); result.removeAttribute(.scribeNoteNumber, range: range)
             result.removeAttribute(.scribeEquation, range: range); result.removeAttribute(.scribeImage, range: range)
             if let source = object.note {
-                let note = NoteClipboard.newCopy(source)
+                let note = NoteClipboard.newCopy(NoteClipboard.normalized(source, styles: ParagraphStyle.defaults, targetStyles: styles))
                 let numbered = try NoteNumbering.resolve(referenceIDs: [note.id], notes: [note])[0]
                 let font = ScriptProjection.logicalFont(in: result.attributes(at: range.location, effectiveRange: nil)) ?? .systemFont(ofSize: 12)
                 result.addAttributes([.attachment: NoteProjection.attachment(numbered, baseFont: font), .scribeNote: try JSONEncoder().encode(note), .scribeNoteNumber: 1], range: range)
