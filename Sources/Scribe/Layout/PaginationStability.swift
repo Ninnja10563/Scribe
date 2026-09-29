@@ -15,7 +15,7 @@ struct PaginationStability {
     }
     func canStop(after index: Int, characterEnd: Int, documentLength: Int) -> Bool {
         guard let ends = expectedEnds, index + 1 < ends.count, ends.last == documentLength else { return false }
-        return characterEnd >= editedEnd && ends[index] == characterEnd
+        return characterEnd < documentLength && characterEnd >= editedEnd && ends[index] == characterEnd
     }
     func remainingRanges(after index: Int) -> [NSRange] {
         guard let ends = expectedEnds, index + 1 < ends.count else { return [] }

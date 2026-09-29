@@ -168,6 +168,9 @@ import DocumentCore
         for index in start..<2000 {
             lastPaginationVisitedPages += 1
             if index >= textViews.count { addPage() }
+            // TextKit's paragraph-spacing decisions at a container boundary depend on
+            // whether a successor exists. Cold and incremental layout must see one.
+            if index < 1999, index + 1 >= textViews.count { addPage() }
             let container = layout.textContainers[index]
             layout.ensureLayout(for: container)
             let range = layout.glyphRange(for: container)
@@ -194,7 +197,7 @@ import DocumentCore
             }
             if NSMaxRange(range) >= layout.numberOfGlyphs {
                 // A trailing newline may need a final empty page for its insertion point.
-                if storage.string.hasSuffix("\n"), layout.extraLineFragmentTextContainer == nil, range.length > 0 {
+                if storage.string.hasSuffix("\n"), layout.extraLineFragmentTextContainer !== container, range.length > 0 {
                     continue
                 }
                 break

@@ -3,6 +3,11 @@ import XCTest
 @testable import Scribe
 
 final class PaginationStabilityTests: XCTestCase {
+    func testDocumentEndDoesNotReuseAnOldEmptyInsertionPage() {
+        var state = PaginationStability()
+        state.insert(at: 20, length: 1, previousEnds: [100, 100], startingClean: true)
+        XCTAssertFalse(state.canStop(after: 0, characterEnd: 101, documentLength: 101))
+    }
     func testOffsetsFollowMultipleInsertionsAndCannotStopBeforeLastEdit() {
         var state = PaginationStability()
         state.insert(at: 50, length: 2, previousEnds: [100, 200, 300], startingClean: true)
@@ -55,6 +60,19 @@ import PDFKit
         let pdf = try XCTUnwrap(PDFDocument(url: url)), text = pdf.string ?? ""
         XCTAssertEqual(pdf.pageCount, editor.textViews.count)
         for index in 1..<160 { XCTAssertEqual(text.components(separatedBy: "Entry \(index):").count - 1, 1) }
+    }
+    func testInitialAndReflowedLayoutAgreeAndKeepTrailingEmptyPage() throws {
+        let document = ScribeFileDocument()
+        document.model.sections[0].paragraphs = (0..<80).map { Paragraph(String(repeating: "Paragraph spacing at page boundaries. ", count: 8), style: $0 % 7 == 0 ? "heading2" : "normal") }
+        let editor = PaginatedEditor(document: document); defer { editor.prepareForClose() }
+        let before = editor.layout.textContainers.map { editor.layout.glyphRange(for: $0) }
+        let copy = NSAttributedString(attributedString: editor.storage)
+        editor.storage.setAttributedString(copy); editor.paginate()
+        XCTAssertEqual(editor.layout.textContainers.map { editor.layout.glyphRange(for: $0) }, before)
+        editor.storage.append(NSAttributedString(string: "\n", attributes: editor.storage.attributes(at: editor.storage.length - 1, effectiveRange: nil)))
+        editor.paginate()
+        XCTAssertTrue(editor.layout.extraLineFragmentTextContainer.map { editor.layout.textContainers.contains($0) } ?? false)
+        try compareWithFullLayout(editor, document: document)
     }
     func testWrappingAtPageBoundariesAndFallbackEditsMatchFullLayout() throws {
         let document = ScribeFileDocument()
