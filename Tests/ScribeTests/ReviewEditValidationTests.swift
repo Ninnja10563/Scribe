@@ -54,6 +54,24 @@ import DocumentCore
         XCTAssertEqual(rejected.paragraphs[0].text, "Body")
         XCTAssertEqual(rejected.comments[0].anchor, before.comments[0].anchor)
     }
+    func testInlineRichInsertionCannotReplaceDestinationParagraphIdentityOrStyle() throws {
+        let document = document(); defer { document.close() }
+        let paragraphID = document.model.paragraphs[0].id
+        document.performEdit("Heading bookmark") { model in
+            model.sections[0].paragraphs[0].styleID = "heading1"
+            _ = model.addParagraphBookmark(name: "Destination", paragraphID: paragraphID)
+        }
+        let editor = document.editorController!.editor
+        let incoming = NSAttributedString(string: "Pasted ", attributes: [.font: NSFont.systemFont(ofSize: 15), .scribeParagraphID: UUID().uuidString, .scribeStyle: "normal", .paragraphStyle: NSParagraphStyle.default])
+        editor.select(NSRange(location: 0, length: 0))
+        editor.activeTextView.replaceSelection(incoming, action: "Paste")
+        let after = document.snapshot(); try NativeFormat.validate(after)
+        XCTAssertEqual(after.paragraphs[0].id, paragraphID)
+        XCTAssertEqual(after.paragraphs[0].styleID, "heading1")
+        XCTAssertEqual(after.bookmarks[0].anchor.paragraphID, paragraphID)
+        XCTAssertEqual(after.paragraphs[0].runs.first?.format.fontSize, 15)
+        XCTAssertEqual(after.outline[0].title, "Pasted Body")
+    }
     func testObjectInsertionStillRejectsInvalidReferencePayload() throws {
         let document = document(); defer { document.close() }
         let editor = document.editorController!.editor, original = NSAttributedString(attributedString: document.editorController!.editor.storage)

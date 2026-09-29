@@ -23,11 +23,12 @@ import DocumentCore
            !value.string.contains("\n") { insertion = previous.identity }
         else { insertion = RevisionIdentity(author: author, date: now) }
         let original = editor.storage.attributedSubstring(from: range)
+        let contextual = ReviewTextProjection.preservingParagraphContext(value, original: original, range: range, in: editor)
         let replacement: NSAttributedString
         if original.string == value.string {
-            replacement = try ReviewTextProjection.formatting(original, as: value, identity: insertion, styles: editor.owner?.model.styles ?? ParagraphStyle.defaults)
+            replacement = try ReviewTextProjection.formatting(original, as: contextual, identity: insertion, styles: editor.owner?.model.styles ?? ParagraphStyle.defaults)
         } else {
-            replacement = try ReviewTextProjection.replacing(original, with: value, insertion: insertion, deletion: RevisionIdentity(author: author, date: now))
+            replacement = try ReviewTextProjection.replacing(original, with: contextual, insertion: insertion, deletion: RevisionIdentity(author: author, date: now))
         }
         lastValidationLength = try ReviewEditValidation.validate(replacement, replacing: range, in: editor)
         lastInsertion = range.length == 0 && value.length > 0 && !value.string.contains("\n") ? (insertion, range.location + replacement.length, now) : nil
