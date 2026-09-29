@@ -7,6 +7,8 @@ import DocumentCore
     let outline = DocumentOutlineView(frame: .zero)
     let sidebar = NSView()
     let commentsSidebar = CommentsSidebar()
+    let reviewSidebar = ReviewSidebar()
+    private var reviewBeforeFocus = false
     private var commentsBeforeFocus = false
     private var rulerBeforeFocus = true
     let status = NSTextField(labelWithString: "")
@@ -80,6 +82,9 @@ import DocumentCore
         commentsSidebar.owner = self; split.addArrangedSubview(commentsSidebar); commentsSidebar.isHidden = true
         commentsSidebar.widthAnchor.constraint(equalToConstant: 300).isActive = true
         split.setHoldingPriority(.defaultHigh, forSubviewAt: 2)
+        reviewSidebar.owner = self; split.addArrangedSubview(reviewSidebar); reviewSidebar.isHidden = true
+        reviewSidebar.widthAnchor.constraint(equalToConstant: 300).isActive = true
+        split.setHoldingPriority(.defaultHigh, forSubviewAt: 3)
         setupOutline()
         sidebar.widthAnchor.constraint(greaterThanOrEqualToConstant: 200).isActive = true
         sidebar.widthAnchor.constraint(lessThanOrEqualToConstant: 280).isActive = true
@@ -127,6 +132,7 @@ import DocumentCore
     func refreshOutline(using snapshot: ScribeDocument? = nil) {
         guard !isClosing else { return }
         let model = snapshot ?? fileDocument.snapshot(); commentsSidebar.reload(model); let entries = model.outline; outlineHint.isHidden = !entries.isEmpty; outline.refresh(entries)
+        if !reviewSidebar.isHidden { reviewSidebar.reload(model) }
         let selected = stylePicker.titleOfSelectedItem
         stylePicker.removeAllItems(); stylePicker.addItems(withTitles: model.styles.map(\.name))
         if let selected { stylePicker.selectItem(withTitle: selected) }
@@ -167,6 +173,7 @@ import DocumentCore
         searchBar.cancelPendingWork()
         outline.navigate = nil; outline.returnToDocument = nil
         outline.delegate = nil; outline.dataSource = nil
+        reviewSidebar.table.delegate = nil; reviewSidebar.table.dataSource = nil
         for view in editor.textViews where view.reviewComposition != nil { view.cancelReviewComposition() }
         window?.makeFirstResponder(nil)
         editor.prepareForClose()
@@ -198,6 +205,8 @@ import DocumentCore
         else { editor.scrollView.rulersVisible = rulerBeforeFocus }
         if !isFocused { commentsBeforeFocus = !commentsSidebar.isHidden; commentsSidebar.isHidden = true }
         else { commentsSidebar.isHidden = !commentsBeforeFocus }
+        if !isFocused { reviewBeforeFocus = !reviewSidebar.isHidden; reviewSidebar.isHidden = true }
+        else { reviewSidebar.isHidden = !reviewBeforeFocus }
         isFocused.toggle(); sidebar.isHidden = isFocused; toolbar.isHidden = isFocused; if isFocused { searchBar.isHidden = true }; window?.makeFirstResponder(editor.activeTextView) }
     @objc func findNext() { searchBar.isHidden = false; searchBar.next() }
     @objc func findPrevious() { searchBar.isHidden = false; searchBar.previous() }
