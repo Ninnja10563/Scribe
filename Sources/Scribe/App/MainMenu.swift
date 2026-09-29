@@ -33,6 +33,7 @@ import AppKit
             let i = NSMenuItem(title: title, action: #selector(ScribeFileDocument.exportDocument(_:)), keyEquivalent: ""); i.representedObject = format; exports.addItem(i)
         }
         file.addItem(.separator()); item(file, "Page Layout…", #selector(EditorWindowController.pageSettings))
+        item(file, "Document Properties…", #selector(EditorWindowController.documentProperties))
         item(file, "Print…", #selector(NSDocument.printDocument(_:)), "p")
         let edit = menu("Edit")
         item(edit, "Undo", Selector(("undo:")), "z"); item(edit, "Redo", Selector(("redo:")), "z", shift: true)

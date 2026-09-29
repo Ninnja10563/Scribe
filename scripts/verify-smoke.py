@@ -17,6 +17,9 @@ args = parser.parse_args()
 root = args.directory
 native = json.loads((root / 'Smoke.scribe').read_text())
 word = Document(root / 'Smoke.docx')
+assert word.core_properties.title == native['title'] == 'Scribe Smoke Test'
+assert word.core_properties.author == native['author'] == 'Scribe'
+assert word.core_properties.language == native['language'] == 'en-GB'
 assert len(word.tables) == 1 and len(word.inline_shapes) == 1, 'Missing structured objects'
 assert word.tables[0].cell(0, 0).text == 'Section'
 assert word.tables[0].cell(2, 2).text == 'Ready'
@@ -25,6 +28,9 @@ assert word.tables[0].cell(1, 0).text == 'Structure\nStyles and outline'
 namespace = {'w': 'http://schemas.openxmlformats.org/wordprocessingml/2006/main'}
 value_key = '{' + namespace['w'] + '}val'
 with ZipFile(root / 'Smoke.docx') as package:
+    styles = ElementTree.fromstring(package.read('word/styles.xml'))
+    language = styles.find('w:docDefaults/w:rPrDefault/w:rPr/w:lang', namespace)
+    assert language is not None and language.get(value_key) == native['language']
     numbering = ElementTree.fromstring(package.read('word/numbering.xml'))
     starts = {node.get(value_key) for node in numbering.findall('.//w:start', namespace)}
     formats = {node.get(value_key) for node in numbering.findall('.//w:numFmt', namespace)}

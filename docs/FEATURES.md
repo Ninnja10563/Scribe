@@ -1,10 +1,10 @@
-# Feature status — Scribe 0.9 development (latest release: 0.8)
+# Feature status — Scribe 0.10 development (latest release: 0.9)
 
 This is a foundation release. “Implemented” means there is working code and an exposed editing path, not that the feature has the interoperability coverage of a mature word processor.
 
 | Area | Implemented | Still needed |
 | --- | --- | --- |
-| Native application | Swift/AppKit, arm64 bundle, document windows and tabs, menus, native spelling, focus mode, persistent Fit Page/Fit Width and fixed zoom, light/dark chrome | Physical-Mac keyboard/IME/VoiceOver audit, richer preferences |
+| Native application | Swift/AppKit, arm64 bundle, document windows and tabs, menus, native spelling with per-document language, title/author properties, focus mode, persistent Fit Page/Fit Width and fixed zoom, light/dark chrome | Physical-Mac keyboard/IME/VoiceOver audit, mixed-language runs, richer preferences |
 | Document model | Versioned semantic paragraphs/runs, sections, styles, tables/cell references, inline images, IDs; v1–v7→v8 migrations; TOC definitions and entries | More block types, independent section editing, preservation of future extension payloads |
 | Pagination | Shared TextKit layout across actual page containers; A4/Letter/Legal, custom dimensions, orientation, fractional margins, page breaks | Virtualization, widow/orphan controls, configurable hyphenation, typography audit |
 | Formatting | Fonts/size and concrete faces/weights via native panel, common traits, color/highlight, super/subscript, alignment, spacing and indents | Draggable ruler, dedicated inline font-weight controls |

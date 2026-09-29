@@ -2,7 +2,7 @@
 
 A native document-authoring application for Apple Silicon Macs, built with Swift and AppKit. This repository is an early foundation for a professional word processor, not a finished Word or Pages replacement.
 
-[Download Scribe 0.8.0 for Apple Silicon](https://github.com/Ninnja10563/Scribe/releases/tag/v0.8.0) · [Feature status](docs/FEATURES.md)
+[Download Scribe 0.9.0 for Apple Silicon](https://github.com/Ninnja10563/Scribe/releases/tag/v0.9.0) · [Feature status](docs/FEATURES.md)
 
 ![Scribe's native document window with a table and inline image](docs/images/scribe-light.png)
 
@@ -40,7 +40,7 @@ On Linux, install Swift 6 plus the zlib development headers (`zlib1g-dev` on Deb
 
 ## Scope and limitations
 
-The full requested product is a multi-milestone engineering program. Nested tables, floating objects, shapes, wrapping, track changes, notes, equations, direct-on-page header editing, and independent section layout are **not implemented**. Grammar checking remains a modular extension point. Anchored comments, automatic tables of contents and named paragraph bookmarks are implemented. The current development branch also adds rectangular merged cells; a cell taller than one page remains unsupported and must not be exported with clipped text.
+The full requested product is a multi-milestone engineering program. Nested tables, floating objects, shapes, wrapping, track changes, notes, equations, direct-on-page header editing, and independent section layout are **not implemented**. Grammar checking remains a modular extension point. Anchored comments, automatic tables of contents and named paragraph bookmarks are implemented. Rectangular merged cells are also implemented; a cell taller than one page remains unsupported and must not be exported with clipped text.
 
 DOCX supports common text, basic tables, inline images and running content, not full Word interoperability. Nested table geometry, tracked changes, notes and advanced fields are not preserved; comment reply hierarchy and newer collaboration metadata remain limited. Common numbering definitions and restarts are supported; custom compound markers, restart rules and complex styles remain limited, with known losses reported. Markdown supports a small subset and is not a CommonMark round-trip implementation. PDF export supports page ranges and title/author/subject/keywords; image-quality presets are pending; external hyperlinks are retained. Page views are reused but not virtualized. Long-document interactive performance still requires profiling on physical Macs.
 

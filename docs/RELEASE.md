@@ -1,12 +1,10 @@
-Scribe 0.9.0 adds merged table cells.
+Scribe 0.10.0 adds document properties and spelling-language controls.
 
-- Merge a rectangle starting at the current cell, preserving all text, paragraph identities, comments and bookmarks.
-- Split a merged cell back into its grid; existing text stays in the first cell.
-- Row/column edits resize intersected spans and preserve content when a merged anchor survives deletion.
-- Native table layout and Tab navigation understand merged cells. DOCX uses actual gridSpan and vMerge properties, with an independent import fixture.
-- A cell taller than one page is not yet supported. Overflow blocks PDF/print instead of silently clipping text; native and DOCX content is retained.
-- Native format v8 migrates v1–v7 documents in memory.
+- File → Document Properties edits title, author and the document’s spelling language, with Undo/Redo.
+- Native checking uses per-document orthography options; automatic language detection is available without changing the system spelling preference.
+- The status bar displays the actual document language.
+- DOCX carries title/author/language in real core properties and default spelling language in Word styles. Imports retain metadata and disclose mixed-language approximations.
 
-This remains a development release. Cell-range selection, drag sizing and nested tables remain unfinished, along with independent sections, track changes, footnotes/endnotes, equations, shapes and floating objects. See docs/FEATURES.md and docs/VALIDATION.md.
+This remains a development release. Tall cells cannot continue across pages; unsafe PDF/print output is blocked. Independent sections, track changes, footnotes/endnotes, equations, shapes and floating objects remain unfinished. See docs/FEATURES.md and docs/VALIDATION.md.
 
 For Apple Silicon, macOS 14+. Development builds are ad-hoc signed, not notarized. Physical-Mac input/accessibility and manual Word/Pages/LibreOffice validation remain pending.

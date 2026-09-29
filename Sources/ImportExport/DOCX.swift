@@ -19,6 +19,18 @@ public enum DOCX {
         let files = try ZipArchive.decode(data)
         guard let content = files["word/document.xml"] else { throw DocumentError.invalid("DOCX has no main document part") }
         let delegate = WordReader(); delegate.files = files
+        delegate.document.language = "und"
+        var metadataPath = "docProps/core.xml"
+        if let rootRelationships = files["_rels/.rels"] {
+            let reader = RelationshipReader(); try parse(rootRelationships, delegate: reader)
+            metadataPath = reader.partTargets[DOCXMetadata.relationship] ?? metadataPath
+        }
+        if let metadata = files[metadataPath] {
+            let reader = DOCXMetadataReader(); try parse(metadata, delegate: reader)
+            if let title = reader.title, !title.isEmpty { delegate.document.title = title }
+            if let author = reader.author { delegate.document.author = author }
+            if let language = reader.language, let normalized = try? DocumentMetadata.languageIdentifier(language) { delegate.document.language = normalized }
+        }
         var partTargets: [String: String] = [:]
         if let rels = files["word/_rels/document.xml.rels"] {
             let reader = RelationshipReader(); try parse(rels, delegate: reader); delegate.links = reader.links; delegate.targets = reader.targets; partTargets = reader.partTargets
@@ -28,6 +40,10 @@ public enum DOCX {
             let reader = StyleReader(); try parse(styles, delegate: reader)
             for style in reader.styles { delegate.document.updateStyle(style) }
             delegate.styleLists = reader.resolvedLists
+            if let language = reader.defaultLanguage, let normalized = try? DocumentMetadata.languageIdentifier(language) { delegate.document.language = normalized }
+            if reader.styleLanguages.contains(where: { (try? DocumentMetadata.languageIdentifier($0)) != delegate.document.language }) {
+                delegate.warnings.insert("Style-specific spelling languages are flattened to the document language.")
+            }
         }
         if let numbering = part("numbering") { try parse(numbering, delegate: delegate.numbering) }
         try parse(content, delegate: delegate)
@@ -194,11 +210,17 @@ private class StyleReader: NSObject, XMLParserDelegate {
         return result
     }
     var styles: [ParagraphStyle] = []; var current: ParagraphStyle?
+    var defaultLanguage: String?
+    var styleLanguages = Set<String>()
+    private var inDefaults = false
     func parser(_ parser: XMLParser, didStartElement name: String, namespaceURI: String?, qualifiedName: String?, attributes a: [String: String]) {
+        if name == "docDefaults" { inDefaults = true }
+        if inDefaults, name == "lang" { defaultLanguage = wordAttribute(a) }
         if name == "style", wordAttribute(a, "type") == "paragraph", let id = wordAttribute(a, "styleId") {
             current = ParagraphStyle(id: id, name: id)
         }
         guard current != nil else { return }
+        if name == "lang", let language = wordAttribute(a) { styleLanguages.insert(language) }
         if name == "basedOn" { parents[current!.id] = wordAttribute(a) }
         if name == "numId" { var list = lists[current!.id] ?? StyleList(); list.id = wordAttribute(a); lists[current!.id] = list }
         if name == "ilvl" { var list = lists[current!.id] ?? StyleList(); list.level = wordAttribute(a).flatMap(Int.init); lists[current!.id] = list }
@@ -208,6 +230,7 @@ private class StyleReader: NSObject, XMLParserDelegate {
         applyParagraph(name, a, &current!.paragraph)
     }
     func parser(_ parser: XMLParser, didEndElement name: String, namespaceURI: String?, qualifiedName: String?) {
+        if name == "docDefaults" { inDefaults = false }
         if name == "style", let style = current { styles.append(style); current = nil }
     }
 }
@@ -244,6 +267,10 @@ private class WordReader: NSObject, XMLParserDelegate {
             if let t = tableIndex, row >= 0, column >= 0 { paragraph?.tableCell = TableCellReference(tableID: document.tables[t].id, row: row, column: column) }
         case "r": run = TextRun("", link: link); inRun = true
         case "t": collecting = true
+        case "lang":
+            if let language = wordAttribute(a), (try? DocumentMetadata.languageIdentifier(language)) != document.language {
+                warnings.insert("Run and paragraph spelling languages are flattened to the document language.")
+            }
         case "instrText": collectingInstruction = true; instruction = ""
         case "fldSimple": inspectFieldInstruction(wordAttribute(a, "instr") ?? "")
         case "fldChar":

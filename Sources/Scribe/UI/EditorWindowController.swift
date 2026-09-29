@@ -41,7 +41,7 @@ import DocumentCore
     override func windowTitle(forDocumentDisplayName displayName: String) -> String {
         guard !isClosing, let document = document as? ScribeFileDocument,
               document.isRecoveredCopy, document.fileURL == nil else { return displayName }
-        return document.model.title
+        return document.model.title.hasSuffix(" — Recovered") ? document.model.title : document.model.title + " — Recovered"
     }
     deinit { NotificationCenter.default.removeObserver(self) }
     @objc private func windowClosing() { prepareForClose() }
@@ -148,7 +148,7 @@ import DocumentCore
         let selection = view.selectedRange()
         let page = editor.textViews.firstIndex(where: { $0 === view }).map { $0 + 1 } ?? 1
         let selectedWords = selection.length > 0 && NSMaxRange(selection) <= editor.storage.length ? DocumentStatistics(text: editor.semanticText.text(inSourceRange: selection)).words : nil
-        status.stringValue = "Page \(page) of \(editor.textViews.count)    ·    \(cachedWords.formatted()) words\(selectedWords.map { " (\($0) selected)" } ?? "")    ·    English (Australia)    ·    \(Int((editor.zoom * 100).rounded()))%"
+        status.stringValue = "Page \(page) of \(editor.textViews.count)    ·    \(cachedWords.formatted()) words\(selectedWords.map { " (\($0) selected)" } ?? "")    ·    \(DocumentSpelling.label(for: fileDocument.model.language))    ·    \(Int((editor.zoom * 100).rounded()))%"
         if let id = view.typingAttributes[.scribeStyle] as? String, let style = fileDocument.model.styles.first(where: { $0.id == id }) { stylePicker.selectItem(withTitle: style.name) }
     }
     func showStatus(_ message: String) { if !isClosing { status.stringValue = message } }

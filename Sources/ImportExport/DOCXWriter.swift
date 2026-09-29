@@ -66,7 +66,9 @@ final class DOCXWriter {
         let styles = document.styles.map { s in
             "<w:style w:type=\"paragraph\" w:styleId=\"\(DOCX.xml(s.id))\"\(s.id == "normal" ? " w:default=\"1\"" : "")><w:name w:val=\"\(DOCX.xml(s.name))\"/><w:pPr>\(DOCX.paragraphProperties(s.paragraph))\(s.headingLevel.map { "<w:outlineLvl w:val=\"\($0 - 1)\"/>" } ?? "")</w:pPr><w:rPr>\(DOCX.runProperties(s.text))</w:rPr></w:style>"
         }.joined()
-        put("word/styles.xml", "<w:styles xmlns:w=\"\(DOCX.wordNS)\">\(styles)</w:styles>")
+        let language = try DocumentMetadata.languageIdentifier(document.language)
+        let defaults = language == "und" ? "" : "<w:docDefaults><w:rPrDefault><w:rPr><w:lang w:val=\"\(DOCX.xml(language))\"/></w:rPr></w:rPrDefault></w:docDefaults>"
+        put("word/styles.xml", "<w:styles xmlns:w=\"\(DOCX.wordNS)\">\(defaults)\(styles)</w:styles>")
         _ = relationship(type: "styles", target: "styles.xml")
         put("word/numbering.xml", numbering.xml)
         _ = relationship(type: "numbering", target: "numbering.xml")
@@ -81,7 +83,9 @@ final class DOCXWriter {
         put("word/settings.xml", "<w:settings xmlns:w=\"\(DOCX.wordNS)\"><w:updateFields w:val=\"true\"/></w:settings>")
         _ = relationship(type: "settings", target: "settings.xml")
         put("word/_rels/document.xml.rels", "<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\">\(relationships.joined())</Relationships>")
-        put("_rels/.rels", "<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\"><Relationship Id=\"document\" Type=\"\(DOCX.relationNS)/officeDocument\" Target=\"word/document.xml\"/></Relationships>")
+        put("docProps/core.xml", try DOCXMetadata.xml(document))
+        overrides.append("<Override PartName=\"/docProps/core.xml\" ContentType=\"\(DOCXMetadata.contentType)\"/>")
+        put("_rels/.rels", "<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\"><Relationship Id=\"document\" Type=\"\(DOCX.relationNS)/officeDocument\" Target=\"word/document.xml\"/><Relationship Id=\"properties\" Type=\"\(DOCXMetadata.relationship)\" Target=\"docProps/core.xml\"/></Relationships>")
         let images = [("png", "image/png"), ("jpg", "image/jpeg"), ("jpeg", "image/jpeg"), ("tiff", "image/tiff"), ("heic", "image/heic")].map { "<Default Extension=\"\($0.0)\" ContentType=\"\($0.1)\"/>" }.joined()
         let standard = [("document", "document.main"), ("styles", "styles"), ("numbering", "numbering"), ("settings", "settings")].map { "<Override PartName=\"/word/\($0.0).xml\" ContentType=\"application/vnd.openxmlformats-officedocument.wordprocessingml.\($0.1)+xml\"/>" }.joined()
         put("[Content_Types].xml", "<Types xmlns=\"http://schemas.openxmlformats.org/package/2006/content-types\"><Default Extension=\"rels\" ContentType=\"application/vnd.openxmlformats-package.relationships+xml\"/><Default Extension=\"xml\" ContentType=\"application/xml\"/>\(images)\(standard)\(overrides.joined())</Types>")
