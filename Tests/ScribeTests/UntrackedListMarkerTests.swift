@@ -2,6 +2,7 @@
 import AppKit
 import XCTest
 import DocumentCore
+import ImportExport
 @testable import Scribe
 
 @MainActor final class UntrackedListMarkerTests: XCTestCase {
@@ -25,6 +26,14 @@ import DocumentCore
         let joined = document.snapshot()
         XCTAssertEqual(joined.paragraphs.map(\.text), ["FirstSecond"])
         try NativeFormat.validate(joined)
+        XCTAssertEqual(try NativeFormat.decode(NativeFormat.encode(joined)), joined)
+        if let directory = ProcessInfo.processInfo.environment["SCRIBE_SCHEMA_OUTPUT"] {
+            let folder = URL(fileURLWithPath: directory, isDirectory: true)
+            try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+            try NativeFormat.encode(joined).write(to: folder.appendingPathComponent("JoinedList.scribe"))
+            try DOCX.encode(joined).write(to: folder.appendingPathComponent("JoinedList.docx"))
+            try PrintRenderer(editor: editor).exportPDF(to: folder.appendingPathComponent("JoinedList.pdf"), title: "Joined list", author: "Scribe tests")
+        }
         document.undoManager?.undo(); XCTAssertEqual(document.snapshot().paragraphs, before.paragraphs)
         document.undoManager?.redo(); XCTAssertEqual(document.snapshot().paragraphs, joined.paragraphs)
     }

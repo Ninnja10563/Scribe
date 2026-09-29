@@ -8,12 +8,16 @@ final class UntrackedReplacementTests: XCTestCase {
         document.sections[0].paragraphs = [Paragraph("First"), Paragraph("Second")]
         let first = document.paragraphs[0].id, second = document.paragraphs[1].id
         document.bookmarks = [Bookmark(name: "Source", anchor: TextAnchor(paragraphID: second, offset: 0, length: 0))]
+        document.comments = [Comment(anchor: TextAnchor(paragraphID: second, offset: 0, length: 6), text: "Source detail", author: "Reviewer")]
         var anchor = TextAnchor(paragraphID: first, offset: 5, length: 0)
         anchor.endParagraphID = second; anchor.endOffset = 0
         let caret = try document.replaceUntrackedRange(anchor, withLines: [[]])
         XCTAssertEqual(document.paragraphs.map(\.text), ["FirstSecond"])
         XCTAssertEqual(caret.paragraphID, first); XCTAssertEqual(caret.offset, 5)
         XCTAssertEqual(document.bookmarks[0].anchor.paragraphID, first)
+        XCTAssertEqual(document.comments[0].anchor.paragraphID, first)
+        XCTAssertEqual(document.comments[0].anchor.offset, 5)
+        XCTAssertEqual(document.comments[0].anchor.length, 6)
         XCTAssertFalse(document.hasPendingRevisions)
         try NativeFormat.validate(document)
     }
