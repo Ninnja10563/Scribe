@@ -1,0 +1,26 @@
+name: Launch and updater diagnostics
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: macos-14
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo xcode-select -s /Applications/Xcode_16.2.app/Contents/Developer
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install cryptography==50.0.1
+      - run: ./scripts/build-dmg.sh
+      - run: python scripts/native-smoke.py build/Scribe.app/Contents/MacOS/Scribe --startup-smoke-test
+      - run: python scripts/verify-updater.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Update-diagnostics
+          path: |
+            build/update-test/*.log
+            build/smoke/
