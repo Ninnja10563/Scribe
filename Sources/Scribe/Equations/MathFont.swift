@@ -18,6 +18,8 @@ enum MathFont {
         return CTFontCreateWithName("STIXTwoMath-Regular" as CFString, size, nil)
     }
     static var isAvailable: Bool { registered }
+    private static let mathData = CTFontCopyTable(font(size: 20), 0x4D415448, []) as Data? ?? Data()
+    private static let unitsPerEm = CGFloat(max(1, CTFontGetUnitsPerEm(font(size: 20))))
 
     /// OpenType MATH constants are signed big-endian font units, not pixels.
     /// https://learn.microsoft.com/en-us/typography/opentype/spec/math
@@ -28,10 +30,9 @@ enum MathFont {
         private let scale: CGFloat
         init(size: CGFloat) {
             self.size = size
-            let font = MathFont.font(size: size)
-            data = CTFontCopyTable(font, 0x4D415448, []) as Data? ?? Data()
+            data = MathFont.mathData
             constants = data.count >= 6 ? Int(data[4]) << 8 | Int(data[5]) : 0
-            scale = size / CGFloat(max(1, CTFontGetUnitsPerEm(font)))
+            scale = size / MathFont.unitsPerEm
         }
         private func signed(_ offset: Int) -> Int? {
             guard constants > 0, offset >= 0, offset + 1 < data.count else { return nil }

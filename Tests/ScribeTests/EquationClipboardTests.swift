@@ -13,6 +13,7 @@ import DocumentCore
         source.editorController!.editor.select(NSRange(location: 0, length: 1))
         let board = NSPasteboard.general; board.clearContents()
         source.editorController!.editor.activeTextView.copy(nil)
+        XCTAssertEqual(board.string(forType: .string), "[Equation: \(equation.source)]")
         let privateData = try XCTUnwrap(board.data(forType: InlineObjectClipboard.type))
         let rtfd = try XCTUnwrap(board.data(forType: .rtfd))
         let external = try NSAttributedString(data: rtfd, options: [.documentType: NSAttributedString.DocumentType.rtfd], documentAttributes: nil)

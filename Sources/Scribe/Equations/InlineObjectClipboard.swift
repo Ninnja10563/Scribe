@@ -17,14 +17,18 @@ import DocumentCore
     }
     static func encode(_ value: NSAttributedString) throws -> Data {
         var objects: [Entry] = []
-        value.enumerateAttributes(in: NSRange(location: 0, length: value.length)) { attributes, range, _ in
+        let text = value.string as NSString
+        var tooMany = false
+        value.enumerateAttributes(in: NSRange(location: 0, length: value.length)) { attributes, range, stop in
             let equation = (attributes[.scribeEquation] as? Data).flatMap { try? JSONDecoder().decode(Equation.self, from: $0) }
             let image = (attributes[.scribeImage] as? Data).flatMap { try? JSONDecoder().decode(InlineImage.self, from: $0) }
             guard equation != nil || image != nil else { return }
-            for location in range.location..<NSMaxRange(range) where (value.string as NSString).character(at: location) == 0xFFFC {
+            for location in range.location..<NSMaxRange(range) where text.character(at: location) == 0xFFFC {
+                guard objects.count < 10000 else { tooMany = true; stop.pointee = true; break }
                 objects.append(Entry(location: location, equation: equation, image: image))
             }
         }
+        guard !tooMany else { throw DocumentError.invalid("too many clipboard objects") }
         let payload = Payload(version: 1, text: value.string, objects: objects)
         try validate(payload)
         let data = try JSONEncoder().encode(payload)
@@ -53,8 +57,11 @@ import DocumentCore
         guard payload.version == 1, payload.objects.count <= 10000,
               payload.text.utf8.count <= NativeFormat.maximumBytes,
               Set(payload.objects.map(\.location)).count == payload.objects.count else { throw DocumentError.invalid("invalid clipboard object list") }
+        var estimatedBytes = payload.text.utf8.count
         var check = ScribeDocument(); check.sections[0].paragraphs[0].runs = []
         for object in payload.objects {
+            estimatedBytes += (object.image?.data.count ?? 0) * 4 / 3 + (object.equation?.source.utf8.count ?? 0) * 6 + 1024
+            guard estimatedBytes <= NativeFormat.maximumBytes else { throw DocumentError.tooLarge }
             guard object.location >= 0, object.location < text.length, text.character(at: object.location) == 0xFFFC,
                   (object.equation != nil) != (object.image != nil) else { throw DocumentError.invalid("invalid clipboard object position") }
             var run = TextRun("\u{FFFC}"); run.equation = object.equation; run.image = object.image

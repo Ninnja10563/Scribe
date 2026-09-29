@@ -18,6 +18,12 @@ final class EquationTests: XCTestCase {
         XCTAssertEqual(try JSONDecoder().decode(Equation.self, from: JSONEncoder().encode(equation)), equation)
         XCTAssertEqual(try MathParser.parse(#"\text{a \{b\}}"#), .token("a {b}", italic: false))
     }
+    func testNestedAccessibilityDescriptionDoesNotRepeatSubtrees() throws {
+        let source = (0..<14).reduce("x") { result, _ in "{a+" + result + "}" }
+        let description = try MathParser.parse(source).accessibilityText
+        XCTAssertEqual(description.components(separatedBy: "plus").count - 1, 14)
+        XCTAssertEqual(description.filter { $0 == "x" }.count, 1)
+    }
     func testNativeEquationRoundTripAndEarlierVersionMigration() throws {
         var document = ScribeDocument()
         var run = TextRun("\u{FFFC}")

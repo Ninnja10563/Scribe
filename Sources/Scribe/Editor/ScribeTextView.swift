@@ -90,6 +90,17 @@ import DocumentCore
             do { return pasteboard.setData(try InlineObjectClipboard.encode(textStorage.attributedSubstring(from: selectedRange())), forType: type) }
             catch { presentError(error); return false }
         }
+        if type == .string || type.rawValue == "NSStringPboardType", let textStorage {
+            let selection = textStorage.attributedSubstring(from: selectedRange())
+            var hasEquation = false
+            selection.enumerateAttribute(.scribeEquation, in: NSRange(location: 0, length: selection.length)) { value, _, stop in
+                if value != nil { hasEquation = true; stop.pointee = true }
+            }
+            if hasEquation {
+                do { return pasteboard.setString(try ExternalTextProjection.render(selection, includeImages: false).string, forType: type) }
+                catch { presentError(error); return false }
+            }
+        }
         // AppKit still requests pre-UTI names during ordinary Copy.
         let richImages = type == .rtfd || type.rawValue == "NeXT RTFD pasteboard type"
         let richText = type == .rtf || type.rawValue == "NeXT Rich Text Format v1.0 pasteboard type"

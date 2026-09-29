@@ -42,7 +42,8 @@ public extension MathExpression {
             for value in values {
                 if case .token(let text, _) = value, !text.isEmpty, text.allSatisfy(\.isNumber) { digits += text; continue }
                 if !digits.isEmpty { result.append(digits); digits = "" }
-                if !value.accessibilityText.isEmpty { result.append(value.accessibilityText) }
+                let description = value.accessibilityText
+                if !description.isEmpty { result.append(description) }
             }
             if !digits.isEmpty { result.append(digits) }
             return result.joined(separator: " ")
