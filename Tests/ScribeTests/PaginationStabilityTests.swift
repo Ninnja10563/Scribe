@@ -111,9 +111,19 @@ import PDFKit
             }
         }
         XCTAssertEqual(editor.textViews.count, fresh.textViews.count)
+        var reportedGeometry = false
         for index in 0..<min(editor.textViews.count, fresh.textViews.count) {
             let a = editor.layout.textContainers[index], b = fresh.layout.textContainers[index]
             editor.layout.ensureLayout(for: a); fresh.layout.ensureLayout(for: b)
+            if !reportedGeometry, editor.layout.glyphRange(for: a) != fresh.layout.glyphRange(for: b) {
+                reportedGeometry = true
+                print("GEOMETRY \(phase) page \(index): original \(a.containerSize), view \(editor.textViews[index].frame.size), padding \(a.lineFragmentPadding), tracks \(a.widthTracksTextView)/\(a.heightTracksTextView); fresh \(b.containerSize), view \(fresh.textViews[index].frame.size), padding \(b.lineFragmentPadding), tracks \(b.widthTracksTextView)/\(b.heightTracksTextView)")
+                print("TYPESETTERS original \(editor.layout.typesetterBehavior.rawValue), leading \(editor.layout.usesFontLeading), screen \(editor.layout.usesScreenFonts); fresh \(fresh.layout.typesetterBehavior.rawValue), leading \(fresh.layout.usesFontLeading), screen \(fresh.layout.usesScreenFonts); context \(String(describing: NSGraphicsContext.current?.isDrawingToScreen))")
+                let glyph = NSMaxRange(editor.layout.glyphRange(for: a)) - 1
+                if glyph >= 0 {
+                    print("LAST LINE original \(editor.layout.lineFragmentRect(forGlyphAt: glyph, effectiveRange: nil)), used \(editor.layout.lineFragmentUsedRect(forGlyphAt: glyph, effectiveRange: nil)); fresh \(fresh.layout.lineFragmentRect(forGlyphAt: glyph, effectiveRange: nil)), used \(fresh.layout.lineFragmentUsedRect(forGlyphAt: glyph, effectiveRange: nil))")
+                }
+            }
             XCTAssertEqual(editor.layout.glyphRange(for: a), fresh.layout.glyphRange(for: b), "Page \(index)")
             // Compare glyph baselines, not aggregate usedRect trailing paragraph space.
             var originalLines: [(Int, NSPoint)] = [], freshLines: [(Int, NSPoint)] = []
