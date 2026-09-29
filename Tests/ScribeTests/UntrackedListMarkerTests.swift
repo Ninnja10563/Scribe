@@ -5,13 +5,28 @@ import DocumentCore
 @testable import Scribe
 
 @MainActor final class UntrackedListMarkerTests: XCTestCase {
-    private func fixture() -> ScribeFileDocument {
+    private func fixture(_ texts: [String] = ["Body"]) -> ScribeFileDocument {
         _ = NSApplication.shared
-        let document = ScribeFileDocument(); var paragraph = Paragraph("Body")
-        paragraph.list = .init(kind: .decimal, start: 4, restart: true)
-        document.model.sections[0].paragraphs = [paragraph]
+        let document = ScribeFileDocument()
+        document.model.sections[0].paragraphs = texts.enumerated().map { index, text in
+            var paragraph = Paragraph(text)
+            paragraph.list = .init(kind: .decimal, start: 4, restart: index == 0 ? true : nil)
+            return paragraph
+        }
         document.makeWindowControllers(); document.undoManager?.removeAllActions()
         return document
+    }
+    func testDeletingListBoundaryDoesNotSaveGeneratedNumberAsText() throws {
+        let document = fixture(["First", "Second"]); defer { document.close() }
+        let editor = document.editorController!.editor, before = document.snapshot()
+        let separator = (editor.storage.string as NSString).range(of: "\n").location
+        editor.select(NSRange(location: separator, length: 0))
+        editor.activeTextView.deleteForward(nil)
+        let joined = document.snapshot()
+        XCTAssertEqual(joined.paragraphs.map(\.text), ["FirstSecond"])
+        try NativeFormat.validate(joined)
+        document.undoManager?.undo(); XCTAssertEqual(document.snapshot().paragraphs, before.paragraphs)
+        document.undoManager?.redo(); XCTAssertEqual(document.snapshot().paragraphs, joined.paragraphs)
     }
     func testTypingIntoMarkerPreservesNumberAndNativeUndo() throws {
         let document = fixture(); defer { document.close() }
