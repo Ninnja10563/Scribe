@@ -16,6 +16,7 @@ sparkle_framework=$(find .build/artifacts -type d -path '*/macos-arm64_x86_64/Sp
 test -n "$sparkle_framework"
 ditto "$sparkle_framework" "$app_dir/Contents/Frameworks/Sparkle.framework"
 cp LICENSE "$app_dir/Contents/Resources/LICENSE"
+cp Resources/Sparkle-LICENSE.txt "$app_dir/Contents/Resources/Sparkle-LICENSE.txt"
 cp -R Sources/Scribe/Resources/MathFont "$app_dir/Contents/Resources/"
 swift scripts/make-icon.swift build/Scribe.iconset
 iconutil -c icns build/Scribe.iconset -o "$app_dir/Contents/Resources/Scribe.icns"

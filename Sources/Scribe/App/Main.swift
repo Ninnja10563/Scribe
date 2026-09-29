@@ -4,8 +4,9 @@ import DocumentCore
 
 @main struct ScribeMain {
     @MainActor static func main() {
+        let delegate = AppDelegate()
         let app = NSApplication.shared
-        let delegate = AppDelegate(); app.delegate = delegate
+        app.delegate = delegate
         app.setActivationPolicy(.regular)
         withExtendedLifetime(delegate) { app.run() }
     }
@@ -50,6 +51,7 @@ import DocumentCore
             documents.addDocument(document)
             document.makeWindowControllers()
             document.showWindows()
+            document.windowControllers.first?.window?.makeKeyAndOrderFront(nil)
         }
         NSApp.activate(ignoringOtherApps: true)
     }
@@ -59,6 +61,11 @@ import DocumentCore
     }
     private func verifyStartup() {
         DispatchQueue.main.asyncAfter(deadline: .now() + 1) { [self] in
+            print("Startup documents=\(documents.documents.count), shared=\(documents === NSDocumentController.shared), appWindows=\(NSApp.windows.count)")
+            for document in documents.documents {
+                print("Document \(type(of: document)), controllers=\(document.windowControllers.count), editor=\((document as? ScribeFileDocument)?.editorController != nil)")
+                for controller in document.windowControllers { print("Window visible=\(controller.window?.isVisible == true), loaded=\(controller.isWindowLoaded)") }
+            }
             let visible = documents.documents.flatMap(\.windowControllers).contains { $0.window?.isVisible == true }
             guard visible, let document = documents.documents.first as? ScribeFileDocument,
                   let editor = document.editorController?.editor else { exit(1) }
