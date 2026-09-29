@@ -57,5 +57,18 @@ import DocumentCore
             } else { XCTAssertNotNil(output.editor.canvas.endnotes) }
         }
     }
+    func testCompletelyEmptyDocumentStillShowsParagraphFormatting() throws {
+        let document = ScribeFileDocument(), before = document.model
+        var formatting = ParagraphFormatting(); formatting.alignment = .center
+        document.model.sections[0].paragraphs[0].formatting = formatting
+        try document.model.recordParagraphFormattingChanges(from: before, identity: .init(author: .init(name: "Writer")))
+        document.makeWindowControllers(); defer { document.close() }
+        let editor = document.editorController!.editor, container = editor.layout.textContainers[0]
+        XCTAssertEqual(editor.storage.length, 0)
+        let marks = ReviewStructuralMarks.marks(storage: editor.storage, layout: editor.layout, container: container,
+            glyphs: editor.layout.glyphRange(for: container), trailingReview: document.model.paragraphs[0].formattingReview)
+        XCTAssertEqual(marks.count, 1)
+        XCTAssertEqual(marks.first?.kind, .paragraphFormatting)
+    }
 }
 #endif
