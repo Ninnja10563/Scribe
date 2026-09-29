@@ -128,7 +128,7 @@ import DocumentCore
         container.widthTracksTextView = false; container.heightTracksTextView = false; container.lineFragmentPadding = 0
         layout.addTextContainer(container)
         let savedTypingAttributes = textViews.first?.typingAttributes
-        let view = ScribeTextView(frame: .zero, textContainer: container)
+        let view = ScribeTextView(frame: NSRect(x: 0, y: 0, width: p.contentWidth, height: p.contentHeight), textContainer: container)
         view.delegate = self; view.editor = self
         view.registerForDraggedTypes([.fileURL])
         view.isRichText = true; view.importsGraphics = false; view.allowsUndo = true
@@ -248,6 +248,7 @@ import DocumentCore
         paginationStability.invalidate()
         firstDirtyPage = 0
         for container in layout.textContainers { container.containerSize = NSSize(width: settings.contentWidth, height: settings.contentHeight) }
+        resizeCanvas()
         paginate(); refreshZoom()
     }
     nonisolated func textStorage(_ textStorage: NSTextStorage, didProcessEditing editedMask: NSTextStorageEditActions, range editedRange: NSRange, changeInLength delta: Int) {
