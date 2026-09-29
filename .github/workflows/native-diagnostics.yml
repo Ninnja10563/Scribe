@@ -7,7 +7,7 @@ on:
         required: true
         default: IncrementalPaginationTests
       profile:
-        description: Sample the native test process for main-thread stalls
+        description: Sample BudgetedPaginationTests for main-thread stalls
         type: boolean
         default: false
 permissions:
@@ -25,6 +25,7 @@ jobs:
           SCRIBE_SCHEMA_OUTPUT: build/schema
           TEST_FILTER: ${{ inputs.test_filter }}
           PROFILE: ${{ inputs.profile }}
+          SCRIBE_PROFILE_NATIVE: ${{ inputs.profile }}
         run: |
           if [ "$PROFILE" != "true" ]; then
             swift test --filter "$TEST_FILTER"
@@ -34,12 +35,10 @@ jobs:
           mkdir -p build/schema
           swift test --skip-build --filter "$TEST_FILTER" &
           test_runner=$!
-          # SwiftPM briefly launches a separate XCTest discovery process.
-          sleep 1
           for attempt in $(seq 1 100); do
-            test_pid=$(pgrep -n -f '[/]ScribePackageTests.xctest' || true)
-            if [ -n "$test_pid" ]; then
-              sample "$test_pid" 10 1 -file build/schema/NativeProcessSample.txt || true
+            if [ -s build/schema/NativeTestPID ]; then
+              test_pid=$(cat build/schema/NativeTestPID)
+              sample "$test_pid" 5 1 -file build/schema/NativeProcessSample.txt || true
               break
             fi
             if ! kill -0 "$test_runner" 2>/dev/null; then break; fi

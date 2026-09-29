@@ -6,7 +6,14 @@ import DocumentCore
 @testable import Scribe
 
 @MainActor final class BudgetedPaginationTests: XCTestCase {
-    override func setUp() { super.setUp(); _ = NSApplication.shared }
+    override func setUp() {
+        super.setUp(); _ = NSApplication.shared
+        if ProcessInfo.processInfo.environment["SCRIBE_PROFILE_NATIVE"] == "true",
+           let folder = try? outputFolder() {
+            try? String(ProcessInfo.processInfo.processIdentifier).write(
+                to: folder.appendingPathComponent("NativeTestPID"), atomically: true, encoding: .utf8)
+        }
+    }
     private func document(paragraphs count: Int) -> ScribeFileDocument {
         let document = ScribeFileDocument()
         document.model.sections[0].paragraphs = (0..<count).map {
