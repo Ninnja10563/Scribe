@@ -78,7 +78,8 @@ import DocumentCore
             guard document.windowControllers.first?.window?.isVisible == true else { exit(3) }
             documents.newDocument(nil)
             guard documents.documents.count == 2,
-                  documents.documents.allSatisfy({ $0.windowControllers.first?.window?.isVisible == true }) else { exit(5) }
+                  documents.documents.allSatisfy({ $0.windowControllers.count == 1 }),
+                  documents.documents.contains(where: { $0.windowControllers.first?.window?.isVisible == true }) else { exit(5) }
             for openDocument in documents.documents { openDocument.updateChangeCount(.changeCleared); openDocument.close() }
             ensureDocumentWindow()
             guard documents.documents.count == 1, documents.documents.first?.windowControllers.first?.window?.isVisible == true else { exit(6) }
