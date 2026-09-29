@@ -55,3 +55,6 @@ The internal `ReviewNavigation` coordinator now commits marked input before buil
 
 
 A native review sidebar now lists compound changes with author/date and changed-text details, previous/next, current accept/reject and an explicit all-change menu. It preserves keyboard focus after decisions, reloads through document undo and hides/restores with Focus Mode. Native selection/action tests and rendered panel inspection pass. The panel is instantiated but not exposed in public menus yet; visual revision markings and the remaining editing paths precede removing the development gates.
+
+
+Revision drawing now extends the existing AppKit temporary-attribute delegate: insertions use green underlines, deletions red strikethroughs, and pending formatting a blue dotted underline. Decoding is cached within a bounded 256-entry/1 MiB cache per drawing owner. Only the requested attribute extent is inspected; document text and formatting are not mutated. Body and note flows share the helper, generated note labels are excluded, and Find backgrounds are retained. These marks are currently screen-only. Explicit print/PDF review-output options and visible marks for empty paragraphs/separators still need work before public review output is complete.

@@ -116,6 +116,8 @@ jobs:
         run: python scripts/verify-budgeted-layout.py build/schema
       - name: Verify rich paste review output
         run: python scripts/verify-review-paste.py build/schema
+      - name: Verify screen-only revision drawing
+        run: python scripts/verify-review-drawing.py build/schema
       - name: Install independent Office renderer
         run: |
           sudo apt-get update

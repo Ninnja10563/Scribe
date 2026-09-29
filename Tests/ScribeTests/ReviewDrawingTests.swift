@@ -13,7 +13,11 @@ import DocumentCore
         var deletion = RunReview(); deletion.deletion = .init(author: author)
         var a = TextRun("Inserted"), b = TextRun("Deleted")
         a.review = insertion; b.review = deletion
-        document.sections[0].paragraphs[0].runs = [a, TextRun(" / "), b, TextRun(" / Original")]
+        var bold = TextFormatting(); bold.bold = true
+        var formatting = RunReview(); formatting.formattingBase = TextFormatting()
+        formatting.formatting = [FormattingRevision(identity: .init(author: author), before: TextFormatting(), after: bold)]
+        var c = TextRun("Formatted", format: bold); c.review = formatting
+        document.sections[0].paragraphs[0].runs = [a, TextRun(" / "), b, TextRun(" / Original / "), c]
         return document
     }
     func testNativeDrawingPreservesSearchAndNeverChangesStoredFormatting() throws {
