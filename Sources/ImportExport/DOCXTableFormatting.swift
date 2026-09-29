@@ -62,9 +62,19 @@ final class DOCXTableFormattingReader {
                 padding.append(min(50, max(0, points / 20)))
             }
         case "shd":
-            if scope == .cell { cell?.background = color(wordAttribute(attributes, "fill")) }
+            if scope == .cell {
+                let pattern = wordAttribute(attributes)
+                if pattern == "solid" { cell?.background = color(wordAttribute(attributes, "color")) ?? "#000000" }
+                else if pattern == "nil" { cell?.background = "#FFFFFF" }
+                else { cell?.background = color(wordAttribute(attributes, "fill")) }
+                if let pattern = wordAttribute(attributes), !["clear", "nil", "solid"].contains(pattern) { warnings.insert("Patterned cell shading is approximated with its background colour.") }
+            }
             else if scope == .table { warnings.insert("Table-wide shading is not imported; explicit cell shading is retained.") }
-        case "vAlign": if scope == .cell { cell?.verticalAlignment = wordAttribute(attributes).flatMap(TableVerticalAlignment.init(rawValue:)) }
+        case "vAlign":
+            if scope == .cell {
+                cell?.verticalAlignment = wordAttribute(attributes).flatMap(TableVerticalAlignment.init(rawValue:))
+                if cell?.verticalAlignment == nil { warnings.insert("Unsupported cell vertical alignment becomes top alignment.") }
+            }
         case "trHeight":
             guard row >= 0, wordAttribute(attributes, "hRule") != "auto", let value = wordAttribute(attributes).flatMap(Double.init), value > 0 else { return }
             if wordAttribute(attributes, "hRule") == "exact" { warnings.insert("Fixed table row heights become minimum heights so text is not clipped.") }
@@ -77,14 +87,14 @@ final class DOCXTableFormattingReader {
     func end(_ name: String, table: inout DocumentTable, warnings: inout Set<String>) {
         if name == "tcBorders" || name == "tblBorders" {
             if let first = borders.first {
-                if borders.contains(where: { $0 != first }) { warnings.insert("Different cell-edge borders are approximated with one uniform border.") }
+                if (scope == .cell && borders.count != 4) || borders.contains(where: { $0 != first }) { warnings.insert("Different cell-edge borders are approximated with one uniform border.") }
                 if scope == .cell { cell?.borderWidth = first.width; cell?.borderColor = first.color }
                 else if scope == .table { table.borderWidth = first.width; if let color = first.color { table.borderColor = color } }
             }
             container = nil
         } else if name == "tcMar" || name == "tblCellMar" {
             if let maximum = padding.max() {
-                if padding.contains(where: { $0 != maximum }) { warnings.insert("Different cell-edge padding is approximated using the largest inset.") }
+                if padding.count != 4 || padding.contains(where: { $0 != maximum }) { warnings.insert("Different cell-edge padding is approximated using the largest inset.") }
                 if scope == .cell { cell?.padding = maximum } else if scope == .table { table.padding = maximum }
             }
             container = nil
@@ -92,9 +102,22 @@ final class DOCXTableFormattingReader {
             if let cell, !cell.isEmpty { table.cellStyles = (table.cellStyles ?? []) + [cell] }
             scope = nil
         } else if name == "tblPr" { scope = nil }
-        else if name == "tbl", var heights = table.minimumRowHeights {
-            while heights.count < table.rows { heights.append(nil) }
-            table.minimumRowHeights = heights
+        else if name == "tbl" {
+            if var heights = table.minimumRowHeights {
+                while heights.count < table.rows { heights.append(nil) }
+                table.minimumRowHeights = heights
+            }
+            // Word's header-row flag does not imply a grey fill. Preserve unshaded
+            // headers against Scribe's default header appearance on white pages.
+            if table.firstRowIsHeader {
+                var styles = table.cellStyles ?? []
+                for column in table.columnWidths.indices {
+                    if let index = styles.firstIndex(where: { $0.row == 0 && $0.column == column }) {
+                        if styles[index].background == nil { styles[index].background = "#FFFFFF" }
+                    } else { var style = TableCellStyle(row: 0, column: column); style.background = "#FFFFFF"; styles.append(style) }
+                }
+                table.cellStyles = styles
+            }
         }
     }
     private func color(_ value: String?) -> String? {

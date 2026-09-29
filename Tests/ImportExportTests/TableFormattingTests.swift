@@ -28,6 +28,23 @@ final class TableFormattingTests: XCTestCase {
             try bytes.write(to: folder.appendingPathComponent("TableFormatting.docx"))
         }
     }
+    func testWordHeaderFlagDoesNotInventShadingAndSolidUsesForeground() throws {
+        let xml = "<w:document xmlns:w=\"\(DOCX.wordNS)\"><w:body><w:tbl><w:tblGrid><w:gridCol w:w=\"3000\"/><w:gridCol w:w=\"3000\"/></w:tblGrid><w:tr><w:trPr><w:tblHeader/></w:trPr><w:tc><w:p><w:r><w:t>Unshaded</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:shd w:val=\"solid\" w:color=\"123456\" w:fill=\"FFFFFF\"/></w:tcPr><w:p/></w:tc></w:tr></w:tbl></w:body></w:document>"
+        let imported = try DOCX.decode(ZipArchive.encode(["word/document.xml": Data(xml.utf8)]))
+        XCTAssertEqual(imported.document.tables[0].cellStyle(row: 0, column: 0)?.background, "#FFFFFF")
+        XCTAssertEqual(imported.document.tables[0].cellStyle(row: 0, column: 1)?.background, "#123456")
+        XCTAssertTrue(imported.document.tables[0].firstRowIsHeader)
+    }
+    func testExplicitZeroBorderRemainsBorderless() throws {
+        var document = ScribeDocument()
+        document.insertTable(rows: 1, columns: 1, after: document.paragraphs[0].id)
+        var style = TableCellStyle(row: 0, column: 0); style.borderWidth = 0
+        try document.setCellStyles([style], tableID: document.tables[0].id)
+        let data = try DOCX.encode(document)
+        let imported = try DOCX.decode(data)
+        XCTAssertEqual(imported.document.tables[0].cellStyle(row: 0, column: 0)?.borderWidth, 0)
+        XCTAssertTrue(imported.warnings.isEmpty)
+    }
     func testIndependentStyledTableFixture() throws {
         let url = try XCTUnwrap(Bundle.module.url(forResource: "TableFormatting", withExtension: "docx", subdirectory: "Fixtures"))
         let imported = try DOCX.decode(Data(contentsOf: url))
