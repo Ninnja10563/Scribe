@@ -4,6 +4,7 @@ Scribe 0.9.0 adds merged table cells.
 - Split a merged cell back into its grid; existing text stays in the first cell.
 - Row/column edits resize intersected spans and preserve content when a merged anchor survives deletion.
 - Native table layout and Tab navigation understand merged cells. DOCX uses actual gridSpan and vMerge properties, with an independent import fixture.
+- A cell taller than one page is not yet supported. Overflow blocks PDF/print instead of silently clipping text; native and DOCX content is retained.
 - Native format v8 migrates v1–v7 documents in memory.
 
 This remains a development release. Cell-range selection, drag sizing and nested tables remain unfinished, along with independent sections, track changes, footnotes/endnotes, equations, shapes and floating objects. See docs/FEATURES.md and docs/VALIDATION.md.

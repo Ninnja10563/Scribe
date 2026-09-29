@@ -166,7 +166,14 @@ import DocumentCore
             layoutWarning = "A table row's minimum height exceeds the page writing area. Reduce it using Table → Row Height before PDF export or printing."
         }
         overflowingPages = overflowingPages.filter { $0 < required }
-        if layoutWarning == nil, !overflowingPages.isEmpty {
+        let tallMerge = owner?.model.tables.contains { table in
+            (table.mergedCells ?? []).contains { merge in
+                (merge.row..<(merge.row + merge.rowSpan)).reduce(0.0) { total, row in
+                    total + (table.minimumRowHeights?[row] ?? 0)
+                } > canvas.pageSettings.contentHeight
+            }
+        } ?? false
+        if layoutWarning == nil, !overflowingPages.isEmpty || tallMerge {
             layoutWarning = "Content extends beyond a page. A cell taller than one page must be split or shortened before PDF export or printing."
         }
         if lastEnd < layout.numberOfGlyphs && layoutWarning == nil { layoutWarning = "This document exceeds the current 2,000-page layout limit." }

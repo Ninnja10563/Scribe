@@ -26,6 +26,9 @@ import DocumentCore
         XCTAssertEqual(try Data(contentsOf: url), original)
         XCTAssertTrue(document.model.plainText.contains("Tall-cell-line-39-end"))
         XCTAssertEqual(try NativeFormat.decode(NativeFormat.encode(document.model)), document.model)
+        document.model = ScribeDocument()
+        editor.storage.setAttributedString(AttributedDocument.render(document.model)); editor.paginate()
+        XCTAssertNil(editor.layoutWarning, "Removing overflowing content must clear the warning")
     }
     func testMergedTableFlowsAcrossPagesWithoutMissingCells() throws {
         let document = ScribeFileDocument()
