@@ -39,10 +39,12 @@ import DocumentCore
         XCTAssertLessThanOrEqual(editor.lastPaginationVisitedPages, 8); XCTAssertEqual(completions, 0)
         editor.activeTextView.insertText("Added", replacementRange: editor.activeTextView.selectedRange())
         let began = ProcessInfo.processInfo.systemUptime
+        var heartbeatGaps: [Double] = []
         var previousTick = began, maximumGap = 0.0, ticks = 0, batches: [[String: Any]] = [], pass = editor.paginationPassCount
         while editor.hasPendingPagination && ProcessInfo.processInfo.systemUptime - began < 15 {
             try await Task.sleep(nanoseconds: 2_000_000)
             let now = ProcessInfo.processInfo.systemUptime
+            heartbeatGaps.append(now - previousTick)
             maximumGap = max(maximumGap, now - previousTick); previousTick = now; ticks += 1
             if editor.paginationPassCount != pass {
                 pass = editor.paginationPassCount
@@ -69,7 +71,7 @@ import DocumentCore
         XCTAssertEqual(a.pageCount, 3); XCTAssertEqual(a.pageCount, b.pageCount)
         for index in 0..<a.pageCount { XCTAssertEqual(a.page(at: index)?.string, b.page(at: index)?.string) }
         let measurements: [String: Any] = ["pages": editor.canvas.pageCount, "heartbeatCount": ticks,
-            "maximumHeartbeatGapSeconds": maximumGap, "observedBatches": batches]
+            "maximumHeartbeatGapSeconds": maximumGap, "heartbeatGapsSeconds": heartbeatGaps, "observedBatches": batches]
         try JSONSerialization.data(withJSONObject: measurements, options: [.prettyPrinted, .sortedKeys])
             .write(to: folder.appendingPathComponent("BudgetedPaginationMeasurements.json"))
     }

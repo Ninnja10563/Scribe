@@ -126,6 +126,9 @@ import DocumentCore
         storage.delegate = self
         storage.addLayoutManager(layout); layout.delegate = self
         layout.allowsNonContiguousLayout = true
+        // Our pagination scheduler owns deferred layout. TextKit's idle-time
+        // layout otherwise runs outside the page budget on the main thread.
+        layout.backgroundLayoutEnabled = false
         storage.setAttributedString(projectedContent ?? AttributedDocument.render(document.model))
         scrollView.documentView = canvas
         scrollView.hasVerticalScroller = true; scrollView.hasHorizontalScroller = true
