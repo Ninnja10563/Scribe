@@ -26,7 +26,7 @@ for name in ['main.m','SPUCommandLineDriver.m','SPUCommandLineDriver.h','SPUComm
     (root/name).write_bytes(urllib.request.urlopen(base+'sparkle-cli/'+name,timeout=30).read())
 for path in ['InstallerLauncher/SUInstallerLauncher+Private.h','Sparkle/SPUUserAgent+Private.h']:
     (headers/Path(path).name).write_bytes(urllib.request.urlopen(base+path,timeout=30).read())
-subprocess.run(['xcrun','clang','-fobjc-arc','-fmodules','-I',str(root/'include'),'-F',str(framework),'-framework','Sparkle','-framework','Cocoa','-Wl,-rpath,@executable_path/../Frameworks',*[str(root/name) for name in ['main.m','SPUCommandLineDriver.m','SPUCommandLineUserDriver.m']],'-o',str(cli/'Contents/MacOS/sparkle')],check=True)
+subprocess.run(['xcrun','clang','-fobjc-arc','-fmodules','-DSPU_OBJC_DIRECT=','-DSPU_OBJC_DIRECT_MEMBERS=','-I',str(root/'include'),'-F',str(framework),'-framework','Sparkle','-framework','Cocoa','-Wl,-rpath,@executable_path/../Frameworks',*[str(root/name) for name in ['main.m','SPUCommandLineDriver.m','SPUCommandLineUserDriver.m']],'-o',str(cli/'Contents/MacOS/sparkle')],check=True)
 subprocess.run(['codesign','--force','--deep','--sign','-',str(cli)],check=True)
 key=Ed25519PrivateKey.generate()
 public=base64.b64encode(key.public_key().public_bytes_raw()).decode()
