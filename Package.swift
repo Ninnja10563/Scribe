@@ -13,7 +13,7 @@ let package = Package(
         .systemLibrary(name: "CZlib", pkgConfig: "zlib", providers: [.apt(["zlib1g-dev"])]),
         .target(name: "DocumentCore"),
         .target(name: "ImportExport", dependencies: ["DocumentCore", "CZlib"]),
-        .executableTarget(name: "Scribe", dependencies: ["DocumentCore", "ImportExport"]),
+        .executableTarget(name: "Scribe", dependencies: ["DocumentCore", "ImportExport"], resources: [.copy("Resources/MathFont")]),
         .testTarget(name: "DocumentCoreTests", dependencies: ["DocumentCore"]),
         .testTarget(name: "ImportExportTests", dependencies: ["ImportExport"], resources: [.copy("Fixtures")]),
         .testTarget(name: "ScribeTests", dependencies: ["Scribe"])

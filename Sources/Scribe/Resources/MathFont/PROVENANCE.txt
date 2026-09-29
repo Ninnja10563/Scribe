@@ -1,0 +1,8 @@
+STIX Two Math, unmodified OpenType font, SIL Open Font License 1.1.
+Upstream: https://github.com/stipub/stixfonts
+Release: v2.13b171
+Commit: 744a22a4dd626cd14d75728aef34fc8ad7c85db0
+Path: fonts/static_otf/STIXTwoMath-Regular.otf
+SHA256: 3a5f3f26f40d5698b3c62dd085d48d6663696a3f80825aab8b553d5097518e8c
+Copyright and redistribution terms are in the accompanying OFL.txt.
+Scribe registers this font only within its own process.
