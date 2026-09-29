@@ -78,6 +78,11 @@ jobs:
         env:
           SCRIBE_SMOKE_OUTPUT: build/launch-services
         run: python3 scripts/native-smoke.py build/Scribe.app/Contents/MacOS/Scribe --launch-services
+      - name: Verify signed update replacement and rejection
+        run: |
+          python3 -m venv build/update-venv
+          build/update-venv/bin/pip install cryptography==50.0.1
+          build/update-venv/bin/python scripts/verify-updater.py
       - name: Launch, paginate, save, export and render
         env:
           SCRIBE_SMOKE_OUTPUT: build/smoke
@@ -87,7 +92,11 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: Native-smoke
-          path: build/smoke/
+          path: |
+            build/smoke/
+            build/startup-smoke/
+            build/launch-services/
+            build/update-test/*.log
           if-no-files-found: ignore
       - uses: actions/upload-artifact@v4
         with:
