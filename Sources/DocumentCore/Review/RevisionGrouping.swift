@@ -17,7 +17,7 @@ extension ScribeDocument {
             identities += paragraph.formattingReview?.changes.map(\.identity) ?? []
             for run in paragraph.runs { append(run.review) }
         }
-        guard let group = identities.first(where: { $0.id == id })?.groupID else { return [id] }
+        guard let group = identities.first(where: { $0.id == id || $0.groupID == id })?.groupID else { return [id] }
         return Set(identities.filter { $0.groupID == group }.map(\.id))
     }
 }

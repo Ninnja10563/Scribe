@@ -69,5 +69,8 @@ extension NativeFormat {
                 }
             }
         }
+        guard Set(groups.keys).isDisjoint(with: identities.keys) else {
+            throw DocumentError.invalid("revision group and component identities must be distinct")
+        }
     }
 }

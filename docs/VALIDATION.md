@@ -403,3 +403,10 @@ The first complete running-content run, [36524090953](https://github.com/Ninnja1
 - Native [36562317646](https://github.com/Ninnja10563/Scribe/actions/runs/36562317646) passed at `40b0921`, including rich paragraph-style paste, native undo/redo, actual RTF clipboard paste, and existing typing/list/paragraph/input-method regressions. Downloaded `.scribe` outputs retained one group with distinct insertion/formatting identities; accepted/rejected outputs had no residual review metadata. Rejection restored an unformatted `AB` paragraph.
 - The downloaded RTF-paste PDF was visually inspected and independently verified: `AX` is centred, `YB` is right-aligned, X retains 18-point bold, Y retains 15-point text, and original A/B retain 12-point text. All output is vector text. The verifier uses word bounds because PDF search returns multiple rectangles for mixed-size spans in one match. This is automated native/RTF validation, not manual Word/Pages interoperability certification.
 - The native delete-pasted-break/undo regression and full grouped-stage validation follow. Tracked table paste is explicitly refused pending a structural table transaction; no public Track Changes release is claimed.
+
+- Follow-up native [36562766253](https://github.com/Ninnja10563/Scribe/actions/runs/36562766253) passed at `4e84ec9`, including delete-pasted-break undo/redo. Its downloaded native files and PDF passed `verify-review-paste.py`. Full grouped-stage run 36562770955 is still in progress.
+
+## Semantic review index (unreleased)
+
+- The portable full suite passed 189 tests (188 passed, one AppKit placeholder skipped), recorded in `scribe-020-review-index-full.log`. Four new regressions cover compound paste navigation/decisions, UTF-16 extents through emoji and combining characters, accepted-history exclusion, note locations, wrapping/stale navigation and group/component identity collision rejection.
+- Index construction does not paginate or assemble a whole-document text string. This is not yet a public review interface, and no new native UI behavior is claimed from these portable tests.
