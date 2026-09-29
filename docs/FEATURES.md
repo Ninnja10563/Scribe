@@ -1,4 +1,4 @@
-# Feature status — 0.21.0
+# Feature status — 0.22.0
 
 This is a foundation release. “Implemented” means there is working code and an exposed editing path, not that the feature has the interoperability coverage of a mature word processor.
 
@@ -21,12 +21,12 @@ This is a foundation release. “Implemented” means there is working code and 
 | Other formats | Basic RTF (image omission disclosed), RTFD clipboard images, Markdown subset, UTF-8 text; native copies protect originals | RTF table import, complete CommonMark, external Markdown image bundles |
 | Output | PDF vector text/links and native images/tables; page-range selection and metadata; native printing; shared glyph layout | PDF image-quality presets, PDF accessibility tags, color-management audit |
 | Reliability | NSDocument lifecycle/autosave, native undo plus document transactions, atomic saves, separate recoverable snapshots, archive validation | Crash/power-loss/disk-full fault injection, long-session memory testing |
-| Distribution | macOS CI, launch/render smoke artifacts, verified DMGs, versioned pre-releases and checksums | Developer ID signing, notarization, automatic updater |
+| Distribution | macOS CI, direct/Finder-style startup and render checks, verified DMGs, versioned pre-releases and checksums; Sparkle automatic checking and optional installation with Ed25519-signed packages | Developer ID signing, notarization, physical-Mac update audit |
 
 Limits: 128 MB native/decompressed archive safety limit; 32 MB and 64 megapixels per decoded image; 100 rows and 20 columns per table; 2,000 page-layout containers. These are explicit implementation bounds, not performance guarantees. An unlayable object is reported and PDF/print is blocked rather than silently truncated.
 
-Published 0.21.0 uses native v15 and adds explicit multiple/minimum/exact paragraph line heights, style controls and Office spacing attributes. Full native and independent Office validation passed. Newer paragraph-review interchange on main remains internal; floating-image work is isolated on its development branch.
+Published 0.22.0 uses native v15 and retains the paragraph line-height and Office spacing support introduced in 0.21. Full native and independent Office validation passed. Newer paragraph-review interchange remains internal; floating-image work is isolated on its development branch.
 
-### Launch and update candidate (0.22, not yet published)
+### Launch and software updates (0.22)
 
-Editor windows now register correctly with their NSDocument, open visibly on startup and return when reopening from the Dock. Sparkle 2.10.0 adds manual checking, automatic checking and optional automatic downloading/installation. The HTTPS feed advertises Ed25519-signed release DMGs. Packaged direct/Finder-style startup, forged-update rejection and actual signed installation have passed macOS diagnostics. Full candidate release validation is pending. Install this version manually once when published; older releases do not contain an updater.
+Editor windows register correctly with their NSDocument, open visibly on startup and return when reopening from the Dock. Sparkle 2.10.0 adds manual checking, automatic checking and optional automatic downloading/installation. The HTTPS feed advertises Ed25519-signed release DMGs. Packaged direct/Finder-style startup, forged-update rejection and actual signed installation passed both candidate and tagged release validation. The published DMG checksum and live feed signature were independently verified after downloading. Install this version manually once; older releases do not contain an updater. See [update settings](UPDATES.md).
