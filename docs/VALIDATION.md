@@ -155,3 +155,9 @@ Native v9 adds optional crop fractions, clockwise rotation, opacity and original
 - Native and LibreOffice PDFs are checked at 30° and 90° for cropped frame bounds, clockwise color positions, half opacity, paragraph-margin alignment and following-text clearance. Both 30° rendered pages and the actual native properties dialog were visually inspected.
 - The first clipboard test caught floating-point rounding producing 201 rather than 200 pixels; bitmap dimensions now round to the nearest pixel. The first independent Office render caught a 9-point image shift; explicit DrawingML inline text distances removed the unwanted gap. Neither failing candidate was tagged.
 - Hosted debug benchmarks in the candidate measured 256 pages at 0.953 seconds for initial layout and 6.3 ms for an end edit; 500 table cells at 87.7 ms initial layout and 10.8 ms for an end edit. These are scoped layout measurements, not physical-Mac input-latency guarantees.
+
+## Native Copy correction — 0.11.1
+
+Expanding the clipboard regression from an explicit RTFD write to the full AppKit-advertised Copy path exposed a 0.11.0 defect: AppKit requested the legacy `NeXT RTFD pasteboard type`, bypassing the adjusted-image serializer. Original source bytes could be pasted instead of the adjusted appearance. Both current and legacy type requests are now handled, and the full native Copy path is covered. Native saves, DOCX and PDF were unaffected.
+
+[Candidate 36513179858](https://github.com/Ninnja10563/Scribe/actions/runs/36513179858) and [release 36513528280](https://github.com/Ninnja10563/Scribe/actions/runs/36513528280) passed macOS tests, repeated lifecycle/Address Sanitizer tests, actual app launch and independent Office rendering. [v0.11.1](https://github.com/Ninnja10563/Scribe/releases/tag/v0.11.1) was published; its DMG was downloaded and its published SHA-256 checksum verified. The 0.11.0 release notes identify the issue and point to the correction.
