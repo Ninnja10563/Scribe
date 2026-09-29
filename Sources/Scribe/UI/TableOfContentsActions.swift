@@ -84,12 +84,12 @@ extension EditorWindowController {
             guard glyph < editor.layout.numberOfGlyphs,
                   let container = editor.layout.textContainer(forGlyphAt: glyph, effectiveRange: nil),
                   let page = editor.layout.textContainers.firstIndex(where: { $0 === container }) else { return }
-            result[id] = labels.label(pageIndex: page, pageCount: editor.textViews.count)
+            result[id] = labels.label(pageIndex: page, pageCount: editor.canvas.pageCount)
         }
         if let last = model.paragraphs.last, last.text.isEmpty, headings.contains(last.id),
            let container = editor.layout.extraLineFragmentTextContainer,
            let page = editor.layout.textContainers.firstIndex(where: { $0 === container }) {
-            result[last.id] = labels.label(pageIndex: page, pageCount: editor.textViews.count)
+            result[last.id] = labels.label(pageIndex: page, pageCount: editor.canvas.pageCount)
         }
         return result
     }

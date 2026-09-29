@@ -17,6 +17,7 @@ import DocumentCore
             for note in notes { note.draw(at: NSPoint(x: origin.x, y: y)); y += note.height + 6 }
         }
     }
+    let endnotes: [NumberedNote]
     private let measured: [UUID: NoteTextLayout]
     private let references: [(range: NSRange, id: UUID)]
     init(storage: NSTextStorage, styles: [ParagraphStyle], width: CGFloat) throws {
@@ -35,6 +36,7 @@ import DocumentCore
         }
         if let failure { throw failure }
         let numbered = try NoteNumbering.resolve(referenceIDs: references.map(\.id), notes: notes)
+        endnotes = numbered.filter { $0.note.kind == .endnote }
         var measured: [UUID: NoteTextLayout] = [:]
         for note in numbered where note.note.kind == .footnote {
             measured[note.id] = try NoteTextLayout(note: note, styles: styles, width: width)

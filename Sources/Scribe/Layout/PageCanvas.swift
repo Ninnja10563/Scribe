@@ -6,6 +6,8 @@ import DocumentCore
     var pageSettings = PageSettings()
     var pageCount = 1
     var footnotes: [Int: FootnoteLayout.Page] = [:]
+    var endnotes: EndnoteLayout?
+    var bodyPageCount = 1
     let gap: CGFloat = 24
     var header = ""
     var footer = ""
@@ -33,6 +35,7 @@ import DocumentCore
             if let notes = footnotes[i] {
                 notes.draw(at: NSPoint(x: rect.minX + pageSettings.left, y: rect.maxY - pageSettings.bottom - notes.height), width: pageSettings.contentWidth)
             }
+            endnotes?.draw(page: i - bodyPageCount, at: NSPoint(x: rect.minX + pageSettings.left, y: rect.minY + pageSettings.top))
             if let guide = indentGuide, guide.page == i {
                 let line = NSBezierPath(); line.lineWidth = 0.75
                 line.move(to: NSPoint(x: rect.minX + pageSettings.left + guide.offset, y: rect.minY + pageSettings.top))
@@ -271,7 +274,13 @@ import DocumentCore
         if pageCharacterRanges.count > required { pageCharacterRanges.removeLast(pageCharacterRanges.count - required) }
         if layoutWarning == nil { layoutWarning = EquationProjection.warning(in: self) }
         firstDirtyPage = Int.max
-        canvas.pageCount = textViews.count; resizeCanvas()
+        canvas.endnotes = nil
+        if let notes = noteLayout?.endnotes, !notes.isEmpty {
+            do { canvas.endnotes = try EndnoteLayout(notes: notes, styles: owner?.model.styles ?? ParagraphStyle.defaults, page: canvas.pageSettings, maximumPages: 2000 - textViews.count) }
+            catch { layoutWarning = error.localizedDescription }
+        }
+        canvas.bodyPageCount = textViews.count
+        canvas.pageCount = textViews.count + (canvas.endnotes?.containers.count ?? 0); resizeCanvas()
         onSelection?()
     }
     @objc private func rulerViewportChanged() { paragraphRuler?.updateGeometry() }
@@ -279,7 +288,7 @@ import DocumentCore
     func resizeCanvas() {
         let p = canvas.pageSettings
         let width = max(p.width + 48, scrollView.contentView.frame.width / scrollView.magnification)
-        let size = NSSize(width: width, height: CGFloat(textViews.count) * (p.height + canvas.gap) + canvas.gap)
+        let size = NSSize(width: width, height: CGFloat(canvas.pageCount) * (p.height + canvas.gap) + canvas.gap)
         if canvas.frame.size != size { canvas.setFrameSize(size) }
         for (index, view) in textViews.enumerated() {
             let rect = canvas.pageRect(index)

@@ -32,7 +32,7 @@ extension EditorWindowController {
         let pdfOptions: PDFExportAccessory?
         if format == "pdf" {
             editor.paginate()
-            let options = PDFExportAccessory(pageCount: editor.textViews.count, title: model.title, author: model.author)
+            let options = PDFExportAccessory(pageCount: editor.canvas.pageCount, title: model.title, author: model.author)
             panel.accessoryView = options; panel.delegate = options; pdfOptions = options
         } else { pdfOptions = nil }
         panel.beginSheetModal(for: window) { response in
@@ -102,7 +102,7 @@ extension EditorWindowController {
     @objc func documentStatistics() {
         let stats = DocumentStatistics(text: editor.semanticText.text)
         let alert = NSAlert(); alert.messageText = "Document Statistics"
-        alert.informativeText = "\(stats.words.formatted()) words\n\(stats.characters.formatted()) characters\n\(stats.charactersWithoutSpaces.formatted()) characters excluding spaces\n\(stats.paragraphs.formatted()) paragraphs\n\(editor.textViews.count) pages"
+        alert.informativeText = "\(stats.words.formatted()) words\n\(stats.characters.formatted()) characters\n\(stats.charactersWithoutSpaces.formatted()) characters excluding spaces\n\(stats.paragraphs.formatted()) paragraphs\n\(editor.canvas.pageCount) pages"
         alert.runModal()
     }
 }

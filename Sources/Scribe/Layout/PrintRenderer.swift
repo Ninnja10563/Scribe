@@ -10,16 +10,16 @@ import DocumentCore
     init(editor: PaginatedEditor) {
         self.editor = editor; editor.paginate()
         let page = editor.canvas.pageSettings
-        super.init(frame: NSRect(x: 0, y: 0, width: page.width, height: page.height * Double(editor.textViews.count)))
+        super.init(frame: NSRect(x: 0, y: 0, width: page.width, height: page.height * Double(editor.canvas.pageCount)))
     }
     required init?(coder: NSCoder) { fatalError("Programmatic view") }
-    override func knowsPageRange(_ range: NSRangePointer) -> Bool { range.pointee = NSRange(location: 1, length: editor.textViews.count); return true }
+    override func knowsPageRange(_ range: NSRangePointer) -> Bool { range.pointee = NSRange(location: 1, length: editor.canvas.pageCount); return true }
     override func rectForPage(_ page: Int) -> NSRect {
         let p = editor.canvas.pageSettings
         return NSRect(x: 0, y: CGFloat(page - 1) * p.height, width: p.width, height: p.height)
     }
     override func draw(_ dirtyRect: NSRect) {
-        for page in editor.textViews.indices where rectForPage(page + 1).intersects(dirtyRect) {
+        for page in 0..<editor.canvas.pageCount where rectForPage(page + 1).intersects(dirtyRect) {
             NSGraphicsContext.saveGraphicsState()
             let transform = AffineTransform(translationByX: 0, byY: rectForPage(page + 1).minY)
             (transform as NSAffineTransform).concat(); drawPage(page)
@@ -29,12 +29,14 @@ import DocumentCore
     func drawPage(_ index: Int) {
         let p = editor.canvas.pageSettings
         NSColor.white.setFill(); NSRect(x: 0, y: 0, width: p.width, height: p.height).fill()
-        let range = editor.layout.glyphRange(for: editor.layout.textContainers[index])
         let origin = NSPoint(x: p.left, y: p.top)
-        withLinkPresentation(on: index) {
-            editor.layout.drawBackground(forGlyphRange: range, at: origin)
-            editor.layout.drawGlyphs(forGlyphRange: range, at: origin)
-        }
+        if index < editor.textViews.count {
+            let range = editor.layout.glyphRange(for: editor.layout.textContainers[index])
+            withLinkPresentation(on: index) {
+                editor.layout.drawBackground(forGlyphRange: range, at: origin)
+                editor.layout.drawGlyphs(forGlyphRange: range, at: origin)
+            }
+        } else { editor.canvas.endnotes?.draw(page: index - editor.textViews.count, at: origin) }
         if let notes = editor.canvas.footnotes[index] {
             notes.draw(at: NSPoint(x: p.left, y: p.height - p.bottom - notes.height), width: p.contentWidth)
         }
@@ -94,8 +96,8 @@ import DocumentCore
         return result
     }
     func exportPDF(to url: URL, title: String, author: String, pages: [Int]? = nil, subject: String = "", keywords: [String] = []) throws {
-        let selected = pages ?? Array(editor.textViews.indices)
-        guard !selected.isEmpty, selected.allSatisfy({ editor.textViews.indices.contains($0) }), selected == Array(Set(selected)).sorted() else {
+        let selected = pages ?? Array(0..<editor.canvas.pageCount)
+        guard !selected.isEmpty, selected.allSatisfy({ (0..<editor.canvas.pageCount).contains($0) }), selected == Array(Set(selected)).sorted() else {
             throw DocumentError.invalid("invalid PDF page selection")
         }
         if let warning = editor.outputWarning { throw DocumentError.invalid(warning) }
@@ -117,6 +119,7 @@ import DocumentCore
             for (id, destination) in destinations where destination.page == index {
                 context.addDestination(DocumentLink.officeBookmark(id) as CFString, at: destination.point)
             }
+            if index >= editor.textViews.count { context.endPDFPage(); continue }
             let container = editor.layout.textContainers[index]
             let glyphs = editor.layout.glyphRange(for: container)
             let characters = editor.layout.characterRange(forGlyphRange: glyphs, actualGlyphRange: nil)
