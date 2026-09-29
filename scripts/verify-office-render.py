@@ -17,7 +17,7 @@ args = parser.parse_args()
 build = args.build.resolve()
 output = build / 'office-render'
 output.mkdir(parents=True, exist_ok=True)
-sources = [build / 'smoke/Smoke.docx', build / 'schema/MergedTable.docx', build / 'schema/DocumentProperties.docx', build / 'schema/ImageAdjustments.docx', build / 'schema/ImageRotation.docx', build / 'schema/StyleOverrides.docx']
+sources = [build / 'smoke/Smoke.docx', build / 'schema/MergedTable.docx', build / 'schema/DocumentProperties.docx', build / 'schema/ImageAdjustments.docx', build / 'schema/ImageRotation.docx', build / 'schema/StyleOverrides.docx', build / 'schema/ScriptTypography.docx']
 result = subprocess.run([
     'libreoffice', '-env:UserInstallation=' + (output / 'profile').as_uri(),
     '--headless', '--norestore', '--convert-to', 'pdf:writer_pdf_Export',
@@ -112,3 +112,18 @@ for label, path in [('Native', build / 'schema/StyleOverrides.pdf'), ('LibreOffi
         else: assert yellow + red == 0, f'{label}: explicit highlight removal was lost'
     pix.save(output / (label + '-StyleOverrides.png'))
 print('Native and LibreOffice preserve inherited, explicitly removed and directly overridden style highlighting.')
+
+for label, path in [('Native', build / 'schema/ScriptTypography.pdf'), ('LibreOffice', output / 'ScriptTypography.pdf')]:
+    pdf = pymupdf.open(path)
+    page = pdf[0]
+    spans = [span for block in page.get_text('dict')['blocks'] if 'lines' in block for line in block['lines'] for span in line['spans']]
+    base = next(s for s in spans if s['text'].strip() == 'Base')
+    up = next(s for s in spans if s['text'].strip() == 'SUP')
+    down = next(s for s in spans if s['text'].strip() == 'SUB')
+    assert abs(base['size']-20) < 0.1, f'{label}: logical base font size changed'
+    assert up['size'] < base['size']*0.8 and down['size'] < base['size']*0.8, f'{label}: script glyphs were not reduced'
+    assert up['origin'][1] < base['origin'][1]-1, f'{label}: superscript was not raised'
+    assert down['origin'][1] > base['origin'][1]+1, f'{label}: subscript was not lowered'
+    assert not page.get_images(), f'{label}: script text should remain vector text'
+    page.get_pixmap(matrix=pymupdf.Matrix(2, 2)).save(output / (label + '-ScriptTypography.png'))
+print('Native and LibreOffice retain the logical font size and render vector superscripts/subscripts above and below the baseline.')
