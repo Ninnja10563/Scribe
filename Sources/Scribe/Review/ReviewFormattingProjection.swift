@@ -4,7 +4,7 @@ import DocumentCore
 
 extension ReviewTextProjection {
     static func formatting(_ original: NSAttributedString, as changed: NSAttributedString,
-                           identity: RevisionIdentity, styles: [ParagraphStyle]) throws -> NSAttributedString {
+                           identity: RevisionIdentity, styles: [ParagraphStyle], recordsChange: Bool = true) throws -> NSAttributedString {
         guard original.string == changed.string else { throw DocumentError.invalid("formatting revision changes text") }
         let result = NSMutableAttributedString(attributedString: changed)
         let text = original.string as NSString
@@ -26,7 +26,8 @@ extension ReviewTextProjection {
             var run = TextRun(text.substring(with: range), format: semantic); run.review = review
             var tracked = RevisionText(runs: [run])
             try tracked.format(NSRange(location: 0, length: range.length), identity: identity) { _ in updated }
-            guard let metadata = tracked.runs.first?.review else { continue }
+            if !recordsChange { tracked.accept(identity.id) }
+            let metadata = tracked.runs.first?.review
             // Paragraph marks have a separate insertion/deletion history. Character
             // formatting history belongs only to the actual text between them.
             var start = offset
@@ -34,7 +35,9 @@ extension ReviewTextProjection {
                 if text.character(at: start) == 10 { start += 1; continue }
                 var finish = start + 1
                 while finish < end, text.character(at: finish) != 10 { finish += 1 }
-                result.addAttribute(.scribeReview, value: try encoded(metadata), range: NSRange(location: start, length: finish - start))
+                let extent = NSRange(location: start, length: finish - start)
+                if let metadata { result.addAttribute(.scribeReview, value: try encoded(metadata), range: extent) }
+                else { result.removeAttribute(.scribeReview, range: extent) }
                 start = finish
             }
         }

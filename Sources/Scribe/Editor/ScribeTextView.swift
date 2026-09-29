@@ -310,8 +310,25 @@ import DocumentCore
         if editor?.reviewEditing.author != nil, !applyingReviewReplacement, undoManager?.isUndoing != true, undoManager?.isRedoing != true {
             applyTrackedReplacement(value, range: range, action: action); return
         }
-        guard shouldChangeText(in: range, replacementString: value.string) else { return }
-        textStorage?.replaceCharacters(in: range, with: value)
+        var replacement = value
+        if !applyingReviewReplacement, let editor, editor.reviewEditing.author == nil,
+           range.length > 0, NSMaxRange(range) <= editor.storage.length {
+            let original = editor.storage.attributedSubstring(from: range)
+            var hasReview = false
+            original.enumerateAttribute(.scribeReview, in: NSRange(location: 0, length: original.length)) { value, _, stop in
+                if value != nil { hasReview = true; stop.pointee = true }
+            }
+            if hasReview, original.string == value.string {
+                do {
+                    replacement = try ReviewTextProjection.formatting(original, as: value,
+                        identity: RevisionIdentity(author: RevisionAuthor(name: "Untracked edit")),
+                        styles: editor.owner?.model.styles ?? ParagraphStyle.defaults, recordsChange: false)
+                    _ = try ReviewEditValidation.validate(replacement, replacing: range, in: editor)
+                } catch { presentError(error); return }
+            }
+        }
+        guard shouldChangeText(in: range, replacementString: replacement.string) else { return }
+        textStorage?.replaceCharacters(in: range, with: replacement)
         didChangeText(); setSelectedRange(NSRange(location: range.location + value.length, length: 0))
         undoManager?.setActionName(action)
     }

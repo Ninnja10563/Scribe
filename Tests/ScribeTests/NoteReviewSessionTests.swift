@@ -44,6 +44,32 @@ import DocumentCore
         options.text.undoManager?.undo()
         XCTAssertEqual(try options.note(), original)
     }
+    func testUntrackedFormattingSurvivesRejectingEarlierTrackedFormatting() throws {
+        let original = DocumentNote(kind: .footnote, text: "Citation")
+        let session = NoteReviewSession(note: original, styles: ParagraphStyle.defaults, author: .init(name: "Writer"))
+        defer { session.close() }
+        session.editor.select(NSRange(location: 0, length: 8))
+        session.editor.activeTextView.toggleBold(nil)
+        let tracked = try session.note()
+        session.editor.reviewEditing.author = nil
+        session.document.undoManager?.removeAllActions()
+        session.editor.activeTextView.toggleItalic(nil)
+        let changed = try session.note()
+        let history = try XCTUnwrap(changed.paragraphs[0].runs[0].review)
+        XCTAssertEqual(history.formatting.count, 2)
+        XCTAssertFalse(history.formatting[0].accepted)
+        XCTAssertTrue(history.formatting[1].accepted)
+        session.document.undoManager?.undo()
+        XCTAssertEqual(try session.note(), tracked)
+        session.document.undoManager?.redo()
+        XCTAssertEqual(try session.note(), changed)
+        var rejected = session.document.snapshot()
+        try rejected.resolveAllRevisions(accepting: false)
+        XCTAssertNil(rejected.paragraphs[0].runs[0].format.bold)
+        XCTAssertEqual(rejected.paragraphs[0].runs[0].format.italic, true)
+        XCTAssertFalse(rejected.hasPendingRevisions)
+        try NativeFormat.validate(rejected)
+    }
     func testLongDraftFlowsAndRetainsCharacterFormattingReview() throws {
         var original = DocumentNote(kind: .endnote)
         original.paragraphs = (1...90).map { Paragraph("Citation \($0). " + String(repeating: "Source details. ", count: 8)) }
