@@ -7,6 +7,31 @@ import DocumentCore
 
 @MainActor final class TableMergeTests: XCTestCase {
     override func setUp() { super.setUp(); _ = NSApplication.shared }
+    func testTallMergedCellContinuesOnFollowingPages() throws {
+        let document = ScribeFileDocument()
+        document.model.insertTable(rows: 40, columns: 1, after: document.model.paragraphs[0].id)
+        for p in document.model.sections[0].paragraphs.indices {
+            if let cell = document.model.sections[0].paragraphs[p].tableCell {
+                document.model.sections[0].paragraphs[p].runs = [TextRun("Tall-cell-line-\(cell.row)-end")]
+            }
+        }
+        try document.model.mergeTableCells(tableID: document.model.tables[0].id, region: TableMerge(row: 0, column: 0, rowSpan: 40, columnSpan: 1))
+        let editor = PaginatedEditor(document: document)
+        defer { editor.prepareForClose(); document.close() }
+        let directory = ProcessInfo.processInfo.environment["SCRIBE_SCHEMA_OUTPUT"].map { URL(fileURLWithPath: $0, isDirectory: true) } ?? FileManager.default.temporaryDirectory
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let url = directory.appendingPathComponent("TallMergedCell.pdf")
+        try PrintRenderer(editor: editor).exportPDF(to: url, title: "Long merged cell", author: "")
+        let pdf = try XCTUnwrap(PDFDocument(url: url))
+        XCTAssertGreaterThanOrEqual(pdf.pageCount, 2)
+        for row in 0..<40 {
+            let token = "Tall-cell-line-\(row)-end"
+            let matches = pdf.findString(token, withOptions: [])
+            XCTAssertEqual(matches.count, 1)
+            let selection = try XCTUnwrap(matches.first), page = try XCTUnwrap(selection.pages.first)
+            XCTAssertTrue(page.bounds(for: .mediaBox).contains(selection.bounds(for: page)))
+        }
+    }
     func testMergedTableFlowsAcrossPagesWithoutMissingCells() throws {
         let document = ScribeFileDocument()
         document.model.insertTable(rows: 40, columns: 2, after: document.model.paragraphs[0].id)
