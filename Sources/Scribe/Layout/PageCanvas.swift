@@ -233,6 +233,7 @@ import DocumentCore
             last.removeFromSuperview(); layout.removeTextContainer(at: layout.textContainers.count - 1)
         }
         if pageCharacterRanges.count > required { pageCharacterRanges.removeLast(pageCharacterRanges.count - required) }
+        if layoutWarning == nil { layoutWarning = EquationProjection.warning(in: self) }
         firstDirtyPage = Int.max
         canvas.pageCount = textViews.count; resizeCanvas()
         onSelection?()

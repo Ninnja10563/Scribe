@@ -3,6 +3,23 @@ import AppKit
 import DocumentCore
 
 @MainActor enum EquationProjection {
+    static func warning(in editor: PaginatedEditor) -> String? {
+        var warning: String?
+        editor.storage.enumerateAttribute(.scribeEquation, in: NSRange(location: 0, length: editor.storage.length)) { value, range, stop in
+            guard value != nil, let attachment = editor.storage.attribute(.attachment, at: range.location, effectiveRange: nil) as? NSTextAttachment,
+                  let cell = attachment.attachmentCell else { return }
+            let glyph = editor.layout.glyphIndexForCharacter(at: range.location)
+            guard glyph < editor.layout.numberOfGlyphs else { return }
+            editor.layout.ensureLayout(forGlyphRange: NSRange(location: glyph, length: 1))
+            let line = editor.layout.lineFragmentRect(forGlyphAt: glyph, effectiveRange: nil)
+            let size = cell.cellSize()
+            if size.width > line.width + 0.5 || size.height > editor.canvas.pageSettings.contentHeight - 1 {
+                warning = "An equation is larger than its writing area. Reduce its size or widen the paragraph or table cell before PDF export or printing."
+                stop.pointee = true
+            }
+        }
+        return warning
+    }
     static func attachment(_ equation: Equation) -> NSTextAttachment {
         let layout = EquationLayout(equation: equation)
         let padding: CGFloat = 2

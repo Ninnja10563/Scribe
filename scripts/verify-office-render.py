@@ -17,7 +17,7 @@ args = parser.parse_args()
 build = args.build.resolve()
 output = build / 'office-render'
 output.mkdir(parents=True, exist_ok=True)
-sources = [build / 'smoke/Smoke.docx', build / 'schema/MergedTable.docx', build / 'schema/DocumentProperties.docx', build / 'schema/ImageAdjustments.docx', build / 'schema/ImageRotation.docx', build / 'schema/StyleOverrides.docx', build / 'schema/ScriptTypography.docx', build / 'schema/ParagraphIndents.docx', build / 'schema/RunningContent.docx', build / 'schema/RunningContentStandard.docx']
+sources = [build / 'smoke/Smoke.docx', build / 'schema/MergedTable.docx', build / 'schema/DocumentProperties.docx', build / 'schema/ImageAdjustments.docx', build / 'schema/ImageRotation.docx', build / 'schema/StyleOverrides.docx', build / 'schema/ScriptTypography.docx', build / 'schema/ParagraphIndents.docx', build / 'schema/RunningContent.docx', build / 'schema/RunningContentStandard.docx', build / 'schema/Equations.docx']
 result = subprocess.run([
     'libreoffice', '-env:UserInstallation=' + (output / 'profile').as_uri(),
     '--headless', '--norestore', '--convert-to', 'pdf:writer_pdf_Export',
@@ -180,3 +180,17 @@ for suffix in ['', 'Standard']:
             page.get_pixmap(matrix=pymupdf.Matrix(1, 1)).save(output / f'{label}-RunningContent{suffix}-{index}.png')
         assert body_pages == sorted(body_pages), f'{label}{suffix}: body pages reordered'
 print('Native and LibreOffice retain first/even variants for start 1; start 2 follows their documented different parity rules.')
+
+# Mathematical exports must contain actual vector formulas in another Office engine.
+math_pdf = pymupdf.open(output / 'Equations.pdf')
+assert len(math_pdf) == 1, 'Unexpected equation fixture pagination'
+math_text = ''.join(page.get_text() for page in math_pdf)
+for token in ['Area', '∑', '∫', 'α', 'β']:
+    assert token in math_text, f'LibreOffice lost mathematical content: {token}'
+assert not math_pdf[0].get_images(), 'Equations were rasterized'
+assert len(math_pdf[0].get_drawings()) >= 5, 'Fraction/root rules are missing'
+for name in ['EquationLayout', 'NativeEquation']:
+    pdf = pymupdf.open(build / ('schema/' + name + '.pdf'))
+    assert len(pdf) == 1 and not pdf[0].get_images(), f'{name}: native equation output must stay vector'
+    pdf[0].get_pixmap(matrix=pymupdf.Matrix(1.5, 1.5)).save(output / (name + '.png'))
+print('Office Math exports render as vector formulas; native standalone and document equations remain vector.')

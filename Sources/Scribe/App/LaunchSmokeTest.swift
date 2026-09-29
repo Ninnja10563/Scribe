@@ -7,6 +7,7 @@ import ImportExport
 extension AppDelegate {
     func smokeTest() async {
         do {
+            guard MathFont.isAvailable else { throw DocumentError.invalid("bundled equation font is missing from the application") }
             let document = ScribeFileDocument()
             try document.model.setMetadata(title: "Scribe Smoke Test", author: "Scribe", language: "en-GB")
             document.model.sections[0].paragraphs = [Paragraph("Scribe", style: "title"), Paragraph("A native document workspace", style: "subtitle"), Paragraph("A considered place to write", style: "heading1"), Paragraph("Scribe brings named styles, an outline, flowing pages and familiar macOS editing together. This document exercises the same layout used for PDF and printing.")]

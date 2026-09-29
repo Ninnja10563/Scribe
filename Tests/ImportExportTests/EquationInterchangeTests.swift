@@ -3,6 +3,16 @@ import DocumentCore
 @testable import ImportExport
 
 final class EquationInterchangeTests: XCTestCase {
+    func testIndependentEquationFixtureAndSafeTextExports() throws {
+        let url = try XCTUnwrap(Bundle.module.url(forResource: "IndependentEquations", withExtension: "docx", subdirectory: "Fixtures"))
+        let imported = try DOCX.decode(Data(contentsOf: url))
+        XCTAssertTrue(imported.warnings.isEmpty)
+        let equation = try XCTUnwrap(imported.document.paragraphs[0].runs.compactMap(\.equation).first)
+        XCTAssertEqual(equation.expression, try MathParser.parse(#"\frac{12}{x_i^2}"#))
+        XCTAssertTrue(imported.document.plainText.contains("remains editable."))
+        XCTAssertTrue(TextFormats.exportMarkdown(imported.document).contains(equation.source))
+        XCTAssertFalse(TextFormats.exportMarkdown(imported.document).contains("\u{FFFC}"))
+    }
     func testActualOfficeMathObjectsRoundTripAndExportPackage() throws {
         let sources = [#"x^2+5x+6=0"#, #"x=\frac{-b+\sqrt{b^2-4ac}}{2a}"#, #"\sum_{i=1}^{n}i=\frac{n(n+1)}{2}"#, #"\int_0^1 x^2=\frac{1}{3}"#, #"\sqrt[3]{\frac{x+1}{y-2}}"#, #"\left(\frac{\alpha}{\beta}\right)^2"#, #"\text{Area}=\pi r^2"#]
         var document = ScribeDocument()

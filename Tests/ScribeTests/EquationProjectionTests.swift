@@ -35,6 +35,19 @@ import DocumentCore
         XCTAssertThrowsError(try controller.applyEquation(Equation(source: String(repeating: "x", count: 1000), pointSize: 144), replacing: NSRange(location: 0, length: 1), action: "Edit Equation"))
         XCTAssertEqual(document.snapshot(), inserted)
     }
+    func testOversizedImportedEquationCannotOverwriteAnExistingPDF() throws {
+        _ = NSApplication.shared
+        let document = ScribeFileDocument()
+        var run = TextRun("\u{FFFC}"); run.equation = try Equation(source: String(repeating: "x", count: 100), pointSize: 30)
+        document.model.sections[0].paragraphs[0].runs = [run]
+        let editor = PaginatedEditor(document: document); defer { editor.prepareForClose() }
+        XCTAssertNotNil(editor.outputWarning)
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".pdf")
+        defer { try? FileManager.default.removeItem(at: url) }
+        let bytes = Data("Preserve previous export".utf8); try bytes.write(to: url)
+        XCTAssertThrowsError(try PrintRenderer(editor: editor).exportPDF(to: url, title: "", author: ""))
+        XCTAssertEqual(try Data(contentsOf: url), bytes)
+    }
     func testEquationsSurviveNativeProjectionEditingAndPDF() throws {
         _ = NSApplication.shared
         let document = ScribeFileDocument()
