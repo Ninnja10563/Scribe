@@ -266,3 +266,11 @@ The first complete running-content run, [36524090953](https://github.com/Ninnja1
 - The extended portable run passed 142 tests with one AppKit-only placeholder skipped, including document-wide comment rebasing, detached-comment retention, note-reference decisions and decisions inside notes.
 - macOS run [36541832828](https://github.com/Ninnja10563/Scribe/actions/runs/36541832828) passed the targeted review/core/interchange and native projection tests at `1019c16`. Native projection preserves run history and author formatting; opening pending changes remains gated until review interaction is implemented.
 - A subsequent 14-test portable run passed coalesced 200-character typing and the existing decision/safety regressions. Accepted formatting history is compacted once no related pending decision remains.
+
+## 0.19.1 published release
+
+- Final candidate [36540445042](https://github.com/Ninnja10563/Scribe/actions/runs/36540445042) and main [36540774541](https://github.com/Ninnja10563/Scribe/actions/runs/36540774541) both passed at the identical revision `4e15d8f`, including repeated native tests, Address Sanitizer, the actual app launch, exported packages and Office rendering.
+- The strengthened live-highlight regression passed in [36540348700](https://github.com/Ninnja10563/Scribe/actions/runs/36540348700): Find attributes remained present after PDF export. Independent PyMuPDF rendering of the downloaded plain and highlighted exports was pixel-identical on both pages at 144 dpi.
+- Tag `v0.19.1` points to the validated revision. Release run [36541388374](https://github.com/Ninnja10563/Scribe/actions/runs/36541388374) passed all validation and published the DMG. The published Apple Silicon DMG was downloaded and its SHA-256 checksum verified successfully.
+
+- Review-decision follow-up: 15 targeted portable tests passed, including preservation of direct character formatting when accepting deletion of all text in a paragraph.
