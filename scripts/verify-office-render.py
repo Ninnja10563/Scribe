@@ -188,6 +188,7 @@ math_text = ''.join(page.get_text() for page in math_pdf)
 for token in ['Area', '∑', '∫', 'α', 'β']:
     assert token in math_text, f'LibreOffice lost mathematical content: {token}'
 assert not math_pdf[0].get_images(), 'Equations were rasterized'
+assert not any(symbol in math_text for symbol in ['❑', '□', '�']), 'Office Math contains empty-operand or missing-glyph placeholders'
 assert len(math_pdf[0].get_drawings()) >= 5, 'Fraction/root rules are missing'
 for name in ['EquationLayout', 'NativeEquation']:
     pdf = pymupdf.open(build / ('schema/' + name + '.pdf'))

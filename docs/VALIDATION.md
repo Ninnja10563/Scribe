@@ -219,3 +219,5 @@ The first complete running-content run, [36524090953](https://github.com/Ninnja1
 - These results do not establish full TeX compatibility, manual Word/Pages equation fidelity, or a physical-Mac/VoiceOver audit.
 
 - Targeted native run [36529083720](https://github.com/Ninnja10563/Scribe/actions/runs/36529083720) passed the 60-equation pagination fixture, narrow table-cell overflow blocking and oversized-object display bounding. Its actual six-page PDF was independently checked: all 60 formula labels were present, text stayed inside physical pages, and no raster images were embedded. A middle page was visually inspected.
+
+- Installing LibreOffice Math enabled independent rendering in [36529012139](https://github.com/Ninnja10563/Scribe/actions/runs/36529012139). Although its automated gates passed, visual inspection revealed empty operand boxes after exported sums and integrals. Export now assigns their following mathematical terms to the actual Office Math operand; standalone operators use limit/script structures. The rendered-output check now explicitly rejects placeholder boxes. A new full validation run is required before release.

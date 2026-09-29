@@ -14,7 +14,7 @@ final class EquationInterchangeTests: XCTestCase {
         XCTAssertFalse(TextFormats.exportMarkdown(imported.document).contains("\u{FFFC}"))
     }
     func testActualOfficeMathObjectsRoundTripAndExportPackage() throws {
-        let sources = [#"x^2+5x+6=0"#, #"x=\frac{-b+\sqrt{b^2-4ac}}{2a}"#, #"\sum_{i=1}^{n}i=\frac{n(n+1)}{2}"#, #"\int_0^1 x^2=\frac{1}{3}"#, #"\sqrt[3]{\frac{x+1}{y-2}}"#, #"\left(\frac{\alpha}{\beta}\right)^2"#, #"\text{Area}=\pi r^2"#]
+        let sources = [#"x^2+5x+6=0"#, #"x=\frac{-b+\sqrt{b^2-4ac}}{2a}"#, #"\sum_{i=1}^{n}i=\frac{n(n+1)}{2}"#, #"\int_0^1 x^2=\frac{1}{3}"#, #"\sqrt[3]{\frac{x+1}{y-2}}"#, #"\left(\frac{\alpha}{\beta}\right)^2"#, #"\text{Area}=\pi r^2"#, #"\sum_{i=1}^{n}"#, #"\int_0^1"#]
         var document = ScribeDocument()
         document.sections[0].paragraphs = try sources.map { source in
             var paragraph = Paragraph(); var run = TextRun("\u{FFFC}")
@@ -24,6 +24,7 @@ final class EquationInterchangeTests: XCTestCase {
         let xml = try XCTUnwrap(String(data: parts["word/document.xml"]!, encoding: .utf8))
         for name in ["oMath", "f", "rad", "nary", "sSup", "d"] { XCTAssertTrue(xml.contains("<m:\(name)")) }
         XCTAssertFalse(xml.contains("<w:drawing"))
+        XCTAssertFalse(xml.contains("<m:e/></m:nary>"), "Office Math operators must not export empty operands that render as placeholder boxes")
         let imported = try DOCX.decode(bytes)
         XCTAssertTrue(imported.warnings.isEmpty, imported.warnings.joined(separator: "; "))
         let equations = imported.document.paragraphs.flatMap(\.runs).compactMap(\.equation)

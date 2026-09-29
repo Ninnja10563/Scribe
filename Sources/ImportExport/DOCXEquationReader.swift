@@ -63,7 +63,8 @@ final class DOCXEquationReader {
             "m:f": ["m:fPr", "m:num", "m:den"], "m:rad": ["m:radPr", "m:deg", "m:e"],
             "m:sSub": ["m:sSubPr", "m:e", "m:sub"], "m:sSup": ["m:sSupPr", "m:e", "m:sup"],
             "m:sSubSup": ["m:sSubSupPr", "m:e", "m:sub", "m:sup"],
-            "m:nary": ["m:naryPr", "m:sub", "m:sup", "m:e"], "m:d": ["m:dPr", "m:e"], "m:box": ["m:boxPr", "m:e"]
+            "m:nary": ["m:naryPr", "m:sub", "m:sup", "m:e"], "m:d": ["m:dPr", "m:e"], "m:box": ["m:boxPr", "m:e"],
+            "m:limLow": ["m:limLowPr", "m:e", "m:lim"], "m:limUpp": ["m:limUppPr", "m:e", "m:lim"]
         ]
         if let names = allowed[node.name], !node.children.allSatisfy({ names.contains($0.name) }) {
             throw DocumentError.invalid("unsupported equation content")
@@ -72,7 +73,7 @@ final class DOCXEquationReader {
         case "m:argPr":
             guard node.children.isEmpty else { throw DocumentError.invalid("unsupported math argument properties") }
             return ""
-        case "m:oMath", "m:e", "m:num", "m:den", "m:deg", "m:sub", "m:sup": return try children()
+        case "m:oMath", "m:e", "m:num", "m:den", "m:deg", "m:sub", "m:sup", "m:lim": return try children()
         case "m:r":
             let value = node.children.filter { $0.name == "m:t" }.map(\.text).joined()
             let properties = node.child("m:rPr")
@@ -95,6 +96,14 @@ final class DOCXEquationReader {
             if node.name != "m:sSup" { result += try "_{\(argument("sub"))}" }
             if node.name != "m:sSub" { result += try "^{\(argument("sup"))}" }
             return result
+        case "m:limLow", "m:limUpp":
+            let base = try argument("e"), limit = try argument("lim")
+            let parsed = try MathParser.parse(base)
+            switch parsed {
+            case .largeOperator, .scripts(.largeOperator, _, _): break
+            default: throw DocumentError.invalid("unsupported limit layout")
+            }
+            return base + (node.name == "m:limLow" ? "_{" : "^{") + limit + "}"
         case "m:nary":
             let properties = node.child("m:naryPr")
             let symbol = properties?.child("m:chr")?.value ?? "∫"
