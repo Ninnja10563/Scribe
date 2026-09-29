@@ -4,6 +4,7 @@ import DocumentCore
 
 @MainActor final class ScribeTextView: NSTextView {
     weak var editor: PaginatedEditor?
+    override func checkSpelling(_ sender: Any?) { DocumentSpelling.findNext(in: self) }
     override func becomeFirstResponder() -> Bool {
         let accepted = super.becomeFirstResponder()
         if accepted { editor?.rememberSelection(self) }
