@@ -7,6 +7,7 @@ public struct InlineImage: Codable, Equatable, Sendable, Identifiable {
     public var width: Double
     public var height: Double
     public var altText: String
+    public var adjustments: ImageAdjustments?
     public init(data: Data, fileExtension: String, width: Double, height: Double, altText: String = "") {
         self.data = data; self.fileExtension = fileExtension; self.width = width; self.height = height; self.altText = altText
     }

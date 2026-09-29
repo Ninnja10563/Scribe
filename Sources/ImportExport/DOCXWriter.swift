@@ -163,10 +163,13 @@ final class DOCXWriter {
         return "<w:tbl><w:tblPr><w:tblW w:w=\"\(Int(table.columnWidths.reduce(0, +) * 20))\" w:type=\"dxa\"/><w:tblBorders>\(borders)</w:tblBorders><w:tblLayout w:type=\"fixed\"/><w:tblCellMar>\(margins)</w:tblCellMar></w:tblPr><w:tblGrid>\(grid)</w:tblGrid>\(rows)</w:tbl>"
     }
     private func imageRun(_ image: InlineImage) -> String {
-        let name = "media/\(image.id).\(image.fileExtension)"
+        // Separate parts also preserve pasted objects that share a semantic ID
+        // but contain different source bytes.
+        let name = "media/\(image.id)-\(nextID).\(image.fileExtension)"
         parts["word/" + name] = image.data
         let id = relationship(type: "image", target: name)
-        let cx = Int(image.width * 12700), cy = Int(image.height * 12700), drawingID = nextID
-        return "<w:r><w:drawing><wp:inline><wp:extent cx=\"\(cx)\" cy=\"\(cy)\"/><wp:docPr id=\"\(drawingID)\" name=\"Image \(drawingID)\" descr=\"\(DOCX.xml(image.altText))\"/><a:graphic><a:graphicData uri=\"http://schemas.openxmlformats.org/drawingml/2006/picture\"><pic:pic><pic:nvPicPr><pic:cNvPr id=\"0\" name=\"\(image.id)\"/><pic:cNvPicPr/></pic:nvPicPr><pic:blipFill><a:blip r:embed=\"\(id)\"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill><pic:spPr><a:xfrm><a:off x=\"0\" y=\"0\"/><a:ext cx=\"\(cx)\" cy=\"\(cy)\"/></a:xfrm><a:prstGeom prst=\"rect\"><a:avLst/></a:prstGeom></pic:spPr></pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing></w:r>"
+        let geometry = DOCXImageAdjustments.geometry(image), drawingID = nextID
+        let cx = geometry.width, cy = geometry.height
+        return "<w:r><w:drawing><wp:inline><wp:extent cx=\"\(cx)\" cy=\"\(cy)\"/>\(geometry.effects)<wp:docPr id=\"\(drawingID)\" name=\"Image \(drawingID)\" descr=\"\(DOCX.xml(image.altText))\"/><a:graphic><a:graphicData uri=\"http://schemas.openxmlformats.org/drawingml/2006/picture\"><pic:pic><pic:nvPicPr><pic:cNvPr id=\"0\" name=\"\(image.id)\"/><pic:cNvPicPr/></pic:nvPicPr><pic:blipFill><a:blip r:embed=\"\(id)\">\(geometry.opacity)</a:blip>\(geometry.crop)<a:stretch><a:fillRect/></a:stretch></pic:blipFill><pic:spPr><a:xfrm\(geometry.rotation)><a:off x=\"0\" y=\"0\"/><a:ext cx=\"\(cx)\" cy=\"\(cy)\"/></a:xfrm><a:prstGeom prst=\"rect\"><a:avLst/></a:prstGeom></pic:spPr></pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing></w:r>"
     }
 }

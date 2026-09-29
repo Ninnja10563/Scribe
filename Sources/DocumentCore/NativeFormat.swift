@@ -37,6 +37,7 @@ public enum NativeFormat {
             if version < 6 { json["tablesOfContents"] = [] }
             // v6 → v7: absent cellStyles and minimumRowHeights inherit table defaults.
             // v7 → v8: absent mergedCells retains the original rectangular grid.
+            // v8 → v9: absent image adjustments preserve original image presentation.
             json["formatVersion"] = ScribeDocument.currentVersion
             migrated = try JSONSerialization.data(withJSONObject: json)
         }
@@ -130,6 +131,10 @@ public enum NativeFormat {
             for run in p.runs {
                 try validateText(run.format)
                 if let image = run.image {
+                    if let adjustments = image.adjustments {
+                        guard adjustments.isValid,
+                              abs(image.width / image.height - adjustments.frameAspectRatio) <= max(0.000001, adjustments.frameAspectRatio * 0.000001) else { throw DocumentError.invalid("invalid image adjustments or frame proportions") }
+                    }
                     guard run.text == "\u{FFFC}", image.data.count <= 32 * 1024 * 1024,
                           !image.data.isEmpty, ["png", "jpg", "jpeg", "tiff", "heic"].contains(image.fileExtension),
                           image.width.isFinite, image.height.isFinite, (1...4000).contains(image.width), (1...4000).contains(image.height) else { throw DocumentError.invalid("invalid inline image") }

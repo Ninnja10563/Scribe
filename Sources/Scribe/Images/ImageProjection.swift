@@ -6,7 +6,23 @@ import DocumentCore
 @MainActor enum ImageProjection {
     static func attachment(_ image: InlineImage) -> NSTextAttachment? {
         let bitmap: NSImage
-        if validPixelSize(image.data), let decoded = NSImage(data: image.data) { bitmap = decoded }
+        if validPixelSize(image.data), let decoded = NSImage(data: image.data) {
+            if let adjustments = image.adjustments {
+                bitmap = NSImage(size: NSSize(width: image.width, height: image.height), flipped: false) { rect in
+                    NSGraphicsContext.saveGraphicsState(); defer { NSGraphicsContext.restoreGraphicsState() }
+                    NSGraphicsContext.current?.imageInterpolation = .high
+                    let transform = NSAffineTransform()
+                    transform.translateX(by: rect.midX, yBy: rect.midY)
+                    transform.rotate(byDegrees: -adjustments.rotation); transform.concat()
+                    let size = adjustments.unrotatedSize(frameWidth: rect.width, frameHeight: rect.height)
+                    let target = NSRect(x: -size.width / 2, y: -size.height / 2, width: size.width, height: size.height)
+                    let crop = adjustments.crop
+                    let source = NSRect(x: decoded.size.width * crop.left, y: decoded.size.height * crop.bottom, width: decoded.size.width * crop.visibleWidth, height: decoded.size.height * crop.visibleHeight)
+                    decoded.draw(in: target, from: source, operation: .sourceOver, fraction: adjustments.opacity, respectFlipped: false, hints: nil)
+                    return true
+                }
+            } else { bitmap = decoded }
+        }
         else {
             bitmap = NSImage(size: NSSize(width: image.width, height: image.height), flipped: false) { rect in
                 NSColor(white: 0.94, alpha: 1).setFill(); rect.fill()

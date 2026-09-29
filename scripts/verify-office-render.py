@@ -16,7 +16,7 @@ args = parser.parse_args()
 build = args.build.resolve()
 output = build / 'office-render'
 output.mkdir(parents=True, exist_ok=True)
-sources = [build / 'smoke/Smoke.docx', build / 'schema/MergedTable.docx', build / 'schema/DocumentProperties.docx']
+sources = [build / 'smoke/Smoke.docx', build / 'schema/MergedTable.docx', build / 'schema/DocumentProperties.docx', build / 'schema/ImageAdjustments.docx']
 result = subprocess.run([
     'libreoffice', '-env:UserInstallation=' + (output / 'profile').as_uri(),
     '--headless', '--norestore', '--convert-to', 'pdf:writer_pdf_Export',
@@ -53,4 +53,31 @@ for source in sources:
             assert page.rect.contains(pymupdf.Rect(word_box[:4])), f'Text outside a physical page in {source.name}'
     pdf[0].get_pixmap(matrix=pymupdf.Matrix(1, 1)).save(output / (source.stem + '.png'))
 (output / 'report.json').write_text(json.dumps(report, indent=2, ensure_ascii=False))
-print('LibreOffice rendered all three DOCX exports with expected text, image, metadata and merged geometry.')
+print('LibreOffice rendered all DOCX exports with expected text, images, metadata and merged geometry.')
+
+# Compare real native and Office-rendered image geometry and colors, not only XML attributes.
+for label, path in [('Native', build / 'schema/ImageAdjustments.pdf'), ('LibreOffice', output / 'ImageAdjustments.pdf')]:
+    pdf = pymupdf.open(path)
+    assert len(pdf) == 1, f'{label}: unexpected adjusted image pagination'
+    page = pdf[0]
+    pix = page.get_pixmap(matrix=pymupdf.Matrix(1, 1), alpha=False)
+    raw = pix.samples
+    points = []
+    for y in range(pix.height):
+        for x in range(pix.width):
+            i = (y * pix.width + x) * pix.n
+            color = raw[i:i+3]
+            if max(color) > 180 and max(color) - min(color) > 60:
+                points.append((x, y))
+    assert points, f'{label}: adjusted image is missing'
+    x0, y0 = map(min, zip(*points)); x1, y1 = map(max, zip(*points))
+    assert abs(x1-x0+1-100) <= 3 and abs(y1-y0+1-150) <= 3, f'{label}: wrong rotated frame {(x0,y0,x1,y1)}'
+    for dx, dy, expected in [(25,25,(128,128,255)), (75,25,(255,128,128)), (25,125,(255,255,128)), (75,125,(128,255,128))]:
+        i = ((y0+dy)*pix.width+x0+dx)*pix.n
+        actual = tuple(raw[i:i+3])
+        assert all(abs(a-b) <= 30 for a,b in zip(actual,expected)), f'{label}: crop/rotation/opacity mismatch {actual} != {expected}'
+    following = page.search_for('After adjusted image.')[0]
+    assert following.y0 >= y1-1, f'{label}: text overlaps adjusted image'
+    assert abs(following.x0-x0) <= 4, f'{label}: rotated image shifts away from paragraph margin'
+    pix.save(output / (label + '-ImageAdjustments.png'))
+print('Native and LibreOffice PDFs preserve cropped clockwise image geometry, opacity, colors and following text flow.')

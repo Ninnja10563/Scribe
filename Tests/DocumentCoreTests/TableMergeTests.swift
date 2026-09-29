@@ -55,7 +55,7 @@ final class TableMergeTests: XCTestCase {
         let legacy = try NativeFormat.encode(document)
         var json = try XCTUnwrap(JSONSerialization.jsonObject(with: legacy) as? [String: Any]); json["formatVersion"] = 7
         let migrated = try NativeFormat.decode(JSONSerialization.data(withJSONObject: json))
-        XCTAssertEqual(migrated.formatVersion, 8); XCTAssertNil(migrated.tables[0].mergedCells)
+        XCTAssertEqual(migrated.formatVersion, ScribeDocument.currentVersion); XCTAssertNil(migrated.tables[0].mergedCells)
         try document.mergeTableCells(tableID: id, region: TableMerge(row: 0, column: 0, rowSpan: 2, columnSpan: 2))
         let before = document
         XCTAssertThrowsError(try document.mergeTableCells(tableID: id, region: TableMerge(row: 1, column: 1, rowSpan: 2, columnSpan: 2)))

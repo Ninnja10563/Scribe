@@ -252,13 +252,11 @@ private class WordReader: NSObject, XMLParserDelegate {
     var tableDepth = 0, tableIndex: Int?, row = -1, column = -1
     private let tableFormatting = DOCXTableFormattingReader()
     private let tableMerging = DOCXTableMergingReader()
-    var inDrawing = false, drawingTarget: String?, drawingWidth = 100.0, drawingHeight = 100.0, drawingAlt = ""
+    var inDrawing = false
+    private let imageReader = DOCXImageReader()
     func parser(_ parser: XMLParser, didStartElement name: String, namespaceURI: String?, qualifiedName: String?, attributes a: [String: String]) {
         if inDrawing {
-            if name == "extent", let cx = a["cx"].flatMap(Double.init), let cy = a["cy"].flatMap(Double.init) { drawingWidth = cx / 12700; drawingHeight = cy / 12700 }
-            if name == "docPr" { drawingAlt = a["descr"] ?? a["name"] ?? "" }
-            if name == "blip", let id = a["r:embed"] ?? a["embed"] { drawingTarget = targets[id] }
-            if name == "anchor" { warnings.insert("Floating images are imported inline with the text.") }
+            imageReader.start(name, namespace: namespaceURI, attributes: a, targets: targets, warnings: &warnings)
         }
         guard namespaceURI == DOCX.wordNS else { return }
         switch name {
@@ -352,7 +350,7 @@ private class WordReader: NSObject, XMLParserDelegate {
             if name == "gridBefore", tableDepth == 1, let count = wordAttribute(a, "val").flatMap(Int.init), (0...19).contains(count) { column = count - 1 }
         case "drawing":
             if !run.text.isEmpty { paragraph?.runs.append(run); run = TextRun("", link: link) }
-            inDrawing = true; drawingTarget = nil; drawingWidth = 100; drawingHeight = 100; drawingAlt = ""
+            inDrawing = true; imageReader.reset()
         case "pict": warnings.insert("Legacy drawings are not imported.")
         case "headerReference": headerID = a["r:id"] ?? a["id"]
         case "footerReference": footerID = a["r:id"] ?? a["id"]
@@ -386,12 +384,11 @@ private class WordReader: NSObject, XMLParserDelegate {
         case "r": if !run.text.isEmpty { paragraph?.runs.append(run) }; inRun = false
         case "drawing":
             inDrawing = false
-            if let target = drawingTarget, let data = files["word/" + target], ["png", "jpg", "jpeg", "tiff", "heic"].contains((target as NSString).pathExtension.lowercased()) {
+            if let image = imageReader.image(files: files, page: document.sections[0].page, warnings: &warnings) {
                 var imageRun = TextRun("\u{FFFC}")
-                let scale = min(1, document.sections[0].page.contentWidth / max(1, drawingWidth), (document.sections[0].page.contentHeight - 24) / max(1, drawingHeight))
-                imageRun.image = InlineImage(data: data, fileExtension: (target as NSString).pathExtension.lowercased(), width: max(1, drawingWidth * scale), height: max(1, drawingHeight * scale), altText: drawingAlt)
+                imageRun.image = image
                 paragraph?.runs.append(imageRun)
-            } else { warnings.insert("An unsupported or missing image was omitted.") }
+            }
             run = TextRun("", link: link)
         case "tbl":
             if tableDepth == 1, let t = tableIndex {
