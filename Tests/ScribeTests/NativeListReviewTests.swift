@@ -13,6 +13,54 @@ import DocumentCore
         document.makeWindowControllers(); document.editorController!.editor.reviewEditing.author = .init(name: "Writer")
         document.undoManager?.removeAllActions(); return document
     }
+    func testTypingInsideGeneratedMarkerTargetsContentAndUndoPreservesNumbering() throws {
+        for value in ["X", "4"] {
+            let document = document("Body"); defer { document.close() }
+            let editor = document.editorController!.editor
+            let before = document.snapshot()
+            let marker = (editor.storage.string as NSString).range(of: "4")
+            editor.select(marker)
+            editor.activeTextView.insertText(value, replacementRange: marker)
+            let changed = document.snapshot()
+            XCTAssertEqual(changed.paragraphs[0].text, value + "Body")
+            XCTAssertTrue(editor.storage.string.hasPrefix("\t4.\t"))
+            XCTAssertEqual(changed.paragraphs[0].runs.filter { $0.review?.insertion != nil }.map(\.text).joined(), value)
+            try NativeFormat.validate(changed)
+            document.undoManager?.undo(); XCTAssertEqual(document.snapshot().paragraphs, before.paragraphs)
+            document.undoManager?.redo(); XCTAssertEqual(document.snapshot().paragraphs, changed.paragraphs)
+        }
+    }
+    func testDeletingOnlyGeneratedMarkerDoesNotCreateRevision() throws {
+        let document = document("Body"); defer { document.close() }
+        let editor = document.editorController!.editor
+        let before = document.snapshot()
+        editor.select(NSRange(location: 1, length: 2))
+        editor.activeTextView.deleteBackward(nil)
+        XCTAssertEqual(document.snapshot(), before)
+        XCTAssertFalse(document.undoManager?.canUndo ?? true)
+        XCTAssertEqual(editor.activeTextView.selectedRange().location, 4)
+    }
+    func testFormattingSelectionIncludingMarkerTracksOnlyAuthoredContent() throws {
+        let document = document("Body"); defer { document.close() }
+        let editor = document.editorController!.editor
+        editor.select(NSRange(location: 1, length: 5))
+        editor.activeTextView.toggleBold(nil)
+        let changed = document.snapshot()
+        XCTAssertEqual(changed.paragraphs[0].text, "Body")
+        XCTAssertEqual(changed.paragraphs[0].runs.filter { !($0.review?.formatting.isEmpty ?? true) }.map(\.text).joined(), "Bo")
+        XCTAssertTrue(editor.storage.string.hasPrefix("\t4.\t"))
+        try NativeFormat.validate(changed)
+    }
+    func testLiteralTabsInOrdinaryParagraphRemainEditableContent() throws {
+        let document = document("\t4.\tBody"); defer { document.close() }
+        document.performEdit("Remove List", recordReview: false) { $0.sections[0].paragraphs[0].list = nil }
+        let editor = document.editorController!.editor
+        editor.select(NSRange(location: 1, length: 1))
+        editor.activeTextView.insertText("X", replacementRange: NSRange(location: 1, length: 1))
+        var model = document.snapshot()
+        try model.resolveAllRevisions(accepting: true)
+        XCTAssertEqual(model.paragraphs[0].text, "\tX.\tBody")
+    }
     func testNativeReturnTracksSeparatorWithoutNumberingTextAndUndoRestores() throws {
         let document = document("First second"); defer { document.close() }
         let editor = document.editorController!.editor, before = document.snapshot()

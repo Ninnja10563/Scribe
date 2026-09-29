@@ -186,7 +186,7 @@ import DocumentCore
             if removeOwnTrackedSeparator(in: affectedCharRange) { return false }
             let selection = selectedRange()
             applyTrackedReplacement(NSAttributedString(string: ""), range: affectedCharRange, action: "Delete")
-            if selection.length == 0, NSMaxRange(affectedCharRange) == selection.location { setSelectedRange(NSRange(location: affectedCharRange.location, length: 0)) }
+            if selection.length == 0, NSMaxRange(affectedCharRange) == selection.location { setSelectedRange(editableListRange(NSRange(location: affectedCharRange.location, length: 0))) }
             else if selection.length == 0, let storage = textStorage, selectedRange().location < storage.length,
                     storage.attribute(.scribeList, at: selectedRange().location, effectiveRange: nil) != nil,
                     let context = listContext(), selectedRange().location < context.contentStart {
@@ -221,8 +221,10 @@ import DocumentCore
         LocalParagraphUndo.register(before: before, after: after, owner: owner,
                                     action: action == "Typing" ? "New Paragraph" : action)
     }
-    private func applyTrackedReplacement(_ value: NSAttributedString, range: NSRange, action: String) {
+    private func applyTrackedReplacement(_ incoming: NSAttributedString, range supplied: NSRange, action: String) {
         guard let editor else { return }
+        let (range, value) = listContentReplacement(incoming, range: supplied, formatting: !["Typing", "Paste", "Delete"].contains(action))
+        if range.length == 0, value.length == 0 { editor.select(range); return }
         if replaceTrackedParagraphRange(value, range: range, action: action) { return }
         if value.string == "\n", action == "Typing" || action == "Paste", insertTrackedParagraphBreak(replacing: range, action: action) { return }
         do {
