@@ -40,6 +40,9 @@ with ZipFile(root / 'Smoke.docx') as package:
         assert any(code.strip().startswith('TOC ') for code in instructions), 'Missing actual Word TOC field'
         entries = [p for section in native['sections'] for p in section['paragraphs'] if p.get('toc', {}).get('kind') == 'entry']
         assert entries and all('—' not in ''.join(run['text'] for run in entry['runs']) for entry in entries), 'Unresolved TOC page labels'
+    if native.get('bookmarks'):
+        assert {'Writing_workspace'} <= bookmark_names
+        assert 'Writing_workspace' in internal_links, 'Missing named Word bookmark link'
     comments = native.get('comments', [])
     assert len(word.comments) == len(comments), 'Missing review text'
     for actual, expected in zip(word.comments, comments):
@@ -68,6 +71,10 @@ with pymupdf.open(root / 'Smoke.pdf') as full, pymupdf.open(root / 'Selected-pag
             links = pdf[-1].get_links()
             assert any(link.get('kind') == pymupdf.LINK_GOTO and link.get('page') == 0 for link in links), 'Missing PDF internal destination'
             assert not any(link.get('uri', '').startswith('scribe:') for link in links), 'Private application URL leaked into PDF'
+    if native.get('bookmarks'):
+        for pdf in (full, selected):
+            rectangles = pdf[-1].search_for('Paragraph 79.')
+            assert rectangles and any(link.get('kind') == pymupdf.LINK_GOTO and link.get('page') == 0 and any(link['from'].intersects(rect) for rect in rectangles) for link in pdf[-1].get_links()), 'Missing named bookmark PDF destination'
     if native.get('formatVersion', 0) >= 6:
         spans = [span for block in full[0].get_text('dict')['blocks'] for line in block.get('lines', []) for span in line['spans']]
         toc_links = [span for span in spans if 'A considered place to write' in span['text'] and span['size'] < 20]

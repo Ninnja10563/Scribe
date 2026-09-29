@@ -89,6 +89,9 @@ import ImportExport
             let lastIndex = document.model.sections[0].paragraphs.count - 1
             let finalText = document.model.sections[0].paragraphs[lastIndex].text
             document.model.sections[0].paragraphs[lastIndex].runs = [TextRun(finalText, link: DocumentLink.paragraph(reviewed.id))]
+            if let bookmark = document.model.addParagraphBookmark(name: "Writing_workspace", paragraphID: document.model.paragraphs[3].id) {
+                document.model.sections[0].paragraphs[lastIndex - 1].runs[0].link = DocumentLink.bookmark(bookmark)
+            }
             document.model.comments = [Comment(anchor: TextAnchor(paragraphID: reviewed.id, offset: 0, length: (reviewed.text as NSString).length), text: "Check the section structure before sharing this draft.\nThe outline and page layout should agree.", author: "Scribe reviewer")]
             var resolvedComment = Comment(anchor: TextAnchor(paragraphID: document.model.paragraphs[3].id, offset: 0, length: 6), text: "Checked in an earlier review.", author: "Copy editor")
             resolvedComment.resolved = true; document.model.comments.append(resolvedComment)
@@ -115,7 +118,7 @@ import ImportExport
             let exportModel = document.snapshot(), wordBytes = try DOCX.encode(document.snapshot())
             try wordBytes.write(to: folder.appendingPathComponent("Smoke.docx"))
             let imported = try DOCX.decode(wordBytes).document
-            guard imported.plainText == exportModel.plainText, imported.comments.map(\.text) == exportModel.comments.map(\.text), imported.comments.map(\.resolved) == exportModel.comments.map(\.resolved) else {
+            guard imported.plainText == exportModel.plainText, imported.comments.map(\.text) == exportModel.comments.map(\.text), imported.comments.map(\.resolved) == exportModel.comments.map(\.resolved), imported.bookmarks.map(\.name) == exportModel.bookmarks.map(\.name) else {
                 throw DocumentError.invalid("release-build DOCX import did not preserve text and review data")
             }
             try PrintRenderer(editor: controller.editor).exportPDF(to: folder.appendingPathComponent("Selected-pages.pdf"), title: "Selected pages", author: "Scribe", pages: [0, controller.editor.textViews.count - 1], subject: "Range export", keywords: ["Scribe", "validation"])

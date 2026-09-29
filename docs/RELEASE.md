@@ -1,12 +1,10 @@
-Scribe 0.6.0 adds automatic tables of contents.
+Scribe 0.7.0 adds named paragraph bookmarks and improves page layout.
 
-- Insert → Table of Contents creates entries from heading styles, with hierarchy, internal links and page labels from the actual document layout. Choose how many heading levels to include.
-- Table of Contents Options changes the title and heading depth without recreating the table.
-- Update Tables of Contents refreshes names, entries and page numbers. Layout repeats until page labels settle, and the whole command is one undo operation. Ordinary paragraphs placed between generated entries are retained.
-- Remove Table of Contents removes generated entries while preserving surrounding document text. Comments associated with regenerated text remain available as detached comments.
-- Native format v6 stores TOC definitions and generated-entry associations; v1–v5 documents migrate in memory.
-- DOCX exports a real Word TOC field with cached entries and bookmark links. Import currently retains the cached text/links and explains that a Scribe TOC must be inserted to regenerate it.
+- Insert → Bookmark This Paragraph creates a named location. Bookmarks lets you navigate, insert a link, rename or delete it. Renaming preserves links; deleted paragraphs leave visible missing destinations that undo can restore.
+- Word export uses actual named bookmarks and anchor links; PDF exports clickable destinations. Imported bookmarks inside paragraphs navigate to the paragraph start, with an import warning. Character-range bookmarks are not yet supported.
+- Page Layout accepts custom paper dimensions and preserves fractional margins. Shrinking tables keeps their columns valid; image resizing preserves the original embedded bytes. Layout changes remain undoable.
+- Fit Page considers both page dimensions. Fit Page and Fit Width follow window and paper-size changes; Actual Size restores 100%. Pinch zoom switches to a fixed scale.
 
-This remains a development release. Generated TOC entry text is replaced on Update; keep notes in separate ordinary paragraphs and modify the Contents styles for consistent formatting. Independent section layout, track changes, named bookmark editing, notes, equations, shapes, floating objects and advanced tables remain unfinished. See docs/FEATURES.md and docs/VALIDATION.md.
+The native document schema remains v6; v1–v5 files still migrate in memory. This is a development release. Independent sections, track changes, footnotes/endnotes, equations, shapes, floating objects and advanced tables remain unfinished. See docs/FEATURES.md and docs/VALIDATION.md.
 
 For Apple Silicon, macOS 14+. Development builds are ad-hoc signed, not notarized. Physical-Mac input/accessibility and manual Word/Pages/LibreOffice validation remain pending.
