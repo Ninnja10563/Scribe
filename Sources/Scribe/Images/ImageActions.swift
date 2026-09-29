@@ -21,10 +21,10 @@ extension ScribeTextView {
         let image = try ImageProjection.image(from: data, maximumWidth: editor.canvas.pageSettings.contentWidth, maximumHeight: editor.canvas.pageSettings.contentHeight - 24, altText: altText)
         guard let attachment = ImageProjection.attachment(image) else { return }
         var attributes = typingAttributes
-        attributes.removeValue(forKey: .scribeEquation)
+        attributes.removeValue(forKey: .scribeEquation); attributes.removeValue(forKey: .scribeNote)
         attributes[.attachment] = attachment; attributes[.scribeImage] = try JSONEncoder().encode(image)
         replaceSelection(NSAttributedString(string: "\u{FFFC}", attributes: attributes), action: "Insert Image")
-        typingAttributes.removeValue(forKey: .attachment); typingAttributes.removeValue(forKey: .scribeImage); typingAttributes.removeValue(forKey: .scribeEquation)
+        typingAttributes.removeValue(forKey: .attachment); typingAttributes.removeValue(forKey: .scribeImage); typingAttributes.removeValue(forKey: .scribeEquation); typingAttributes.removeValue(forKey: .scribeNote)
     }
 }
 #endif

@@ -8,6 +8,7 @@ extension NSAttributedString.Key {
     static let scribeStyle = NSAttributedString.Key("org.scribe.paragraphStyle")
     static let scribeParagraphID = NSAttributedString.Key("org.scribe.paragraphID")
     static let scribeCell = NSAttributedString.Key("org.scribe.tableCell")
+    static let scribeNote = NSAttributedString.Key("org.scribe.note")
     static let scribeEquation = NSAttributedString.Key("org.scribe.equation")
     static let scribeImage = NSAttributedString.Key("org.scribe.image")
     static let scribeRenderedFace = NSAttributedString.Key("org.scribe.renderedFace")
@@ -19,6 +20,8 @@ extension NSAttributedString.Key {
 @MainActor enum AttributedDocument {
     static func render(_ document: ScribeDocument) -> NSAttributedString {
         let result = NSMutableAttributedString(string: "")
+        let numberedNotes = (try? NoteNumbering.resolve(referenceIDs: document.paragraphs.flatMap(\.runs).compactMap(\.noteID), notes: document.notes)) ?? []
+        let notes = Dictionary(uniqueKeysWithValues: numberedNotes.map { ($0.id, $0) })
         var numbering = ListNumbering()
         let tables = TableProjection(document: document)
         let paragraphs = document.paragraphs
@@ -37,6 +40,10 @@ extension NSAttributedString.Key {
                 var attrs = base
                 apply(run.format, over: style.text, to: &attrs)
                 if let link = run.link { attrs[.link] = link }
+                if let id = run.noteID, let note = notes[id] {
+                    attrs[.attachment] = NoteProjection.attachment(note, baseFont: ScriptProjection.logicalFont(in: attrs) ?? .systemFont(ofSize: 12))
+                    attrs[.scribeNote] = try? JSONEncoder().encode(note.note)
+                }
                 if let equation = run.equation {
                     attrs[.attachment] = EquationProjection.attachment(equation); attrs[.scribeEquation] = try? JSONEncoder().encode(equation)
                 }
@@ -58,6 +65,7 @@ extension NSAttributedString.Key {
     static func capture(_ storage: NSAttributedString, preserving original: ScribeDocument, typingAttributes: [NSAttributedString.Key: Any]? = nil) -> ScribeDocument {
         var document = original
         var paragraphs: [Paragraph] = [], usedIDs: Set<UUID> = []
+        var capturedNotes: [DocumentNote] = []
         let text = storage.string as NSString
         let originalParagraphs = original.paragraphs
         let originalTOCIDs = Set(originalParagraphs.filter { $0.toc != nil }.map(\.id))
@@ -105,13 +113,17 @@ extension NSAttributedString.Key {
                     let link = (attributes[.link] as? URL)?.absoluteString ?? attributes[.link] as? String
                     var run = TextRun(value, format: format, link: link)
                     if let attachment = attributes[.attachment] as? NSTextAttachment {
-                        if let data = attributes[.scribeEquation] as? Data { run.equation = try? JSONDecoder().decode(Equation.self, from: data) }
+                        if let data = attributes[.scribeNote] as? Data, data.count <= NativeFormat.maximumBytes,
+                           let note = try? JSONDecoder().decode(DocumentNote.self, from: data) {
+                            run.noteID = note.id; capturedNotes.append(note)
+                        }
+                        else if let data = attributes[.scribeEquation] as? Data { run.equation = try? JSONDecoder().decode(Equation.self, from: data) }
                         else if let data = attributes[.scribeImage] as? Data { run.image = try? JSONDecoder().decode(InlineImage.self, from: data) }
                         else if let bytes = attachment.fileWrapper?.regularFileContents {
                             run.image = try? ImageProjection.image(from: bytes, maximumWidth: original.sections[0].page.contentWidth, maximumHeight: original.sections[0].page.contentHeight - 24)
                         }
                     }
-                    if (run.equation != nil || run.image != nil), value.allSatisfy({ $0 == "\u{FFFC}" }) {
+                    if (run.equation != nil || run.image != nil || run.noteID != nil), value.allSatisfy({ $0 == "\u{FFFC}" }) {
                         // AppKit may coalesce adjacent copies of the same attachment.
                         run.text = "\u{FFFC}"
                         p.runs.append(contentsOf: Array(repeating: run, count: value.count))
@@ -122,6 +134,7 @@ extension NSAttributedString.Key {
             paragraphs.append(p); offset += length + 1
         }
         document.sections[0].paragraphs = paragraphs
+        document.notes = capturedNotes
         let usedTOCs = Set(paragraphs.compactMap { $0.toc?.tableID })
         document.tablesOfContents.removeAll { !usedTOCs.contains($0.id) }
         let usedTables = Set(paragraphs.compactMap { $0.tableCell?.tableID })

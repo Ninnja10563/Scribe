@@ -37,12 +37,12 @@ extension EditorWindowController {
         guard layout.width + 4 <= page.contentWidth, layout.height + 4 <= page.contentHeight - 24 else { throw DocumentError.invalid("this equation is larger than the page writing area; reduce its size or simplify it") }
         let view = editor.activeTextView
         var attributes = range.length > 0 ? editor.storage.attributes(at: range.location, effectiveRange: nil) : view.typingAttributes
-        attributes.removeValue(forKey: .scribeImage)
+        attributes.removeValue(forKey: .scribeImage); attributes.removeValue(forKey: .scribeNote)
         attributes[.attachment] = EquationProjection.attachment(equation)
         attributes[.scribeEquation] = try JSONEncoder().encode(equation)
         editor.select(range)
         editor.activeTextView.replaceSelection(NSAttributedString(string: "\u{FFFC}", attributes: attributes), action: action)
-        for key in [NSAttributedString.Key.attachment, .scribeEquation, .scribeImage] { editor.activeTextView.typingAttributes.removeValue(forKey: key) }
+        for key in [NSAttributedString.Key.attachment, .scribeEquation, .scribeImage, .scribeNote] { editor.activeTextView.typingAttributes.removeValue(forKey: key) }
     }
 }
 #endif
