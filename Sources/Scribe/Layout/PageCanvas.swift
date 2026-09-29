@@ -97,6 +97,7 @@ import DocumentCore
     private var overflowingPages = Set<Int>()
     private let tableValidation = TableLayoutValidation()
     var drawingPrintLinks = false
+    var drawingReviewMarkup = false
     private(set) var revision = 0
     private var semanticCache: (revision: Int, snapshot: SemanticTextSnapshot)?
     var semanticText: SemanticTextSnapshot {
@@ -410,8 +411,9 @@ import DocumentCore
     nonisolated func layoutManager(_ layoutManager: NSLayoutManager, shouldUseTemporaryAttributes attributes: [NSAttributedString.Key: Any], forDrawingToScreen toScreen: Bool, atCharacterIndex index: Int, effectiveRange range: NSRangePointer?) -> [NSAttributedString.Key: Any]? {
         MainActor.assumeIsolated {
             if toScreen { return reviewDrawing.attributes(attributes, storage: layoutManager.textStorage, at: index, effectiveRange: range) }
-            guard drawingPrintLinks else { return nil }
-            return attributes.filter { [.foregroundColor, .underlineStyle, .underlineColor].contains($0.key) }
+            let printable = drawingPrintLinks ? attributes.filter { [.foregroundColor, .underlineStyle, .underlineColor].contains($0.key) } : [:]
+            if drawingReviewMarkup { return reviewDrawing.attributes(printable, storage: layoutManager.textStorage, at: index, effectiveRange: range) }
+            return drawingPrintLinks ? printable : nil
         }
     }
     nonisolated func layoutManager(_ layoutManager: NSLayoutManager, shouldUse action: NSLayoutManager.ControlCharacterAction, forControlCharacterAt charIndex: Int) -> NSLayoutManager.ControlCharacterAction {

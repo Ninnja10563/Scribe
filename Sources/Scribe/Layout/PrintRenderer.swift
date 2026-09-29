@@ -6,8 +6,10 @@ import DocumentCore
 /// Screen, print and PDF share the same glyph layout and physical page dimensions.
 @MainActor final class PrintRenderer: NSView {
     let editor: PaginatedEditor
+    let showsReviewMarkup: Bool
     override var isFlipped: Bool { true }
-    init(editor: PaginatedEditor) {
+    init(editor: PaginatedEditor, showsReviewMarkup: Bool = false) {
+        self.showsReviewMarkup = showsReviewMarkup
         self.editor = editor; editor.paginate()
         let page = editor.canvas.pageSettings
         super.init(frame: NSRect(x: 0, y: 0, width: page.width, height: page.height * Double(editor.canvas.pageCount)))
@@ -27,6 +29,20 @@ import DocumentCore
         }
     }
     func drawPage(_ index: Int) {
+        let wasMarked = editor.drawingReviewMarkup
+        editor.drawingReviewMarkup = showsReviewMarkup
+        var noteDelegates: [(ScreenTextAttributes, Bool)] = []
+        var seen = Set<ObjectIdentifier>()
+        let layouts = (editor.canvas.footnotes[index]?.notes.map { $0.note.layout } ?? []) + (editor.canvas.endnotes.map { [$0.layout] } ?? [])
+        for layout in layouts {
+            if let delegate = layout.delegate as? ScreenTextAttributes, seen.insert(ObjectIdentifier(delegate)).inserted {
+                noteDelegates.append((delegate, delegate.includeReviewInOutput)); delegate.includeReviewInOutput = showsReviewMarkup
+            }
+        }
+        defer {
+            editor.drawingReviewMarkup = wasMarked
+            for (delegate, previous) in noteDelegates { delegate.includeReviewInOutput = previous }
+        }
         let p = editor.canvas.pageSettings
         NSColor.white.setFill(); NSRect(x: 0, y: 0, width: p.width, height: p.height).fill()
         let origin = NSPoint(x: p.left, y: p.top)

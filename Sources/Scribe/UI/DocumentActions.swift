@@ -7,6 +7,7 @@ import ImportExport
 extension EditorWindowController {
     func exportDocument(format: String) {
         guard let window else { return }
+        for view in editor.textViews where view.reviewComposition != nil { view.unmarkText() }
         let model = fileDocument.snapshot()
         if ["txt", "md", "docx"].contains(format) || (format == "rtf" && model.paragraphs.contains { $0.runs.contains { $0.image != nil || $0.equation != nil } }) {
             let alert = NSAlert(); alert.messageText = "Export a \(format.uppercased()) copy?"
@@ -29,20 +30,31 @@ extension EditorWindowController {
         }
         let panel = NSSavePanel(); panel.allowedContentTypes = [.init(filenameExtension: format) ?? .data]
         panel.nameFieldStringValue = (fileDocument.fileURL?.deletingPathExtension().lastPathComponent ?? model.title) + "." + format
+        var reviewOutput: ReviewOutputSession?
         let pdfOptions: PDFExportAccessory?
         if format == "pdf" {
             editor.paginate()
-            let options = PDFExportAccessory(pageCount: editor.canvas.pageCount, title: model.title, author: model.author)
+            if model.hasPendingRevisions {
+                do { reviewOutput = try ReviewOutputSession(source: model, mode: .marked) }
+                catch { presentError(error); return }
+            }
+            let options = PDFExportAccessory(pageCount: reviewOutput?.editor.canvas.pageCount ?? editor.canvas.pageCount, title: model.title, author: model.author, hasPendingRevisions: model.hasPendingRevisions)
+            options.onReviewModeChange = { mode in
+                let replacement = try ReviewOutputSession(source: model, mode: mode)
+                reviewOutput?.close(); reviewOutput = replacement
+                return replacement.editor.canvas.pageCount
+            }
             panel.accessoryView = options; panel.delegate = options; pdfOptions = options
         } else { pdfOptions = nil }
         panel.beginSheetModal(for: window) { response in
+            defer { reviewOutput?.close() }
             guard response == .OK, let url = panel.url else { return }
             do {
                 switch format {
                 case "pdf":
                     self.searchBar.close()
                     guard let options = pdfOptions else { return }
-                    try PrintRenderer(editor: self.editor).exportPDF(to: url, title: options.title.stringValue, author: options.author.stringValue,
+                    try (reviewOutput?.renderer ?? PrintRenderer(editor: self.editor)).exportPDF(to: url, title: options.title.stringValue, author: options.author.stringValue,
                         pages: options.selectedPages(), subject: options.subject.stringValue,
                         keywords: options.keywords.stringValue.components(separatedBy: ",").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty })
                 case "docx": try DOCX.encode(model).write(to: url, options: .atomic)
@@ -58,15 +70,31 @@ extension EditorWindowController {
         }
     }
     func printDocument() {
-        editor.paginate()
-        if let warning = editor.outputWarning { presentError(DocumentError.invalid(warning)); return }
+        for view in editor.textViews where view.reviewComposition != nil { view.unmarkText() }
+        var output: ReviewOutputSession?
+        defer { output?.close() }
+        let model = fileDocument.snapshot()
+        if model.hasPendingRevisions {
+            let alert = NSAlert(); alert.messageText = "Print tracked changes"
+            alert.informativeText = "Choose how pending changes appear in this printout. Your document is unchanged."
+            let choice = NSPopUpButton(frame: NSRect(x: 0, y: 0, width: 300, height: 28))
+            choice.addItems(withTitles: ReviewOutputMode.allCases.map(\.rawValue))
+            choice.setAccessibilityLabel("Tracked changes in printout"); alert.accessoryView = choice
+            alert.addButton(withTitle: "Continue to Print"); alert.addButton(withTitle: "Cancel")
+            guard alert.runModal() == .alertFirstButtonReturn else { return }
+            do { output = try ReviewOutputSession(source: model, mode: ReviewOutputMode.allCases[choice.indexOfSelectedItem]) }
+            catch { presentError(error); return }
+        }
+        let outputEditor = output?.editor ?? editor
+        outputEditor.paginate()
+        if let warning = outputEditor.outputWarning { presentError(DocumentError.invalid(warning)); return }
         searchBar.close()
-        let p = editor.canvas.pageSettings
+        let p = outputEditor.canvas.pageSettings
         let info = NSPrintInfo.shared.copy() as! NSPrintInfo
         info.paperSize = NSSize(width: p.width, height: p.height)
         info.topMargin = 0; info.bottomMargin = 0; info.leftMargin = 0; info.rightMargin = 0
         info.isHorizontallyCentered = false; info.isVerticallyCentered = false
-        let operation = NSPrintOperation(view: PrintRenderer(editor: editor), printInfo: info)
+        let operation = NSPrintOperation(view: (output?.renderer ?? PrintRenderer(editor: editor)), printInfo: info)
         operation.run()
     }
     @objc func pageSettings() {
