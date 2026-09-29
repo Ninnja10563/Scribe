@@ -96,6 +96,10 @@ import DocumentCore
         stack.addArrangedSubview(footer)
         for child in [toolbar, searchBar, split, footer] { child.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true }
         split.setPosition(200, ofDividerAt: 0)
+        content.layoutSubtreeIfNeeded(); editor.resizeCanvas()
+        // Adding the ruler retiles the clip view; new documents still start at the page top.
+        editor.scrollView.contentView.scroll(to: .zero)
+        editor.scrollView.reflectScrolledClipView(editor.scrollView.contentView)
     }
     private func setupOutline() {
         let title = NSTextField(labelWithString: "OUTLINE"); title.font = .systemFont(ofSize: 10, weight: .semibold); title.textColor = .secondaryLabelColor

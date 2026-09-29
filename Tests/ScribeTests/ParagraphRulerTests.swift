@@ -18,6 +18,7 @@ import ImportExport
         document.makeWindowControllers(); defer { document.close() }
         let controller = document.editorController!, editor = controller.editor, window = controller.window!
         controller.showWindow(nil); window.contentView?.layoutSubtreeIfNeeded(); editor.resizeCanvas()
+        XCTAssertEqual(editor.scrollView.documentVisibleRect.minY, 0, accuracy: 0.01)
         let ruler = try XCTUnwrap(editor.paragraphRuler), handle = try XCTUnwrap(ruler.handles.first { $0.indent == .left })
         ruler.refresh(); document.undoManager?.removeAllActions()
         let start = handle.convert(NSPoint(x: 8, y: 7), to: nil)
