@@ -28,6 +28,36 @@ import DocumentCore
         document.undoManager?.undo(); XCTAssertEqual(document.snapshot().paragraphs, original.paragraphs)
         document.undoManager?.redo(); XCTAssertEqual(document.snapshot().paragraphs, changed.paragraphs)
     }
+    func testMultilineTypingWithinOneParagraphIsReversible() throws {
+        let document = document([Paragraph("AB")]); defer { document.close() }
+        let editor = document.editorController!.editor, original = document.snapshot()
+        editor.select(NSRange(location: 1, length: 0)); document.undoManager?.removeAllActions()
+        editor.activeTextView.insertText("x\ny", replacementRange: editor.activeTextView.selectedRange())
+        let changed = document.snapshot(); try NativeFormat.validate(changed)
+        XCTAssertEqual(changed.paragraphs.map(\.text), ["Ax", "yB"])
+        XCTAssertEqual(changed.pendingRevisionIDs.count, 1)
+        var rejected = changed; try rejected.resolveAllRevisions(accepting: false)
+        XCTAssertEqual(rejected.paragraphs, original.paragraphs)
+        document.undoManager?.undo(); XCTAssertEqual(document.snapshot().paragraphs, original.paragraphs)
+        document.undoManager?.redo(); XCTAssertEqual(document.snapshot().paragraphs, changed.paragraphs)
+    }
+    func testMultilineReplacementAcrossOwnListSplitPreservesNumbering() throws {
+        var paragraph = Paragraph("ABCD"); paragraph.list = .init(kind: .decimal, start: 4, restart: true)
+        let document = document([paragraph]); defer { document.close() }
+        let editor = document.editorController!.editor
+        editor.selectListContent(id: paragraph.id)
+        let start = try XCTUnwrap(editor.activeTextView.listContext()?.contentStart)
+        editor.select(NSRange(location: start + 2, length: 0)); editor.activeTextView.insertNewline(nil)
+        let end = try XCTUnwrap(editor.activeTextView.listContext()?.contentStart) + 1
+        editor.select(NSRange(location: start + 1, length: end - start - 1))
+        editor.activeTextView.insertText("X\nY", replacementRange: editor.activeTextView.selectedRange())
+        let changed = document.snapshot(); try NativeFormat.validate(changed)
+        var rejected = changed; try rejected.resolveAllRevisions(accepting: false)
+        XCTAssertEqual(rejected.paragraphs.map(\.text), ["ABCD"])
+        var accepted = changed; try accepted.resolveAllRevisions(accepting: true)
+        XCTAssertEqual(accepted.paragraphs.map(\.text), ["AX", "YD"])
+        XCTAssertTrue(accepted.paragraphs.allSatisfy { $0.list?.kind == .decimal })
+    }
     func testFormattingAParagraphMarkDoesNotInsertAnotherParagraph() throws {
         let document = document([Paragraph("A"), Paragraph("B")]); defer { document.close() }
         let editor = document.editorController!.editor, original = document.snapshot()

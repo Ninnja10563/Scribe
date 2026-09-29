@@ -6,12 +6,19 @@ public extension ScribeDocument {
     /// draft boundaries are joined without ever exposing generated list labels.
     @discardableResult mutating func replaceTrackedRange(_ anchor: TextAnchor, with inserted: [TextRun],
                                                          author: RevisionAuthor, insertedNotes: [DocumentNote] = []) throws -> TextAnchor {
+        try replaceTrackedRange(anchor, withLines: [inserted], author: author, insertedNotes: insertedNotes)
+    }
+
+    /// Multiline typing/plain-text paste inherits the destination paragraph's
+    /// properties. All new text and boundaries form one insertion revision.
+    @discardableResult mutating func replaceTrackedRange(_ anchor: TextAnchor, withLines lines: [[TextRun]],
+                                                         author: RevisionAuthor, insertedNotes: [DocumentNote] = []) throws -> TextAnchor {
         try NativeFormat.validate(self)
-        guard !inserted.contains(where: { $0.text.contains("\n") }),
+        guard !lines.isEmpty, !lines.joined().contains(where: { $0.text.contains("\n") }),
               let section = sections.firstIndex(where: { $0.paragraphs.contains { $0.id == anchor.paragraphID } }),
               let first = sections[section].paragraphs.firstIndex(where: { $0.id == anchor.paragraphID }),
               let last = sections[section].paragraphs.firstIndex(where: { $0.id == (anchor.endParagraphID ?? anchor.paragraphID) }), first <= last else {
-            throw DocumentError.invalid("the tracked replacement must remain within one section and contain inline text")
+            throw DocumentError.invalid("the tracked replacement must remain within one section and use separate paragraph fragments")
         }
         let source = paragraphs, index = DocumentTextIndex(paragraphs: source)
         guard let range = index.range(for: anchor),
@@ -55,10 +62,30 @@ public extension ScribeDocument {
         candidate.rebaseReviewComments(from: source, removing: removed)
         let beforeInsertion = candidate.paragraphs
         let insertionLocation = NSMaxRange(range) - removed.reduce(0) { $0 + $1.length }
-        var text = RevisionText(runs: candidate.sections[section].paragraphs[last].runs)
-        _ = try text.replace(NSRange(location: insertionOffset, length: 0), with: inserted, insertion: insertion, deletion: deletion)
-        if !text.runs.isEmpty { candidate.sections[section].paragraphs[last].runs = text.runs }
-        let insertedLength = inserted.reduce(0) { $0 + $1.text.utf16.count }
+        let destination = candidate.sections[section].paragraphs[last]
+        let parts = try RevisionText(runs: destination.runs).partition(at: insertionOffset)
+        var additions: [Paragraph] = []
+        for (line, content) in lines.enumerated() {
+            var paragraph = destination
+            if line > 0 {
+                paragraph.id = UUID(); paragraph.pageBreakBefore = false; paragraph.list?.restart = nil
+                paragraph.formattingReview = paragraph.formattingReview?.paragraphContinuation()
+            }
+            let inserted = content.filter { !$0.text.isEmpty }.map { source -> TextRun in
+                var run = source, review = RunReview(); review.insertion = insertion; run.review = review; return run
+            }
+            paragraph.runs = RevisionText.coalescing((line == 0 ? parts.before : []) + inserted + (line == lines.count - 1 ? parts.after : []))
+            if paragraph.runs.isEmpty {
+                let format = lines.count > 1 ? content.first?.format : nil
+                paragraph.runs = [TextRun("", format: format ?? destination.runs.first?.format ?? TextFormatting())]
+            }
+            if line < lines.count - 1 {
+                var review = RunReview(); review.insertion = insertion; paragraph.breakReview = review
+            }
+            additions.append(paragraph)
+        }
+        candidate.sections[section].paragraphs.replaceSubrange(last...last, with: additions)
+        let insertedLength = lines.joined().reduce(lines.count - 1) { $0 + $1.text.utf16.count }
         candidate.transformCommentAnchors(from: beforeInsertion,
             replacing: NSRange(location: insertionLocation, length: 0), withLength: insertedLength)
         for note in insertedNotes {

@@ -86,6 +86,29 @@ final class DocumentReplacementReviewTests: XCTestCase {
         XCTAssertEqual(document.paragraphs.map(\.text), ["A\u{FFFC}D"])
         XCTAssertEqual(document.notes, [note]); try NativeFormat.validate(document)
     }
+    func testMultilineReplacementFormsOneInsertionAndPreservesOriginalText() throws {
+        var document = ScribeDocument(); document.sections[0].paragraphs = [Paragraph("ABCD")]
+        let original = document, id = document.paragraphs[0].id
+        let caret = try document.replaceTrackedRange(.init(paragraphID: id, offset: 1, length: 2),
+            withLines: [[TextRun("x")], [TextRun("y")], []], author: author)
+        XCTAssertEqual(document.paragraphs.map(\.text), ["ABCx", "y", "D"])
+        XCTAssertEqual(caret.paragraphID, document.paragraphs[2].id); XCTAssertEqual(caret.offset, 0)
+        XCTAssertEqual(document.pendingRevisionIDs.count, 2)
+        XCTAssertEqual(document.paragraphs[0].breakReview?.insertion, document.paragraphs[1].breakReview?.insertion)
+        var accepted = document; try accepted.resolveAllRevisions(accepting: true)
+        XCTAssertEqual(accepted.paragraphs.map(\.text), ["Ax", "y", "D"])
+        try document.resolveAllRevisions(accepting: false)
+        XCTAssertEqual(document.paragraphs, original.paragraphs)
+    }
+    func testManyInsertedParagraphsCanBeRejectedAsOneRevision() throws {
+        var document = ScribeDocument(); let original = document
+        let lines = (0..<1000).map { [TextRun("Paragraph \($0)")] }
+        _ = try document.replaceTrackedRange(.init(paragraphID: document.paragraphs[0].id, offset: 0, length: 0),
+            withLines: lines, author: author)
+        XCTAssertEqual(document.paragraphs.count, 1000); XCTAssertEqual(document.pendingRevisionIDs.count, 1)
+        try document.resolveRevision(try XCTUnwrap(document.pendingRevisionIDs.first), accepting: false)
+        XCTAssertEqual(document.paragraphs, original.paragraphs)
+    }
     func testInvalidScalarBoundaryDoesNotMutateDocument() throws {
         var document = ScribeDocument(); document.sections[0].paragraphs = [Paragraph("A😀"), Paragraph("B")]
         let before = document

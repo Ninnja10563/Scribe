@@ -90,6 +90,11 @@ public struct RevisionText: Equatable, Sendable {
         return result
     }
 
+    func partition(at offset: Int) throws -> (before: [TextRun], after: [TextRun]) {
+        let parts = try split(NSRange(location: offset, length: 0))
+        return (parts.before, parts.after)
+    }
+
     private func split(_ range: NSRange) throws -> (before: [TextRun], selected: [TextRun], after: [TextRun]) {
         let string = markupText as NSString
         guard range.location >= 0, range.length >= 0, range.location <= string.length,
