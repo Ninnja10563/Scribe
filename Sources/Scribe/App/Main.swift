@@ -4,7 +4,12 @@ import DocumentCore
 
 @main struct ScribeMain {
     @MainActor static func main() {
-        if CommandLine.arguments.contains("--startup-smoke-test") { print("Startup arguments: \(CommandLine.arguments)"); fflush(stdout) }
+        if CommandLine.arguments.contains("--startup-smoke-test") {
+            print("Startup arguments: \(CommandLine.arguments)"); fflush(stdout)
+            var arguments = UserDefaults.standard.volatileDomain(forName: UserDefaults.argumentDomain)
+            arguments["SUEnableAutomaticChecks"] = false
+            UserDefaults.standard.setVolatileDomain(arguments, forName: UserDefaults.argumentDomain)
+        }
         let app = NSApplication.shared
         let delegate = AppDelegate()
         // Initialize the custom controller before AppKit finishes launching.
@@ -22,8 +27,8 @@ import DocumentCore
         NSApp.activate(ignoringOtherApps: true)
         if CommandLine.arguments.contains("--smoke-test") { Task { await smokeTest() }; return }
         ensureDocumentWindow()
-        if CommandLine.arguments.contains("--startup-smoke-test") { verifyStartup(); return }
         SoftwareUpdates.shared.start()
+        if CommandLine.arguments.contains("--startup-smoke-test") { verifyStartup(); return }
         Task {
             let snapshots = (try? await ScribeFileDocument.recovery.snapshots()) ?? []
             for snapshot in snapshots {
@@ -77,6 +82,7 @@ import DocumentCore
             document.windowControllers.first?.window?.orderOut(nil)
             _ = applicationShouldHandleReopen(NSApp, hasVisibleWindows: false)
             guard document.windowControllers.first?.window?.isVisible == true else { exit(3) }
+            guard SoftwareUpdates.shared.controller.updater.canCheckForUpdates else { exit(7) }
             documents.newDocument(nil)
             guard documents.documents.count == 2,
                   documents.documents.allSatisfy({ $0.windowControllers.count == 1 }),
