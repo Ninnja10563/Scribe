@@ -29,6 +29,20 @@ import DocumentCore
         controller.editor.select(NSRange(location: 0, length: 1))
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { NSApp.abortModal() }
         controller.editEquation(); XCTAssertEqual(document.snapshot(), inserted)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            func descendants(_ view: NSView) -> [NSView] { [view] + view.subviews.flatMap(descendants) }
+            guard let content = NSApp.modalWindow?.contentView,
+                  let source = descendants(content).compactMap({ $0 as? NSTextView }).first(where: { $0.identifier?.rawValue == "Equation Source" }),
+                  let size = descendants(content).compactMap({ $0 as? NSTextField }).first(where: { $0.identifier?.rawValue == "Equation Size" }),
+                  let apply = descendants(content).compactMap({ $0 as? NSButton }).first(where: { $0.title == "Apply" }) else {
+                XCTFail("Missing equation editing controls"); NSApp.abortModal(); return
+            }
+            source.string = "x^3"; size.stringValue = "32"; source.didChangeText(); apply.performClick(nil)
+        }
+        controller.editEquation()
+        XCTAssertEqual(document.snapshot().paragraphs[0].runs[0].equation?.source, "x^3")
+        XCTAssertEqual(document.snapshot().paragraphs[0].runs[0].equation?.pointSize, 32)
+        document.undoManager?.undo(); XCTAssertEqual(document.snapshot(), inserted)
         let options = EquationOptions(equation: nil)
         options.source.string = #"\frac{1}"#; options.refresh()
         XCTAssertNil(options.preview.equationLayout); XCTAssertFalse(options.errorLabel.stringValue.isEmpty)
