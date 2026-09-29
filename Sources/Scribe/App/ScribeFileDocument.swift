@@ -98,15 +98,27 @@ import ImportExport
         }
         restore(after, undo: before, name: name)
     }
-    private func restore(_ value: ScribeDocument, undo previous: ScribeDocument, name: String) {
-        undoManager?.registerUndo(withTarget: self) { target in MainActor.assumeIsolated { target.restore(previous, undo: value, name: name) } }
+    private(set) var lastStructureReplacementLength = 0
+    /// Commit a same-turn, validated core operation without recapturing the
+    /// unchanged native projection. Undo retains the full semantic snapshots.
+    func applyReviewedStructure(_ value: ScribeDocument, replacing previous: ScribeDocument, name: String) {
+        guard value != previous else { return }
+        restore(value, undo: previous, name: name, localized: true)
+    }
+    private func restore(_ value: ScribeDocument, undo previous: ScribeDocument, name: String, localized: Bool = false) {
+        undoManager?.registerUndo(withTarget: self) { target in MainActor.assumeIsolated { target.restore(previous, undo: value, name: name, localized: localized) } }
         undoManager?.setActionName(name)
         isRestoring = true
         let selection = editorController?.editor.activeTextView.selectedRange() ?? NSRange(location: 0, length: 0)
         model = value
         if let editor = editorController?.editor {
-            editor.storage.setAttributedString(AttributedDocument.render(value))
-            editor.setPageSettings(value.sections[0].page)
+            let replaced = localized ? DocumentProjectionUpdate.apply(from: previous, to: value, storage: editor.storage) : nil
+            lastStructureReplacementLength = replaced ?? editor.storage.length
+            if replaced == nil {
+                editor.storage.setAttributedString(AttributedDocument.render(value))
+                editor.setPageSettings(value.sections[0].page)
+            }
+            editor.canvas.needsDisplay = true
             editor.canvas.pageNumbering = value.sections[0].pageNumbering
             editor.canvas.runningContent = value.sections[0].runningContent
             editor.canvas.header = value.sections[0].header; editor.canvas.footer = value.sections[0].footer

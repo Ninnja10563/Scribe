@@ -11,6 +11,7 @@ extension ScribeTextView {
               let author = editor.reviewEditing.author, range.location >= 0, range.length >= 0,
               let context = listContext(for: range) else { return false }
         var model = owner.snapshot()
+        let before = model
         guard model.paragraphs.indices.contains(context.index) else { return false }
         let paragraph = model.paragraphs[context.index]
         // Literal tabs in ordinary text are content, unlike generated markers.
@@ -20,7 +21,7 @@ extension ScribeTextView {
         do {
             let target = try model.splitTrackedParagraph(id: paragraph.id,
                 range: NSRange(location: range.location - start, length: range.length), author: author)
-            owner.performEdit(action == "Typing" ? "New Paragraph" : action, recordReview: false) { $0 = model }
+            owner.applyReviewedStructure(model, replacing: before, name: action == "Typing" ? "New Paragraph" : action)
             editor.reviewEditing.resetGrouping()
             editor.jump(to: target)
             if let next = listContext(), let paragraph = model.paragraphs.first(where: { $0.id == target }) {

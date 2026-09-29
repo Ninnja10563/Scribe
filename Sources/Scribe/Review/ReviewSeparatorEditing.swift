@@ -15,8 +15,9 @@ extension ScribeTextView {
               let id = UUID(uuidString: value) else { return false }
         do {
             var model = owner.snapshot()
+            let before = model
             guard try model.removeOwnInsertedSeparator(after: id, authorID: author.id) else { return false }
-            owner.performEdit("Delete", recordReview: false) { $0 = model }
+            owner.applyReviewedStructure(model, replacing: before, name: "Delete")
             editor.reviewEditing.resetGrouping()
             editor.select(NSRange(location: min(range.location, editor.storage.length), length: 0))
         } catch { presentError(error) }

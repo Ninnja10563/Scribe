@@ -35,7 +35,7 @@ extension ScribeTextView {
             do {
                 var updated = model
                 let target = try updated.splitTrackedListItem(id: id, range: range, author: author)
-                owner.performEdit("New List Item", recordReview: false) { $0 = updated }
+                owner.applyReviewedStructure(updated, replacing: model, name: "New List Item")
                 editor.reviewEditing.resetGrouping(); editor.selectListContent(id: target)
             } catch { NSApp.presentError(error) }
             return true
