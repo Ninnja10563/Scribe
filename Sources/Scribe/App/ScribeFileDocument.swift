@@ -134,7 +134,7 @@ import ImportExport
                 }
             }
         }
-        isRestoring = false; didEdit(); editorController?.refreshOutline()
+        isRestoring = false; didEdit(); editorController?.refreshOutline(using: localized ? value : nil)
     }
     override func close() {
         isClosed = true; recoveryTask?.cancel()

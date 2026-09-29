@@ -26,6 +26,8 @@ extension ScribeTextView {
     }
     func insertListNewline() -> Bool {
         guard !hasMarkedText(), let editor, let owner = editor.owner, let context = listContext() else { return false }
+        let attributes = context.start < editor.storage.length ? editor.storage.attributes(at: context.start, effectiveRange: nil) : typingAttributes
+        guard attributes[.scribeList] != nil else { return false }
         let model = owner.snapshot(), paragraphs = model.paragraphs, selection = selectedRange()
         guard paragraphs.indices.contains(context.index), paragraphs[context.index].list != nil,
               selection.location >= context.contentStart, NSMaxRange(selection) <= context.end else { return false }
