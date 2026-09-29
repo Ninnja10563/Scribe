@@ -1,0 +1,131 @@
+import Foundation
+import XCTest
+import DocumentCore
+@testable import ImportExport
+
+final class RevisionExportTests: XCTestCase {
+    private let identity = RevisionIdentity(author: .init(name: "A & B <Review>"), date: Date(timeIntervalSince1970: 1_700_000_000))
+
+    private func changed(_ text: String, deleting: Bool = false) -> TextRun {
+        var run = TextRun(text), review = RunReview()
+        if deleting { review.deletion = .init(author: identity.author, date: identity.date) } else { review.insertion = identity }
+        run.review = review
+        return run
+    }
+
+    func testRealTextRevisionPackageAndPublicGate() throws {
+        var document = ScribeDocument()
+        var inserted = changed(" New 👩🏽‍💻 & <text>")
+        inserted.format.bold = true
+        inserted.link = "https://example.com/review?a=1&b=2"
+        document.sections[0].paragraphs[0].runs = [TextRun("Before"), inserted, changed("Old\tline\u{2028}page\u{c}end", deleting: true), TextRun("After")]
+        let original = document
+        XCTAssertThrowsError(try DOCX.encode(document))
+        XCTAssertThrowsError(try DOCXWriter(document).encode())
+        let bytes = try DOCXWriter(document, revisions: .textChanges).encode()
+        let parts = try ZipArchive.decode(bytes)
+        let xml = try XCTUnwrap(parts["word/document.xml"]).string
+        XCTAssertTrue(xml.contains("<w:ins w:id=\"0\""))
+        XCTAssertTrue(xml.contains("<w:del w:id=\"1\""))
+        XCTAssertTrue(xml.contains("w:author=\"A &amp; B &lt;Review&gt;\""))
+        XCTAssertTrue(xml.contains("w:date=\"2023-11-14T22:13:20Z\""))
+        XCTAssertTrue(xml.contains("<w:delText xml:space=\"preserve\">Old</w:delText><w:tab/>"))
+        XCTAssertTrue(xml.contains("<w:br w:type=\"page\"/><w:delText"))
+        XCTAssertTrue(xml.contains("<w:hyperlink r:id="))
+        XCTAssertEqual(document, original)
+        if let folder = ProcessInfo.processInfo.environment["SCRIBE_SCHEMA_OUTPUT"] {
+            let url = URL(fileURLWithPath: folder, isDirectory: true)
+            try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
+            try bytes.write(to: url.appendingPathComponent("TextRevisions.docx"), options: .atomic)
+        }
+    }
+
+    func testTextRevisionsInBothNoteParts() throws {
+        var document = ScribeDocument()
+        for kind in [DocumentNote.Kind.footnote, .endnote] {
+            var note = DocumentNote(kind: kind, text: "")
+            note.paragraphs[0].runs = [TextRun(kind.rawValue), changed(" new"), changed(" old", deleting: true)]
+            document.notes.append(note)
+            var reference = TextRun("\u{fffc}"); reference.noteID = note.id
+            document.sections[0].paragraphs[0].runs.append(reference)
+        }
+        XCTAssertThrowsError(try DOCX.encode(document))
+        let bytes = try DOCXWriter(document, revisions: .textChanges).encode()
+        let parts = try ZipArchive.decode(bytes)
+        for name in ["footnotes", "endnotes"] {
+            let xml = try XCTUnwrap(parts["word/\(name).xml"]).string
+            XCTAssertTrue(xml.contains("<w:ins")); XCTAssertTrue(xml.contains("<w:del"))
+            XCTAssertTrue(xml.contains("<w:delText xml:space=\"preserve\"> old"))
+        }
+        if let folder = ProcessInfo.processInfo.environment["SCRIBE_SCHEMA_OUTPUT"] {
+            let url = URL(fileURLWithPath: folder, isDirectory: true)
+            try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
+            try bytes.write(to: url.appendingPathComponent("NoteTextRevisions.docx"), options: .atomic)
+        }
+    }
+
+    func testCommentBoundariesSplitAnnotationsWithoutDuplicatingTheirIDs() throws {
+        var document = ScribeDocument()
+        document.sections[0].paragraphs[0].runs = [changed("A😀BC")]
+        document.comments = [Comment(anchor: .init(paragraphID: document.paragraphs[0].id, offset: 1, length: 2), text: "Emoji", author: "Editor")]
+        let bytes = try DOCXWriter(document, revisions: .textChanges).encode()
+        let xml = try XCTUnwrap(ZipArchive.decode(bytes)["word/document.xml"]).string
+        for id in 0..<3 { XCTAssertTrue(xml.contains("<w:ins w:id=\"\(id)\"")) }
+        XCTAssertTrue(xml.contains("</w:ins><w:commentRangeStart"))
+        XCTAssertTrue(xml.contains("😀"))
+        if let folder = ProcessInfo.processInfo.environment["SCRIBE_SCHEMA_OUTPUT"] {
+            try bytes.write(to: URL(fileURLWithPath: folder).appendingPathComponent("CommentTextRevisions.docx"), options: .atomic)
+        }
+    }
+
+    func testFormattingSeparatorsAndObjectsRemainGuarded() throws {
+        var document = ScribeDocument()
+        var text = RevisionText(runs: [TextRun("Bold")])
+        try text.format(NSRange(location: 0, length: 4), identity: identity) { original in
+            var result = original; result.bold = true; return result
+        }
+        document.sections[0].paragraphs[0].runs = text.runs
+        try NativeFormat.validate(document)
+        XCTAssertThrowsError(try DOCXWriter(document, revisions: .textChanges).encode())
+        document.sections[0].paragraphs = [Paragraph("First"), Paragraph("Second")]
+        var separator = RunReview(); separator.insertion = identity
+        document.sections[0].paragraphs[0].breakReview = separator
+        try NativeFormat.validate(document)
+        XCTAssertThrowsError(try DOCXWriter(document, revisions: .textChanges).encode())
+        var equation = changed("\u{fffc}")
+        equation.equation = try Equation(source: "x+1")
+        document.sections[0].paragraphs = [Paragraph("")]
+        document.sections[0].paragraphs[0].runs = [equation]
+        try NativeFormat.validate(document)
+        XCTAssertThrowsError(try DOCXWriter(document, revisions: .textChanges).encode())
+    }
+
+    func testInvalidXMLAuthorAndOutOfRangeDateFailBeforeWritingPackage() throws {
+        for identity in [RevisionIdentity(author: .init(name: "Bad\u{1}author")),
+                         RevisionIdentity(author: .init(name: "Author"), date: Date(timeIntervalSince1970: 1e15))] {
+            var document = ScribeDocument(), run = TextRun("Text"), review = RunReview()
+            review.insertion = identity; run.review = review
+            document.sections[0].paragraphs[0].runs = [run]
+            XCTAssertThrowsError(try DOCXWriter(document, revisions: .textChanges).encode())
+        }
+    }
+
+    func testUnsupportedReviewCannotSilentlyFlatten() throws {
+        var document = ScribeDocument()
+        var run = changed("Both")
+        run.review?.deletion = .init(author: .init(name: "Other reviewer"))
+        document.sections[0].paragraphs[0].runs = [run]
+        try NativeFormat.validate(document)
+        XCTAssertThrowsError(try DOCXWriter(document, revisions: .textChanges).encode())
+        document.sections[0].paragraphs[0].runs = [TextRun("Heading")]
+        let before = document
+        document.sections[0].paragraphs[0].styleID = "heading1"
+        try document.recordParagraphFormattingChanges(from: before, identity: identity)
+        try NativeFormat.validate(document)
+        XCTAssertThrowsError(try DOCXWriter(document, revisions: .textChanges).encode())
+    }
+}
+
+private extension Data {
+    var string: String { String(decoding: self, as: UTF8.self) }
+}

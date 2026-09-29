@@ -7,6 +7,8 @@ final class DOCXWriter {
     private var relationships: [String] = []
     private var overrides: [String] = []
     private var nextID = 1
+    private let revisionMode: DOCXRevisionExport
+    private let revisions = DOCXRevisionWriter()
     private let document: ScribeDocument
     private let noteIDs: [UUID: (kind: String, id: Int)]
     private let numbering: DOCXNumberingWriter
@@ -15,7 +17,7 @@ final class DOCXWriter {
     private var contentWidth = 451.276
     private var bookmarkIDs: [UUID: Int] = [:]
     private var namedBookmarks: DOCXBookmarks?
-    init(_ document: ScribeDocument) { self.document = document; noteIDs = Dictionary(uniqueKeysWithValues: document.notes.enumerated().map { ($0.element.id, ($0.element.kind.rawValue, $0.offset + 1)) }); numbering = DOCXNumberingWriter(paragraphs: document.paragraphs + document.notes.flatMap(\.paragraphs)); comments = DOCXCommentsWriter(document: document); contents = DOCXTableOfContents(document: document) }
+    init(_ document: ScribeDocument, revisions: DOCXRevisionExport = .disabled) { revisionMode = revisions; self.document = document; noteIDs = Dictionary(uniqueKeysWithValues: document.notes.enumerated().map { ($0.element.id, ($0.element.kind.rawValue, $0.offset + 1)) }); numbering = DOCXNumberingWriter(paragraphs: document.paragraphs + document.notes.flatMap(\.paragraphs)); comments = DOCXCommentsWriter(document: document); contents = DOCXTableOfContents(document: document) }
     private func put(_ path: String, _ xml: String) { parts[path] = Data(xml.utf8) }
     private func relationship(type: String, target: String, external: Bool = false, namespace: String = DOCX.relationNS) -> String {
         let id = "rId\(nextID)"; nextID += 1
@@ -24,6 +26,7 @@ final class DOCXWriter {
     }
     func encode() throws -> Data {
         try NativeFormat.validate(document)
+        try DOCXRevisionWriter.validate(document, mode: revisionMode)
         let linked = Set((document.paragraphs + document.notes.flatMap(\.paragraphs)).flatMap(\.runs).compactMap { $0.link.flatMap(DocumentLink.paragraphID) })
         for paragraph in document.paragraphs where linked.contains(paragraph.id) { bookmarkIDs[paragraph.id] = bookmarkIDs.count }
         namedBookmarks = DOCXBookmarks(document, startingID: bookmarkIDs.count, reservedNames: Set(bookmarkIDs.keys.map(DocumentLink.officeBookmark)))
@@ -141,9 +144,14 @@ final class DOCXWriter {
             }
             if let equation = run.equation { return DOCXEquations.xml(equation) }
             if let image = run.image { return imageRun(image) }
-            let text = DOCX.xml(run.text).replacingOccurrences(of: "\t", with: "</w:t><w:tab/><w:t xml:space=\"preserve\">").replacingOccurrences(of: "\u{2028}", with: "</w:t><w:br/><w:t xml:space=\"preserve\">")
-            let pageText = text.replacingOccurrences(of: "\u{c}", with: "</w:t><w:br w:type=\"page\"/><w:t xml:space=\"preserve\">")
-            let content = "<w:r><w:rPr>\(DOCX.runProperties(run.format))</w:rPr><w:t xml:space=\"preserve\">\(pageText)</w:t></w:r>"
+            let textTag = run.review?.deletion == nil ? "t" : "delText"
+            let close = "</w:\(textTag)>"
+            let open = "<w:\(textTag) xml:space=\"preserve\">"
+            let text = DOCX.xml(run.text)
+                .replacingOccurrences(of: "\t", with: close + "<w:tab/>" + open)
+                .replacingOccurrences(of: "\u{2028}", with: close + "<w:br/>" + open)
+                .replacingOccurrences(of: "\u{c}", with: close + "<w:br w:type=\"page\"/>" + open)
+            let content = revisions.wrap("<w:r><w:rPr>\(DOCX.runProperties(run.format))</w:rPr>\(open)\(text)\(close)</w:r>", review: run.review)
             guard let link = run.link else { return content }
             if let id = DocumentLink.paragraphID(link) {
                 guard bookmarkIDs[id] != nil else { return content }
