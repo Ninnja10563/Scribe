@@ -16,6 +16,12 @@ import DocumentCore
         for match in matches {
             if case .note(let id, let range, _) = match { noteRanges[id, default: []].append(range) }
         }
+        var references: [UUID: NSRange] = [:]
+        editor.storage.enumerateAttribute(.scribeNote, in: NSRange(location: 0, length: editor.storage.length)) { data, range, _ in
+            if let data = data as? Data, let note = try? JSONDecoder().decode(DocumentNote.self, from: data), noteRanges[note.id] != nil {
+                references[note.id] = range
+            }
+        }
         for note in model.notes where noteRanges[note.id] != nil {
             var isolated = ScribeDocument(); isolated.styles = model.styles
             isolated.sections[0].paragraphs = note.paragraphs
@@ -27,12 +33,7 @@ import DocumentCore
             }
             var updated = note
             updated.paragraphs = AttributedDocument.capture(value, preserving: isolated).paragraphs
-            var check = model; try check.updateNote(updated)
-            var reference: NSRange?
-            editor.storage.enumerateAttribute(.scribeNote, in: NSRange(location: 0, length: editor.storage.length)) { data, range, stop in
-                if let data = data as? Data, let found = try? JSONDecoder().decode(DocumentNote.self, from: data), found.id == note.id { reference = range; stop.pointee = true }
-            }
-            guard let reference, !bodyRanges.contains(where: { NSIntersectionRange($0, reference).length > 0 }) else { continue }
+            guard let reference = references[note.id], !bodyRanges.contains(where: { NSIntersectionRange($0, reference).length > 0 }) else { continue }
             let changed = NSMutableAttributedString(attributedString: editor.storage.attributedSubstring(from: reference))
             changed.addAttribute(.scribeNote, value: try JSONEncoder().encode(updated), range: NSRange(location: 0, length: changed.length))
             replacements.append((reference, changed))
