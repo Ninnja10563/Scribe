@@ -49,6 +49,16 @@ final class DocumentReviewTests: XCTestCase {
         XCTAssertEqual(document.notes[0].plainText, "New citation"); XCTAssertFalse(document.hasPendingRevisions)
         try NativeFormat.validate(document)
     }
+    func testAcceptingAllTextDeletionPreservesEmptyParagraphCharacterFormat() throws {
+        var document = ScribeDocument(), run = TextRun("Remove")
+        run.format.fontSize = 24; run.format.italic = true
+        var review = RunReview(); review.deletion = .init(author: .init(name: "Reviewer")); run.review = review
+        document.sections[0].paragraphs[0].runs = [run]
+        try document.resolveAllRevisions(accepting: true)
+        XCTAssertEqual(document.paragraphs[0].text, "")
+        XCTAssertEqual(document.paragraphs[0].runs[0].format, run.format)
+        XCTAssertNil(document.paragraphs[0].runs[0].review)
+    }
     func testInvalidInputCannotPartiallyResolveDocument() throws {
         var document = ScribeDocument(), run = TextRun("Text")
         var review = RunReview(); review.deletion = .init(author: .init(name: "Reviewer")); review.formattingBase = TextFormatting()

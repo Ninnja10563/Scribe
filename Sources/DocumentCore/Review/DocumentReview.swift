@@ -14,6 +14,7 @@ public extension ScribeDocument {
     }
     private mutating func resolveRevisions(_ ids: Set<UUID>, accepting: Bool) throws {
         try NativeFormat.validate(self)
+        guard !ids.isDisjoint(with: pendingRevisionIDs) else { return }
         var candidate = self, removed: [NSRange] = [], offset = 0
         func resolve(_ paragraph: inout Paragraph, body: Bool) {
             for run in paragraph.runs {
@@ -27,7 +28,7 @@ public extension ScribeDocument {
             for id in accepting ? order : Array(order.reversed()) {
                 if accepting { text.accept(id) } else { text.reject(id) }
             }
-            paragraph.runs = text.runs.isEmpty ? [TextRun("")] : text.runs
+            paragraph.runs = text.runs.isEmpty ? [TextRun("", format: paragraph.runs.first?.format ?? TextFormatting())] : text.runs
             if body { offset += 1 } // Paragraph separators are outside this run operation.
         }
         for section in candidate.sections.indices {
