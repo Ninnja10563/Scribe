@@ -14,7 +14,6 @@ import DocumentCore
     let zoomPicker = NSPopUpButton()
     let toolbar = NSStackView()
     let searchBar = SearchBar()
-    var entries: [OutlineEntry] = []
     private let outlineHint = NSTextField(wrappingLabelWithString: "Apply heading styles to build your document outline.")
     var isFocused = false
     private var statsWork: DispatchWorkItem?
@@ -125,7 +124,7 @@ import DocumentCore
     private func divider() -> NSView { let view = NSBox(); view.boxType = .separator; view.widthAnchor.constraint(equalToConstant: 1).isActive = true; view.heightAnchor.constraint(equalToConstant: 18).isActive = true; return view }
     func refreshOutline() {
         guard !isClosing else { return }
-        let model = fileDocument.snapshot(); commentsSidebar.reload(model); entries = model.outline; outlineHint.isHidden = !entries.isEmpty; outline.refresh(entries)
+        let model = fileDocument.snapshot(); commentsSidebar.reload(model); let entries = model.outline; outlineHint.isHidden = !entries.isEmpty; outline.refresh(entries)
         let selected = stylePicker.titleOfSelectedItem
         stylePicker.removeAllItems(); stylePicker.addItems(withTitles: model.styles.map(\.name))
         if let selected { stylePicker.selectItem(withTitle: selected) }

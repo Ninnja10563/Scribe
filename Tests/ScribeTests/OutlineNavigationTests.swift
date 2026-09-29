@@ -59,6 +59,12 @@ import DocumentCore
         window.makeKeyAndOrderFront(nil)
         controller.focusOutline()
         XCTAssertTrue(window.firstResponder === outline)
+        func key(_ code: UInt16, _ characters: String) throws {
+            outline.keyDown(with: try XCTUnwrap(NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: [], timestamp: 0, windowNumber: window.windowNumber, context: nil, characters: characters, charactersIgnoringModifiers: characters, isARepeat: false, keyCode: code)))
+        }
+        try key(123, "\u{f702}"); XCTAssertEqual(outline.numberOfRows, 2)
+        try key(124, "\u{f703}"); XCTAssertEqual(outline.numberOfRows, 5)
+        try key(125, "\u{f701}"); XCTAssertEqual(outline.selectedRow, 1)
         let before = document.snapshot()
         outline.selectRowIndexes(IndexSet(integer: 2), byExtendingSelection: false)
         XCTAssertTrue(window.firstResponder === outline)
@@ -76,6 +82,8 @@ import DocumentCore
         XCTAssertFalse(document.isDocumentEdited)
         controller.focusOutline()
         NativeDialogCapture.save(window.contentView!, name: "HierarchicalOutline")
+        outline.clipsToBounds = true
+        NativeDialogCapture.save(window.contentView!, name: "HierarchicalOutlineClipped")
     }
 }
 #endif
