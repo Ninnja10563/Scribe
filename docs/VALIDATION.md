@@ -170,3 +170,10 @@ Further inheritance tests found that capture could turn inherited highlight/base
 
 The first rendered-highlight assertion included pixels beyond the final glyph and sampled TextKit's adjacent highlighted paragraph separator. Inspection confirmed that the explicitly cleared text itself is white in both native and LibreOffice PDFs. The check now samples strictly inside the text bounds. TextKit can extend a highlighted newline through the remaining line width; closer paragraph-mark background fidelity is still needed. This is separate from the corrected semantic highlight inheritance.
 
+
+## Script typography and empty-paragraph formatting in development
+
+- [Run 36515434624](https://github.com/Ninnja10563/Scribe/actions/runs/36515434624) passed native script editing, repeated commands, font traits/size, undo and full RTF/RTFD Copy tests. Native and LibreOffice PDF checks confirm reduced vector glyphs above/below the baseline and a 20-point logical base font. Native offsets are checked exactly (7 points up, 4 down for that base size).
+- PDF inspection of the first implementation exposed a doubled baseline offset: AppKit also interprets its semantic superscript attribute. The projection now stores its semantic level separately, then restores standard script attributes for external rich text. That initial implementation was not released.
+- [Run 36515821165](https://github.com/Ninnja10563/Scribe/actions/runs/36515821165) passed the additional empty-paragraph regression: font/script state is retained through undo, native save/reopen and subsequent text entry. Capture now preserves the already-supported formatting of empty runs. Native format remains v10.
+- Linux ARM64 passes 94 portable tests with one additional AppKit-only skip. Multi-page script bounds and the final release revision are still under validation; 0.13 is not released yet.
