@@ -13,6 +13,7 @@ import DocumentCore
     var footer = ""
     var pageNumbering: PageNumbering?
     var runningContent: RunningContentVariants?
+    weak var editor: PaginatedEditor?
     var indentGuide: (page: Int, offset: Double)? { didSet { needsDisplay = true } }
     override var isFlipped: Bool { true }
     var pageSize: NSSize { NSSize(width: pageSettings.width, height: pageSettings.height) }
@@ -32,6 +33,9 @@ import DocumentCore
             RunningContentLayout.draw(runningText(isHeader: true, pageIndex: i), at: NSPoint(x: rect.minX + pageSettings.left, y: rect.minY + 30), width: pageSettings.contentWidth)
             RunningContentLayout.draw(runningText(isHeader: false, pageIndex: i), at: NSPoint(x: rect.minX + pageSettings.left, y: rect.maxY - 38), width: pageSettings.contentWidth)
             drawPageNumber(index: i, origin: rect.origin)
+            if let editor, editor.layout.textContainers.indices.contains(i) {
+                editor.drawStructuralReview(on: i, at: NSPoint(x: rect.minX + pageSettings.left, y: rect.minY + pageSettings.top))
+            }
             if let notes = footnotes[i] {
                 notes.draw(at: NSPoint(x: rect.minX + pageSettings.left, y: rect.maxY - pageSettings.bottom - notes.height), width: pageSettings.contentWidth)
             }
@@ -116,6 +120,7 @@ import DocumentCore
     init(document: ScribeFileDocument, projectedContent: NSAttributedString? = nil) {
         owner = document
         super.init()
+        canvas.editor = self
         if let manager = document.undoManager {
             NotificationCenter.default.addObserver(self, selector: #selector(prepareReviewUndo), name: .NSUndoManagerWillUndoChange, object: manager)
             NotificationCenter.default.addObserver(self, selector: #selector(prepareReviewUndo), name: .NSUndoManagerWillRedoChange, object: manager)

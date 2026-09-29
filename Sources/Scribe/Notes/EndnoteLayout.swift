@@ -6,18 +6,21 @@ import DocumentCore
 /// endnotes to continue across real pages without changing their semantic owner.
 @MainActor final class EndnoteLayout {
     let labels: [UUID: String]
+    private let trailingReview: ParagraphFormattingReview?
     private let screenAttributes = ScreenTextAttributes()
     let storage: NSTextStorage
     let layout: NSLayoutManager
     let containers: [NSTextContainer]
     init(notes: [NumberedNote], styles: [ParagraphStyle], page: PageSettings, maximumPages: Int) throws {
+        trailingReview = notes.last?.note.paragraphs.last.flatMap { $0.text.isEmpty ? $0.formattingReview : nil }
         labels = Dictionary(uniqueKeysWithValues: notes.map { ($0.id, "Endnote \($0.number)") })
         guard !notes.isEmpty, maximumPages > 0 else { throw DocumentError.invalid("no space remains for endnote pages") }
         let heading = NSMutableParagraphStyle(); heading.paragraphSpacing = 12
         let value = NSMutableAttributedString(string: "Endnotes\n", attributes: [.font: NSFont.boldSystemFont(ofSize: 18), .foregroundColor: NSColor.black, .paragraphStyle: heading])
+        var noteModel = ScribeDocument(); noteModel.styles = styles
         for (index, note) in notes.enumerated() {
             if index > 0 {
-                var attributes = value.attributes(at: value.length - 1, effectiveRange: nil)
+                var attributes = AttributedDocument.editingAttributes(for: notes[index - 1].note.paragraphs.last!, in: noteModel)
                 attributes.removeValue(forKey: .scribeNoteLabelID); attributes.removeValue(forKey: .scribeNoteContentID)
                 value.append(NSAttributedString(string: "\n", attributes: attributes))
             }
@@ -53,11 +56,14 @@ import DocumentCore
         }
         throw DocumentError.invalid("endnotes exceed the current 2,000-page document layout limit")
     }
-    func draw(page: Int, at origin: NSPoint) {
+    func draw(page: Int, at origin: NSPoint, showsReviewMarkup: Bool = true) {
         guard containers.indices.contains(page) else { return }
         let range = layout.glyphRange(for: containers[page])
         layout.drawBackground(forGlyphRange: range, at: origin)
         layout.drawGlyphs(forGlyphRange: range, at: origin)
+        if showsReviewMarkup {
+            ReviewStructuralMarks.draw(ReviewStructuralMarks.marks(storage: storage, layout: layout, container: containers[page], glyphs: range, trailingReview: trailingReview), at: origin)
+        }
     }
 }
 #endif

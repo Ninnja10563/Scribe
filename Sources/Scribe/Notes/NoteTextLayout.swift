@@ -13,7 +13,9 @@ import DocumentCore
     let container: NSTextContainer
     let glyphRange: NSRange
     let height: CGFloat
+    let trailingReview: ParagraphFormattingReview?
     init(note: NumberedNote, styles: [ParagraphStyle], width: CGFloat) throws {
+        trailingReview = note.note.paragraphs.last.flatMap { $0.text.isEmpty ? $0.formattingReview : nil }
         noteID = note.id; label = "\(note.note.kind == .footnote ? "Footnote" : "Endnote") \(note.number)"
         guard width.isFinite, width >= 30, width <= 4000 else { throw DocumentError.invalid("invalid note writing width") }
         var model = ScribeDocument(); model.styles = styles; model.sections[0].paragraphs = note.note.paragraphs
@@ -55,10 +57,13 @@ import DocumentCore
         let glyphs: NSRange
         let top: CGFloat
         let height: CGFloat
-        func draw(at origin: NSPoint) {
+        func draw(at origin: NSPoint, showsReviewMarkup: Bool = true) {
             let offset = NSPoint(x: origin.x, y: origin.y - top)
             note.layout.drawBackground(forGlyphRange: glyphs, at: offset)
             note.layout.drawGlyphs(forGlyphRange: glyphs, at: offset)
+            if showsReviewMarkup {
+                ReviewStructuralMarks.draw(ReviewStructuralMarks.marks(storage: note.storage, layout: note.layout, container: note.container, glyphs: glyphs, trailingReview: note.trailingReview), at: offset)
+            }
         }
     }
     var fullFragment: Fragment { Fragment(note: self, glyphs: glyphRange, top: 0, height: height) }

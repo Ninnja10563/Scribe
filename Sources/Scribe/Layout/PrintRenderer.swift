@@ -51,10 +51,11 @@ import DocumentCore
             withLinkPresentation(on: index) {
                 editor.layout.drawBackground(forGlyphRange: range, at: origin)
                 editor.layout.drawGlyphs(forGlyphRange: range, at: origin)
+                if showsReviewMarkup { editor.drawStructuralReview(on: index, at: origin) }
             }
-        } else { editor.canvas.endnotes?.draw(page: index - editor.textViews.count, at: origin) }
+        } else { editor.canvas.endnotes?.draw(page: index - editor.textViews.count, at: origin, showsReviewMarkup: showsReviewMarkup) }
         if let notes = editor.canvas.footnotes[index] {
-            notes.draw(at: NSPoint(x: p.left, y: p.height - p.bottom - notes.height), width: p.contentWidth)
+            notes.draw(at: NSPoint(x: p.left, y: p.height - p.bottom - notes.height), width: p.contentWidth, showsReviewMarkup: showsReviewMarkup)
         }
         RunningContentLayout.draw(editor.canvas.runningText(isHeader: true, pageIndex: index), at: NSPoint(x: p.left, y: 30), width: p.contentWidth)
         editor.canvas.drawPageNumber(index: index, origin: .zero)

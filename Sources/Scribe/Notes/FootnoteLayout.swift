@@ -8,13 +8,13 @@ import DocumentCore
     @MainActor struct Page {
         let notes: [NoteTextLayout.Fragment]
         let height: CGFloat
-        func draw(at origin: NSPoint, width: CGFloat) {
+        func draw(at origin: NSPoint, width: CGFloat, showsReviewMarkup: Bool = true) {
             guard !notes.isEmpty else { return }
             NSColor.darkGray.setStroke()
             let rule = NSBezierPath(); rule.lineWidth = 0.5
             rule.move(to: origin); rule.line(to: NSPoint(x: origin.x + min(100, width), y: origin.y)); rule.stroke()
             var y = origin.y + 12
-            for note in notes { note.draw(at: NSPoint(x: origin.x, y: y)); y += note.height + 6 }
+            for note in notes { note.draw(at: NSPoint(x: origin.x, y: y), showsReviewMarkup: showsReviewMarkup); y += note.height + 6 }
         }
     }
     let endnotes: [NumberedNote]
