@@ -44,23 +44,29 @@ import DocumentCore
         editor.canvas.drawPageNumber(index: index, origin: .zero)
         RunningContentLayout.draw(editor.canvas.runningText(isHeader: false, pageIndex: index), at: NSPoint(x: p.left, y: p.height - 38), width: p.contentWidth)
     }
-    private func removingPrivateURLAnnotations(from data: Data) throws -> Data {
-        var hasInternalLinks = false
+    private func finalizingLinkAnnotations(from data: Data) throws -> Data {
+        var hasLinks = false
         for storage in contentStorages {
             storage.enumerateAttribute(.link, in: NSRange(location: 0, length: storage.length)) { value, _, stop in
-                let url = (value as? URL) ?? (value as? String).flatMap(URL.init(string:))
-                if url?.scheme?.lowercased() == "scribe" { hasInternalLinks = true; stop.pointee = true }
+                if value != nil { hasLinks = true; stop.pointee = true }
             }
         }
-        guard hasInternalLinks else { return data }
+        guard hasLinks else { return data }
         guard let pdf = PDFDocument(data: data) else { throw DocumentError.invalid("could not finalize PDF links") }
         var changed = false
         for index in 0..<pdf.pageCount {
             guard let page = pdf.page(at: index) else { continue }
             // AppKit emits URL annotations while drawing linked glyphs. The private
             // native scheme is replaced by the actual PDF destinations authored below.
-            for annotation in page.annotations where (annotation.action as? PDFActionURL)?.url?.scheme?.lowercased() == "scribe" {
-                page.removeAnnotation(annotation); changed = true
+            var seen = Set<String>()
+            for annotation in page.annotations {
+                guard let url = (annotation.action as? PDFActionURL)?.url else { continue }
+                let bounds = annotation.bounds
+                let geometry = [bounds.minX, bounds.minY, bounds.width, bounds.height].map { String(format: "%.3f", Double($0)) }.joined(separator: ",")
+                let duplicate = !seen.insert(url.absoluteString + "|" + geometry).inserted
+                if url.scheme?.lowercased() == "scribe" || duplicate {
+                    page.removeAnnotation(annotation); changed = true
+                }
             }
         }
         guard changed else { return data }
@@ -145,7 +151,7 @@ import DocumentCore
             context.endPDFPage()
         }
         context.closePDF()
-        try removingPrivateURLAnnotations(from: data as Data).write(to: url, options: .atomic)
+        try finalizingLinkAnnotations(from: data as Data).write(to: url, options: .atomic)
     }
 }
 #endif

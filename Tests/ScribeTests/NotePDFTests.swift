@@ -37,10 +37,11 @@ import DocumentCore
         XCTAssertTrue(first.annotations.contains { destination($0)?.page === second }, "Body reference must navigate to its endnote")
         XCTAssertTrue(second.annotations.contains { destination($0)?.page === first }, "Endnote label must navigate back to the body reference")
         XCTAssertTrue(first.annotations.contains { destination($0)?.page === first }, "Footnotes and their internal source links remain navigable")
-        XCTAssertTrue(second.annotations.contains { ($0.action as? PDFActionURL)?.url?.absoluteString == "https://example.org/source" })
+        XCTAssertEqual(second.annotations.filter { ($0.action as? PDFActionURL)?.url?.absoluteString == "https://example.org/source" }.count, 1)
         XCTAssertFalse((first.annotations + second.annotations).contains { ($0.action as? PDFActionURL)?.url?.scheme == "scribe" })
         try renderer.exportPDF(to: partial, title: "Body only", author: "", pages: [0])
-        let selected = try XCTUnwrap(PDFDocument(url: partial)?.page(at: 0))
+        let partialPDF = try XCTUnwrap(PDFDocument(url: partial))
+        let selected = try XCTUnwrap(partialPDF.page(at: 0))
         XCTAssertFalse(selected.annotations.contains { destination($0)?.page == nil && ($0.action as? PDFActionURL) == nil })
         XCTAssertEqual(document.snapshot().notes, [foot, end])
     }
