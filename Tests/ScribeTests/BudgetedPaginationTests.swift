@@ -86,6 +86,36 @@ import DocumentCore
         XCTAssertEqual(try XCTUnwrap(PDFDocument(url: url)).pageCount, editor.canvas.pageCount)
         XCTAssertEqual(NSMaxRange(try XCTUnwrap(ranges(editor).last)), editor.layout.numberOfGlyphs)
     }
+    func testDeletingProcessedPrefixRestartsAndRemovesObsoletePages() async throws {
+        let document = document(paragraphs: 160); defer { document.close() }
+        let editor = document.editorController!.editor
+        editor.reviewEditing.author = nil
+        let initialPages = editor.canvas.pageCount
+        editor.select(NSRange(location: 0, length: 0)); editor.activeTextView.insertNewline(nil)
+        editor.paginateForEditing(); XCTAssertTrue(editor.hasPendingPagination)
+        let firstPass = editor.paginationPassCount
+        for _ in 0..<100 where editor.paginationPassCount == firstPass {
+            try await Task.sleep(nanoseconds: 2_000_000)
+        }
+        XCTAssertGreaterThan(editor.paginationPassCount, firstPass)
+        // Change an already processed prefix while the suffix remains dirty.
+        // Leave two original paragraphs, with a trailing empty paragraph.
+        let remaining = document.model.paragraphs.suffix(2).map(\.text).joined(separator: "\n") + "\n"
+        editor.storage.replaceCharacters(in: NSRange(location: 0, length: editor.storage.length), with: remaining)
+        editor.activeTextView.setSelectedRange(NSRange(location: 0, length: 0))
+        editor.activeTextView.didChangeText()
+        for _ in 0..<1000 where editor.hasPendingPagination {
+            try await Task.sleep(nanoseconds: 2_000_000)
+        }
+        XCTAssertFalse(editor.hasPendingPagination)
+        XCTAssertLessThan(editor.canvas.pageCount, initialPages)
+        XCTAssertEqual(editor.storage.string, remaining)
+        let reference = ScribeFileDocument(); reference.model = document.snapshot(); reference.model.id = UUID()
+        reference.makeWindowControllers(); defer { reference.close() }
+        XCTAssertEqual(ranges(editor), ranges(reference.editorController!.editor))
+        XCTAssertEqual(editor.canvas.pageCount, reference.editorController!.editor.canvas.pageCount)
+        XCTAssertEqual(NSMaxRange(try XCTUnwrap(ranges(editor).last)), editor.layout.numberOfGlyphs)
+    }
     func testClosingCancelsQueuedPaginationContinuation() async throws {
         let document = document(paragraphs: 160), editor = document.editorController!.editor
         editor.select(NSRange(location: 0, length: 0)); editor.activeTextView.insertNewline(nil)
