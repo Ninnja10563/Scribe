@@ -5,10 +5,10 @@ import DocumentCore
 @main struct ScribeMain {
     @MainActor static func main() {
         if CommandLine.arguments.contains("--startup-smoke-test") { print("Startup arguments: \(CommandLine.arguments)"); fflush(stdout) }
-        let delegate = AppDelegate()
-        // The shared accessor finishes document-type and visible-UI initialization.
-        _ = NSDocumentController.shared
         let app = NSApplication.shared
+        let delegate = AppDelegate()
+        // Initialize the custom controller before AppKit finishes launching.
+        _ = NSDocumentController.shared
         app.delegate = delegate
         app.setActivationPolicy(.regular)
         withExtendedLifetime(delegate) { app.run() }
