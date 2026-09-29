@@ -25,6 +25,26 @@ import DocumentCore
             XCTAssertEqual(try session.note(), edited)
         }
     }
+    func testLongDraftFlowsAndRetainsCharacterFormattingReview() throws {
+        var original = DocumentNote(kind: .endnote)
+        original.paragraphs = (1...90).map { Paragraph("Citation \($0). " + String(repeating: "Source details. ", count: 8)) }
+        let session = NoteReviewSession(note: original, styles: ParagraphStyle.defaults, author: .init(name: "Writer"))
+        defer { session.close() }
+        XCTAssertGreaterThan(session.editor.textViews.count, 2)
+        XCTAssertEqual(try session.note().paragraphs, original.paragraphs)
+        let end = session.editor.storage.length
+        session.editor.select(NSRange(location: end - 8, length: 7))
+        session.editor.activeTextView.toggleBold(nil)
+        let formatted = try session.note()
+        XCTAssertTrue(formatted.paragraphs.last!.runs.contains { !($0.review?.formatting.isEmpty ?? true) })
+        session.document.undoManager?.undo()
+        XCTAssertEqual(try session.note().paragraphs, original.paragraphs)
+        session.document.undoManager?.redo()
+        XCTAssertEqual(try session.note(), formatted)
+        var rejected = session.document.snapshot()
+        try rejected.resolveAllRevisions(accepting: false)
+        XCTAssertEqual(rejected.paragraphs, original.paragraphs)
+    }
     func testApplyCommitsCompositionButCancelLeavesSourceUntouched() throws {
         let original = DocumentNote(kind: .footnote, text: "Citation")
         let session = NoteReviewSession(note: original, styles: ParagraphStyle.defaults, author: .init(name: "Writer"))
