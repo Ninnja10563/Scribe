@@ -9,6 +9,7 @@ extension ScribeTextView {
               storage.attribute(.attachment, at: range.location, effectiveRange: nil) != nil,
               let layoutManager, let textContainer else { return nil }
         let glyphs = layoutManager.glyphRange(forCharacterRange: range, actualCharacterRange: nil)
+        guard glyphs.length > 0, layoutManager.textContainer(forGlyphAt: glyphs.location, effectiveRange: nil) === textContainer else { return nil }
         return layoutManager.boundingRect(forGlyphRange: glyphs, in: textContainer).offsetBy(dx: textContainerOrigin.x, dy: textContainerOrigin.y)
     }
     func drawImageSelection() {
@@ -29,14 +30,20 @@ extension ScribeTextView {
         guard let data = original[.scribeImage] as? Data, let image = try? JSONDecoder().decode(InlineImage.self, from: data),
               let attachment = ImageProjection.attachment(image), let cell = attachment.attachmentCell as? NSTextAttachmentCell else { return false }
         var updated = image
-        let direction: CGFloat = corner.x == rect.minX ? -1 : 1
+        let horizontalDirection: CGFloat = corner.x == rect.minX ? -1 : 1
+        let verticalDirection: CGFloat = corner.y == rect.minY ? -1 : 1
         let maxWidth = editor.canvas.pageSettings.contentWidth
         let maxHeight = editor.canvas.pageSettings.contentHeight - 24
-        while let next = window.nextEvent(matching: [.leftMouseDragged, .leftMouseUp], until: .distantFuture, inMode: .eventTracking, dequeue: true) {
+        var deferredKey: NSEvent?
+        while let next = window.nextEvent(matching: [.leftMouseDragged, .leftMouseUp, .keyDown], until: .distantFuture, inMode: .eventTracking, dequeue: true) {
+            if next.type == .keyDown {
+                updated = image
+                if next.keyCode != 53 { deferredKey = next }
+                break
+            }
             if next.type == .leftMouseUp { break }
             let location = convert(next.locationInWindow, from: nil)
-            let desired = max(12, min(maxWidth, image.width + (location.x - point.x) * direction))
-            let scale = min(desired / image.width, maxHeight / image.height)
+            let scale = ImageResizeGeometry.scale(width: image.width, height: image.height, horizontalChange: (location.x - point.x) * horizontalDirection, verticalChange: (location.y - point.y) * verticalDirection, maximumWidth: maxWidth, maximumHeight: maxHeight)
             updated.width = image.width * scale; updated.height = image.height * scale
             cell.image?.size = NSSize(width: updated.width, height: updated.height)
             storage.addAttribute(.attachment, value: attachment, range: range)
@@ -49,7 +56,9 @@ extension ScribeTextView {
             setSelectedRange(range); replaceSelection(NSAttributedString(string: "\u{FFFC}", attributes: attributes), action: "Resize Image")
             setSelectedRange(range)
         }
-        editor.paginate(); needsDisplay = true; return true
+        editor.paginate(); needsDisplay = true
+        if let deferredKey { NSApp.sendEvent(deferredKey) }
+        return true
     }
 }
 #endif
