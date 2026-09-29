@@ -104,6 +104,37 @@ import DocumentCore
         XCTAssertEqual(document.snapshot().paragraphs, original.paragraphs)
         XCTAssertEqual(editor.floatingImages.entries.count, 1)
     }
+    func testSquareImageSharesPageWithReservedFootnoteAndRepeatedAssetAnchors() throws {
+        let document = ScribeFileDocument(); document.model = source(.square)
+        let note = DocumentNote(kind: .footnote, text: "FloatingCitation " + String(repeating: "Source information. ", count: 20))
+        document.model.notes = [note]
+        var reference = TextRun("\u{fffc}"); reference.noteID = note.id
+        document.model.sections[0].paragraphs[0].runs.append(reference)
+        // A second occurrence may intentionally share an asset UUID but has its own anchor.
+        var second = document.model.sections[0].paragraphs[0].runs[1]
+        second.image?.placement?.x = 260
+        second.image?.placement?.y = 240
+        document.model.sections[0].paragraphs[0].runs.append(second)
+        let editor = PaginatedEditor(document: document); defer { editor.prepareForClose() }
+        XCTAssertNil(editor.layoutWarning)
+        XCTAssertEqual(editor.floatingImages.entries.count, 2)
+        XCTAssertEqual(Set(editor.floatingImages.entries.map { $0.range.location }).count, 2)
+        XCTAssertEqual(Set(editor.floatingImages.entries.map { $0.image.id }).count, 1)
+        XCTAssertEqual(editor.layout.textContainers[0].exclusionPaths.count, 2)
+        let footnotes = try XCTUnwrap(editor.canvas.footnotes[0])
+        XCTAssertGreaterThan(footnotes.height, 0)
+        for entry in editor.floatingImages.entries {
+            XCTAssertEqual(entry.page, 0)
+            XCTAssertLessThanOrEqual(entry.frame.maxY, entry.writingHeight)
+            XCTAssertLessThanOrEqual(entry.writingHeight + footnotes.height, editor.canvas.pageSettings.contentHeight + 0.5)
+        }
+        XCTAssertEqual(document.snapshot().paragraphs, document.model.paragraphs)
+        if let directory = ProcessInfo.processInfo.environment["SCRIBE_SCHEMA_OUTPUT"] {
+            let folder = URL(fileURLWithPath: directory, isDirectory: true)
+            try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+            try PrintRenderer(editor: editor).exportPDF(to: folder.appendingPathComponent("FloatingImage-notes.pdf"), title: "Images and notes", author: "Scribe")
+        }
+    }
     func testOverflowBlocksPDFWithoutReplacingAnExistingFile() throws {
         let document = ScribeFileDocument(); document.model = source(.square)
         document.model.sections[0].paragraphs[0].runs[1].image?.placement?.x = 440
