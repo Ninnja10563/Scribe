@@ -40,7 +40,6 @@ import DocumentCore
                 if frame.maxX > page.contentWidth || frame.maxY > container.containerSize.height {
                     warning = "Move or resize the floating image to fit this page's writing area."
                 }
-                if placement.wrapping == .square { warning = "Square image wrapping is still being implemented." }
                 result.append(Entry(image: cell.source, bitmap: bitmap, range: anchor, page: index, frame: frame, writingHeight: container.containerSize.height))
             }
         }

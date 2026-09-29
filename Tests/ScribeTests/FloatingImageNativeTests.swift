@@ -38,10 +38,41 @@ import DocumentCore
             XCTAssertEqual(document.snapshot().paragraphs, source.paragraphs)
         }
     }
-    func testSquareWrappingBlocksOutputUntilItsLayoutIsImplemented() throws {
+    func testSquareWrappingUsesRealLineFragmentsAndCanBeUndone() throws {
         let document = ScribeFileDocument(); document.model = source(.square)
-        let editor = PaginatedEditor(document: document); defer { editor.prepareForClose() }
-        XCTAssertTrue(editor.layoutWarning?.contains("Square") == true)
+        document.makeWindowControllers(); defer { document.close() }
+        let editor = try XCTUnwrap(document.editorController?.editor)
+        document.undoManager?.removeAllActions()
+        let original = document.snapshot()
+        XCTAssertNil(editor.layoutWarning)
+        XCTAssertGreaterThan(editor.lastFloatingLayoutPasses, 0)
+        XCTAssertLessThanOrEqual(editor.lastFloatingLayoutPasses, 12)
+        func verifyExclusion() throws {
+            let entry = try XCTUnwrap(editor.floatingImages.entries.first)
+            let container = editor.layout.textContainers[entry.page]
+            let expected = entry.frame.insetBy(dx: -8, dy: -8)
+            XCTAssertEqual(container.exclusionPaths.map(\.bounds), [expected])
+            let glyphs = editor.layout.glyphRange(for: container)
+            editor.layout.enumerateLineFragments(forGlyphRange: glyphs) { _, used, current, _, _ in
+                if current === container { XCTAssertFalse(used.intersects(expected.insetBy(dx: 0.25, dy: 0.25)), "Text intersects its image exclusion: \(used)") }
+            }
+        }
+        try verifyExclusion()
+        document.performEdit("Move Image") { $0.sections[0].paragraphs[0].runs[1].image?.placement?.x = 260 }
+        XCTAssertNil(editor.layoutWarning); try verifyExclusion()
+        document.undoManager?.undo()
+        XCTAssertEqual(document.snapshot().paragraphs, original.paragraphs)
+        try verifyExclusion()
+        if let directory = ProcessInfo.processInfo.environment["SCRIBE_SCHEMA_OUTPUT"] {
+            let folder = URL(fileURLWithPath: directory, isDirectory: true)
+            try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+            try PrintRenderer(editor: editor).exportPDF(to: folder.appendingPathComponent("FloatingImage-square.pdf"), title: "Square wrapping", author: "Scribe")
+            NativeDialogCapture.save(editor.canvas, name: "FloatingImageSquareCanvas")
+        }
+        document.performEdit("Make Image Inline") { $0.sections[0].paragraphs[0].runs[1].image?.placement = nil }
+        XCTAssertNil(editor.layoutWarning)
+        XCTAssertTrue(editor.floatingImages.entries.isEmpty)
+        XCTAssertTrue(editor.layout.textContainers.allSatisfy { $0.exclusionPaths.isEmpty })
     }
     func testClipboardKeepsPlacementAndExternalCopyContainsAVisibleImage() throws {
         let source = source(.inFrontOfText), rendered = AttributedDocument.render(source)

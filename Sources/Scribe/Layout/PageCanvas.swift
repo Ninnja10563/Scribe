@@ -94,6 +94,8 @@ import DocumentCore
     private var isLayingOut = false
     private var noteReferencesMayExist = false
     private var floatingReferencesMayExist = false
+    private var hasImageExclusions = false
+    private(set) var lastFloatingLayoutPasses = 0
     private var firstDirtyPage = 0
     private var pageCharacterRanges: [NSRange] = []
     private var paginationStability = PaginationStability()
@@ -206,6 +208,41 @@ import DocumentCore
     }
     func paginateForEditing() { paginate(pageBudget: 8) }
     func paginate(pageBudget: Int? = nil) {
+        guard !isLayingOut else { return }
+        lastFloatingLayoutPasses = 0
+        guard floatingReferencesMayExist || hasImageExclusions else { paginatePass(pageBudget: pageBudget); return }
+        let began = ProcessInfo.processInfo.systemUptime
+        defer { lastPaginationSeconds = ProcessInfo.processInfo.systemUptime - began }
+        var seen = Set<String>()
+        for pass in 1...12 {
+            lastFloatingLayoutPasses = pass
+            paginatePass(pageBudget: nil)
+            guard layoutWarning == nil else { return }
+            let square = floatingImages.entries.filter { $0.image.placement?.wrapping == .square }
+            guard hasImageExclusions || !square.isEmpty else { return }
+            var changed = false
+            var signature = ""
+            for (index, container) in layout.textContainers.enumerated() {
+                let frames = square.filter { $0.page == index }.map { entry in
+                    let gap = entry.image.placement?.textDistance ?? 0
+                    return entry.frame.insetBy(dx: -gap, dy: -gap)
+                }
+                signature += "\(index):" + frames.map { NSStringFromRect($0) }.joined(separator: ";") + "|"
+                if container.exclusionPaths.map(\.bounds) != frames {
+                    container.exclusionPaths = frames.map { NSBezierPath(rect: $0) }
+                    layout.textContainerChangedGeometry(container); changed = true
+                }
+            }
+            hasImageExclusions = !square.isEmpty
+            guard changed else { return }
+            firstDirtyPage = 0; paginationStability.invalidate()
+            guard seen.insert(signature).inserted else { break }
+        }
+        layoutWarning = "Floating images could not settle onto pages. Move the image nearer its text anchor or choose inline placement."
+        onLayout?(); onSelection?()
+    }
+    private func paginatePass(pageBudget: Int? = nil) {
+
         guard !isLayingOut, firstDirtyPage != Int.max else { return }
         relayout?.cancel(); relayout = nil
         let began = ProcessInfo.processInfo.systemUptime
