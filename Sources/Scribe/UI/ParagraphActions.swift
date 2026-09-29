@@ -48,26 +48,27 @@ extension EditorWindowController {
         let alert = NSAlert(); alert.messageText = "Paragraph Spacing and Indents"; alert.informativeText = "Measurements are in points. A first-line indent smaller than the left indent creates a hanging indent."
         stack.frame = NSRect(x: 0, y: 0, width: 340, height: 200); alert.accessoryView = stack
         alert.addButton(withTitle: "Apply"); alert.addButton(withTitle: "Cancel")
-        guard alert.runModal() == .alertFirstButtonReturn else { return }
-        let numbers = fields.compactMap { Double($0.stringValue) }
-        guard numbers.count == 6, numbers.allSatisfy({ $0.isFinite && (0...300).contains($0) }), numbers[4] + numbers[5] < editor.canvas.pageSettings.contentWidth - 30 else { return }
-        let range = (editor.storage.string as NSString).paragraphRange(for: view.selectedRange())
-        if range.length == 0 {
-            let style = current.mutableCopy() as! NSMutableParagraphStyle
-            style.lineSpacing = numbers[0]; style.paragraphSpacingBefore = numbers[1]; style.paragraphSpacing = numbers[2]
-            style.firstLineHeadIndent = numbers[3]; style.headIndent = numbers[4]; style.tailIndent = -numbers[5]
-            view.typingAttributes[.paragraphStyle] = style; return
+        while !isClosing, alert.runModal() == .alertFirstButtonReturn {
+            do {
+                let numbers = fields.compactMap { Double($0.stringValue) }
+                try applyParagraphGeometry(numbers); return
+            } catch { alert.informativeText = error.localizedDescription }
         }
-        let selection = view.selectedRange(); view.setSelectedRange(range)
-        view.transformSelection(action: "Paragraph Formatting") { value in
-            value.enumerateAttribute(.paragraphStyle, in: NSRange(location: 0, length: value.length)) { attr, subrange, _ in
-                let style = ((attr as? NSParagraphStyle) ?? current).mutableCopy() as! NSMutableParagraphStyle
-                style.lineSpacing = numbers[0]; style.paragraphSpacingBefore = numbers[1]; style.paragraphSpacing = numbers[2]
-                style.firstLineHeadIndent = numbers[3]; style.headIndent = numbers[4]; style.tailIndent = -numbers[5]
-                value.addAttribute(.paragraphStyle, value: style, range: subrange)
+    }
+    func applyParagraphGeometry(_ numbers: [Double]) throws {
+        guard numbers.count == 6, numbers.allSatisfy({ $0.isFinite && (0...4000).contains($0) }), max(numbers[3], numbers[4]) + numbers[5] < editor.canvas.pageSettings.contentWidth - 30 else {
+            throw DocumentError.invalid("enter non-negative spacing and indents that leave at least 30 points of writing width")
+        }
+        let indices = editor.selectedParagraphIndices()
+        fileDocument.performEdit("Paragraph Formatting") { model in
+            for index in indices where model.sections[0].paragraphs.indices.contains(index) {
+                let paragraph = model.sections[0].paragraphs[index]
+                var format = paragraph.formatting ?? model.style(for: paragraph).paragraph
+                format.lineSpacing = numbers[0]; format.spaceBefore = numbers[1]; format.spaceAfter = numbers[2]
+                format.firstLineIndent = numbers[3]; format.headIndent = numbers[4]; format.tailIndent = numbers[5]
+                model.sections[0].paragraphs[index].formatting = format
             }
         }
-        view.setSelectedRange(selection)
     }
 }
 #endif

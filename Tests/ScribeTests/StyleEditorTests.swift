@@ -53,6 +53,22 @@ import DocumentCore
         document.undoManager?.redo(); XCTAssertEqual(fontSize("First heading"), 18)
         XCTAssertEqual(try NativeFormat.decode(NativeFormat.encode(document.snapshot())).styles, document.snapshot().styles)
     }
+    func testEmptyParagraphGeometryPersistsAndUndoesWithoutTyping() throws {
+        let document = ScribeFileDocument()
+        document.makeWindowControllers(); defer { document.close() }
+        let controller = document.editorController!
+        document.undoManager?.removeAllActions()
+        try controller.applyParagraphGeometry([6, 12, 18, 0, 24, 12])
+        XCTAssertTrue(document.isDocumentEdited)
+        let saved = try NativeFormat.decode(document.data(ofType: "org.scribe.document"))
+        XCTAssertEqual(saved.paragraphs[0].formatting?.headIndent, 24)
+        XCTAssertEqual(saved.paragraphs[0].formatting?.firstLineIndent, 0)
+        document.undoManager?.undo(); XCTAssertNil(document.snapshot().paragraphs[0].formatting)
+        document.undoManager?.redo(); XCTAssertEqual(document.snapshot().paragraphs[0].formatting?.headIndent, 24)
+        let before = document.snapshot()
+        XCTAssertThrowsError(try controller.applyParagraphGeometry([6, 12, 18, 0, 300, 300]))
+        XCTAssertEqual(document.snapshot(), before)
+    }
     func testCreateAndApplyIsOneUndoableOperationAndDuplicateNamesAreRejected() throws {
         let document = ScribeFileDocument()
         document.model.sections[0].paragraphs = [Paragraph("First"), Paragraph("Second"), Paragraph("Third")]
