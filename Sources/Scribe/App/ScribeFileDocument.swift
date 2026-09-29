@@ -167,7 +167,7 @@ import ImportExport
                 document.model = url.pathExtension.lowercased() == "md" ? TextFormats.markdown(string) : TextFormats.plainText(string)
             }
             noteNewRecentDocumentURL(url)
-            if document.model.title.isEmpty || document.model.title == "Untitled" { document.model.title = url.deletingPathExtension().lastPathComponent }
+            if url.pathExtension.lowercased() != "docx" || document.model.title.isEmpty { document.model.title = url.deletingPathExtension().lastPathComponent }
             addDocument(document); document.makeWindowControllers(); document.showWindows(); document.updateChangeCount(.changeDone)
             if !document.importWarnings.isEmpty {
                 let alert = NSAlert(); alert.messageText = "Imported with limitations"

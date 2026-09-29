@@ -45,5 +45,6 @@ final class MetadataTests: XCTestCase {
         let bytes = try DOCX.encode(document), parts = try ZipArchive.decode(bytes)
         XCTAssertFalse(String(decoding: parts["word/styles.xml"]!, as: UTF8.self).contains("<w:lang"))
         XCTAssertEqual(try DOCX.decode(bytes).document.language, "und")
+        XCTAssertEqual(try DOCX.decode(bytes).document.title, "Untitled", "An explicitly stored title must not be treated as missing")
     }
 }

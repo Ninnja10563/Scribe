@@ -19,6 +19,7 @@ public enum DOCX {
         let files = try ZipArchive.decode(data)
         guard let content = files["word/document.xml"] else { throw DocumentError.invalid("DOCX has no main document part") }
         let delegate = WordReader(); delegate.files = files
+        delegate.document.title = "" // The importing application can suggest the source filename.
         delegate.document.language = "und"
         var metadataPath = "docProps/core.xml"
         if let rootRelationships = files["_rels/.rels"] {
