@@ -86,10 +86,17 @@ import ImportExport
         }
         recoveryWork = work; DispatchQueue.main.asyncAfter(deadline: .now() + 1.5, execute: work)
     }
-    func performEdit(_ name: String, change: (inout ScribeDocument) -> Void) {
+    func performEdit(_ name: String, recordReview: Bool = true, change: (inout ScribeDocument) -> Void) {
         for view in editorController?.editor.textViews ?? [] where view.reviewComposition != nil { view.unmarkText() }
         let before = snapshot(); var after = before; change(&after); after.reconcileCommentAnchors(); after.reconcileNotes()
         guard before != after else { return }
+        if recordReview, let author = editorController?.editor.reviewEditing.author {
+            do {
+                try after.recordParagraphFormattingChanges(from: before, identity: RevisionIdentity(author: author))
+                try NativeFormat.validate(after)
+                editorController?.editor.reviewEditing.resetGrouping()
+            } catch { NSApp.presentError(error); return }
+        }
         restore(after, undo: before, name: name)
     }
     private func restore(_ value: ScribeDocument, undo previous: ScribeDocument, name: String) {

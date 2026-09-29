@@ -3,8 +3,14 @@ import Foundation
 public extension ScribeDocument {
     var pendingRevisionIDs: [UUID] {
         var seen = Set<UUID>()
-        return (paragraphs + notes.flatMap(\.paragraphs)).flatMap { $0.runs.flatMap { $0.review?.pendingIDs ?? [] } + ($0.breakReview?.pendingIDs ?? []) }
-            .filter { seen.insert($0).inserted }
+        var result: [UUID] = []
+        for paragraph in paragraphs + notes.flatMap(\.paragraphs) {
+            var ids = paragraph.runs.flatMap { $0.review?.pendingIDs ?? [] }
+            ids += paragraph.breakReview?.pendingIDs ?? []
+            ids += paragraph.formattingReview?.pendingIDs ?? []
+            result += ids.filter { seen.insert($0).inserted }
+        }
+        return result
     }
     mutating func resolveRevision(_ id: UUID, accepting: Bool) throws {
         try resolveRevisions([id], accepting: accepting)
@@ -18,6 +24,11 @@ public extension ScribeDocument {
         var candidate = self, removed: [NSRange] = [], offset = 0
         var mergedParagraphs: [UUID: UUID] = [:]
         func resolve(_ paragraph: inout Paragraph, body: Bool) {
+            if var review = paragraph.formattingReview {
+                for id in review.pendingIDs where ids.contains(id) { review.resolve(id, accepting: accepting) }
+                review.state.apply(to: &paragraph)
+                paragraph.formattingReview = review.pendingIDs.isEmpty ? nil : review
+            }
             for run in paragraph.runs {
                 let length = (run.text as NSString).length
                 let discarded = accepting ? run.review?.deletion?.id : run.review?.insertion?.id
@@ -32,7 +43,7 @@ public extension ScribeDocument {
             paragraph.runs = text.runs.isEmpty ? [TextRun("", format: paragraph.runs.first?.format ?? TextFormatting())] : text.runs
             if body { offset += 1 } // Paragraph separators are outside this run operation.
         }
-        func resolveFlow(_ source: [Paragraph], body: Bool) -> [Paragraph] {
+        func resolveFlow(_ source: [Paragraph], body: Bool) throws -> [Paragraph] {
             var result: [Paragraph] = [], mergeNext = false
             for var paragraph in source {
                 let originalBreak = paragraph.breakReview
@@ -47,6 +58,9 @@ public extension ScribeDocument {
                 paragraph.breakReview = separator.runs.first?.review
                 if removedBreak, body { removed.append(NSRange(location: offset - 1, length: 1)) }
                 if mergeNext, let previous = result.last {
+                    guard paragraph.formattingReview == nil else {
+                        throw DocumentError.invalid("resolve this paragraph’s formatting changes before joining it to the previous paragraph")
+                    }
                     if body { mergedParagraphs[paragraph.id] = previous.id }
                     var incoming = paragraph.runs
                     if paragraph.styleID != previous.styleID {
@@ -62,10 +76,10 @@ public extension ScribeDocument {
             return result
         }
         for section in candidate.sections.indices {
-            candidate.sections[section].paragraphs = resolveFlow(candidate.sections[section].paragraphs, body: true)
+            candidate.sections[section].paragraphs = try resolveFlow(candidate.sections[section].paragraphs, body: true)
         }
         for note in candidate.notes.indices {
-            candidate.notes[note].paragraphs = resolveFlow(candidate.notes[note].paragraphs, body: false)
+            candidate.notes[note].paragraphs = try resolveFlow(candidate.notes[note].paragraphs, body: false)
         }
         for index in candidate.bookmarks.indices {
             if let destination = mergedParagraphs[candidate.bookmarks[index].anchor.paragraphID] {

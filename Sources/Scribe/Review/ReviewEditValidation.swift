@@ -13,7 +13,7 @@ import DocumentCore
            isInlineText(original), isInlineText(replacement) {
             let fragment = NSMutableAttributedString(attributedString: replacement)
             let full = NSRange(location: 0, length: fragment.length)
-            for key in [NSAttributedString.Key.scribeCell, .scribeTOC, .scribeList, .scribePageBreakMarker, .scribeBreakReview] {
+            for key in [NSAttributedString.Key.scribeCell, .scribeTOC, .scribeList, .scribePageBreakMarker, .scribeBreakReview, .scribeParagraphReview] {
                 fragment.removeAttribute(key, range: full)
             }
             var isolated = ScribeDocument(); isolated.styles = owner.model.styles

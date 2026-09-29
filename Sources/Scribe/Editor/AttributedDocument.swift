@@ -3,6 +3,7 @@ import AppKit
 import DocumentCore
 
 extension NSAttributedString.Key {
+    static let scribeParagraphReview = NSAttributedString.Key("org.scribe.paragraphReview")
     static let scribeBreakReview = NSAttributedString.Key("org.scribe.breakReview")
     static let scribeReview = NSAttributedString.Key("org.scribe.review")
     static let scribePageBreakMarker = NSAttributedString.Key("org.scribe.pageBreakMarker")
@@ -108,6 +109,17 @@ extension NSAttributedString.Key {
                 let f = paragraphFormatting(ns)
                 if f != style.paragraph { p.formatting = f }
             }
+            if let data = attrs[.scribeParagraphReview] as? Data,
+               let review = try? JSONDecoder().decode(ParagraphFormattingReview.self, from: data) {
+                p.formattingReview = review
+                var expected = p; review.state.apply(to: &expected)
+                let projected = attributes(style: document.style(for: expected), paragraph: expected, contentWidth: document.sections[0].page.contentWidth)
+                if let actual = attrs[.paragraphStyle] as? NSParagraphStyle,
+                   let expectedStyle = projected[.paragraphStyle] as? NSParagraphStyle,
+                   paragraphFormatting(actual) == paragraphFormatting(expectedStyle) {
+                    p.formatting = review.state.formatting
+                }
+            }
             if offset + length < storage.length, let data = storage.attribute(.scribeBreakReview, at: offset + length, effectiveRange: nil) as? Data {
                 p.breakReview = try? JSONDecoder().decode(RunReview.self, from: data)
             }
@@ -166,7 +178,10 @@ extension NSAttributedString.Key {
         ns.lineSpacing = f.lineSpacing; ns.paragraphSpacingBefore = f.spaceBefore; ns.paragraphSpacing = f.spaceAfter
         ns.firstLineHeadIndent = f.firstLineIndent; ns.headIndent = f.headIndent; ns.tailIndent = -f.tailIndent
         var attrs: [NSAttributedString.Key: Any] = [.paragraphStyle: ns, .scribeStyle: style.id]
-        if let paragraph { attrs[.scribeParagraphID] = paragraph.id.uuidString }
+        if let paragraph {
+            attrs[.scribeParagraphID] = paragraph.id.uuidString
+            if let review = paragraph.formattingReview { attrs[.scribeParagraphReview] = try? JSONEncoder().encode(review) }
+        }
         if let list = paragraph?.list {
             let marker: NSTextList.MarkerFormat
             switch list.kind { case .bullet: marker = .disc; case .decimal: marker = .decimal; case .lowerAlpha: marker = .lowercaseAlpha; case .lowerRoman: marker = .lowercaseRoman; case .upperAlpha: marker = .uppercaseAlpha; case .upperRoman: marker = .uppercaseRoman }

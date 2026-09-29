@@ -16,7 +16,7 @@ extension ReviewTextProjection {
             attributes = editor.storage.attributes(at: paragraph.location, effectiveRange: nil)
         }
         let value = NSMutableAttributedString(attributedString: incoming), full = NSRange(location: 0, length: incoming.length)
-        for key in [NSAttributedString.Key.scribeParagraphID, .scribeStyle, .scribeList, .scribeCell, .scribeTOC, .paragraphStyle] {
+        for key in [NSAttributedString.Key.scribeParagraphID, .scribeStyle, .scribeParagraphReview, .scribeList, .scribeCell, .scribeTOC, .paragraphStyle] {
             if let attribute = attributes[key] { value.addAttribute(key, value: attribute, range: full) }
             else { value.removeAttribute(key, range: full) }
         }

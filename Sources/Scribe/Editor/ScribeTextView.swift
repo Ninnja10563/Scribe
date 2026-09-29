@@ -26,6 +26,30 @@ import DocumentCore
             applyTypingAttributes(attributes, action: "Text Colour")
         } else { transformSelection(action: "Text Colour") { $0.addAttribute(.foregroundColor, value: color, range: NSRange(location: 0, length: $0.length)) } }
     }
+    override func alignLeft(_ sender: Any?) {
+        if !applyTrackedAlignment(.left) { super.alignLeft(sender) }
+    }
+    override func alignCenter(_ sender: Any?) {
+        if !applyTrackedAlignment(.center) { super.alignCenter(sender) }
+    }
+    override func alignRight(_ sender: Any?) {
+        if !applyTrackedAlignment(.right) { super.alignRight(sender) }
+    }
+    override func alignJustified(_ sender: Any?) {
+        if !applyTrackedAlignment(.justified) { super.alignJustified(sender) }
+    }
+    private func applyTrackedAlignment(_ alignment: Alignment) -> Bool {
+        guard let editor, editor.reviewEditing.author != nil, let owner = editor.owner else { return false }
+        let indices = editor.selectedParagraphIndices()
+        owner.performEdit("Paragraph Alignment") { model in
+            for index in indices where model.sections[0].paragraphs.indices.contains(index) {
+                let paragraph = model.sections[0].paragraphs[index]
+                var format = paragraph.formatting ?? model.style(for: paragraph).paragraph
+                format.alignment = alignment; model.sections[0].paragraphs[index].formatting = format
+            }
+        }
+        return true
+    }
     override func updateRuler() { editor?.paragraphRuler?.refresh() }
     override func updateFontPanel() {
         super.updateFontPanel()

@@ -23,6 +23,23 @@ extension NativeFormat {
             }
         }
         for paragraph in document.paragraphs + document.notes.flatMap(\.paragraphs) {
+            if let review = paragraph.formattingReview {
+                guard !review.pendingIDs.isEmpty, review.changes.count <= 1024 else { throw DocumentError.invalid("invalid paragraph formatting history") }
+                func validate(_ state: ParagraphRevisionState) throws {
+                    guard document.styles.contains(where: { $0.id == state.styleID }) else { throw DocumentError.invalid("missing revision paragraph style") }
+                    if let format = state.formatting { try validateParagraph(format) }
+                    if let list = state.list, !(0...8).contains(list.level) || !(1...1_000_000).contains(list.start) { throw DocumentError.invalid("invalid revision list") }
+                }
+                try validate(review.base); try validateParagraph(review.inheritedBase)
+                var seen = Set<UUID>()
+                for change in review.changes {
+                    guard seen.insert(change.identity.id).inserted, change.before != change.after else { throw DocumentError.invalid("duplicate or empty paragraph formatting revision") }
+                    try record(change.identity, kind: 3)
+                    try validate(change.before); try validate(change.after)
+                    try validateParagraph(change.inheritedBefore); try validateParagraph(change.inheritedAfter)
+                }
+                guard review.state == ParagraphRevisionState(paragraph) else { throw DocumentError.invalid("paragraph formatting does not match its history") }
+            }
             for run in paragraph.runs {
                 guard let review = run.review else { continue }
                 guard !run.text.isEmpty, review.formatting.count <= 1024 else { throw DocumentError.invalid("invalid revision extent or formatting history") }

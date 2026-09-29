@@ -167,7 +167,7 @@ public enum NativeFormat {
             guard color.count == 7, color.first == "#", UInt32(color.dropFirst(), radix: 16) != nil else { throw DocumentError.invalid("invalid colour") }
         }
     }
-    private static func validateParagraph(_ format: ParagraphFormatting) throws {
+    static func validateParagraph(_ format: ParagraphFormatting) throws {
         guard [format.lineSpacing, format.spaceBefore, format.spaceAfter, format.headIndent, format.tailIndent, format.firstLineIndent]
             .allSatisfy({ $0.isFinite && abs($0) <= 4000 }) else { throw DocumentError.invalid("invalid paragraph geometry") }
     }
