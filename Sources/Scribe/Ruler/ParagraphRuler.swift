@@ -95,6 +95,7 @@ import DocumentCore
         let step = [18.0, 36, 72, 144, 288, 576, 1152, 2304].first { $0 * scale >= 35.999 } ?? 2304
         let width = editor?.canvas.pageSettings.contentWidth ?? 0
         let attrs: [NSAttributedString.Key: Any] = [.font: NSFont.monospacedDigitSystemFont(ofSize: 9, weight: .regular), .foregroundColor: NSColor.secondaryLabelColor]
+        if writingOrigin > 34 { ("pt" as NSString).draw(at: NSPoint(x: writingOrigin - 26, y: 12), withAttributes: attrs) }
         for value in stride(from: 0.0, through: width, by: step) {
             let x = writingOrigin + value * scale
             guard x >= bounds.minX - 20, x <= bounds.maxX + 20 else { continue }

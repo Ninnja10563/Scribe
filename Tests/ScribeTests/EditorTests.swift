@@ -149,7 +149,7 @@ import DocumentCore
             XCTAssertGreaterThan(pages, paragraphCount / 8)
             if paragraphCount == 1600 { XCTAssertGreaterThan(pages, 200) }
             let first = editor.textViews[0]
-            var result: [String: Any] = ["paragraphs": paragraphCount, "pages": pages, "initialSeconds": initialTime]
+            var result: [String: Any] = ["paragraphs": paragraphCount, "pages": pages, "initialSeconds": initialTime, "addressSanitizer": ProcessInfo.processInfo.environment["ASAN_OPTIONS"] != nil]
             for position in ["end", "middle", "front"] {
                 let index = position == "end" ? editor.storage.length - 1 : (position == "middle" ? editor.storage.length / 2 : 0)
                 let editStart = Date()
@@ -170,7 +170,8 @@ import DocumentCore
         if let directory = ProcessInfo.processInfo.environment["SCRIBE_SCHEMA_OUTPUT"] {
             let folder = URL(fileURLWithPath: directory, isDirectory: true)
             try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-            try JSONSerialization.data(withJSONObject: measurements, options: [.prettyPrinted, .sortedKeys]).write(to: folder.appendingPathComponent("LayoutMeasurements.json"))
+            let suffix = ProcessInfo.processInfo.environment["ASAN_OPTIONS"] == nil ? "" : "-ASan"
+            try JSONSerialization.data(withJSONObject: measurements, options: [.prettyPrinted, .sortedKeys]).write(to: folder.appendingPathComponent("LayoutMeasurements" + suffix + ".json"))
         }
     }
     func testPDFPageSelectionAndMetadata() throws {
