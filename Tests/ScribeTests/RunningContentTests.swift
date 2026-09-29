@@ -58,6 +58,13 @@ import DocumentCore
         XCTAssertNotNil(editor.outputWarning)
         editor.canvas.runningContent?.firstHeader = "Two\nlines"
         XCTAssertNotNil(editor.outputWarning)
+        editor.canvas.runningContent = nil
+        editor.canvas.pageSettings.top = 20
+        XCTAssertNotNil(editor.outputWarning)
+        editor.canvas.header = ""
+        XCTAssertNil(editor.outputWarning)
+        editor.canvas.footer = "Footer"; editor.canvas.pageSettings.bottom = 20
+        XCTAssertNotNil(editor.outputWarning)
     }
     func testNativeDialogEditsVariantsAndCancelPreservesExistingValues() throws {
         let document = ScribeFileDocument(); document.makeWindowControllers(); defer { document.close() }

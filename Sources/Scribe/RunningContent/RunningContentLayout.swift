@@ -9,6 +9,9 @@ import AppKit
                 let text = canvas.runningText(isHeader: isHeader, pageIndex: page)
                 guard !text.isEmpty else { continue }
                 let name = isHeader ? "header" : "footer"
+                if (isHeader ? canvas.pageSettings.top < 48 : canvas.pageSettings.bottom < 44) {
+                    return "The page margin is too small for the \(name). Increase the \(isHeader ? "top" : "bottom") margin in Page Layout before PDF export or printing."
+                }
                 if text.rangeOfCharacter(from: .newlines) != nil || (text as NSString).size(withAttributes: attributes).width > canvas.pageSettings.contentWidth + 0.01 {
                     return "The \(name) on page \(page + 1) does not fit on one line. Shorten it in Headers and Footers or increase the page width before PDF export or printing."
                 }
