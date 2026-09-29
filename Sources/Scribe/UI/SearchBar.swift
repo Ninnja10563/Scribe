@@ -85,6 +85,7 @@ import DocumentCore
         view.undoManager?.endUndoGrouping(); view.undoManager?.setActionName("Replace All")
         search()
     }
+    func cancelPendingWork() { task?.cancel(); task = nil }
     @objc func close() {
         isHidden = true; task?.cancel()
         if let editor { editor.layout.removeTemporaryAttribute(.backgroundColor, forCharacterRange: NSRange(location: 0, length: editor.storage.length)); window?.makeFirstResponder(editor.activeTextView) }

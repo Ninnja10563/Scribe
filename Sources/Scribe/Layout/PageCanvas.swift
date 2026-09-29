@@ -90,7 +90,7 @@ import DocumentCore
         scrollView.documentView = canvas
         scrollView.hasVerticalScroller = true; scrollView.hasHorizontalScroller = true
         scrollView.autohidesScrollers = true; scrollView.allowsMagnification = true
-        scrollView.minMagnification = 0.1; scrollView.maxMagnification = 2
+        scrollView.minMagnification = 0.025; scrollView.maxMagnification = 2
         scrollView.drawsBackground = true; scrollView.backgroundColor = .windowBackgroundColor
         addPage(); paginate()
         NotificationCenter.default.addObserver(self, selector: #selector(viewportChanged), name: NSView.frameDidChangeNotification, object: scrollView.contentView)
@@ -98,6 +98,12 @@ import DocumentCore
         NotificationCenter.default.addObserver(self, selector: #selector(userMagnificationChanged), name: NSScrollView.didEndLiveMagnifyNotification, object: scrollView)
     }
     deinit { NotificationCenter.default.removeObserver(self) }
+    func prepareForClose() {
+        relayout?.cancel(); onChange = nil; onSelection = nil
+        NotificationCenter.default.removeObserver(self)
+        for view in textViews { view.delegate = nil; view.editor = nil }
+        layout.delegate = nil; storage.delegate = nil; owner = nil
+    }
     private func addPage() {
         let p = canvas.pageSettings
         let container = NSTextContainer(containerSize: NSSize(width: p.contentWidth, height: p.contentHeight))

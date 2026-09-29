@@ -93,6 +93,7 @@ import ImportExport
         isRestoring = false; didEdit(); editorController?.refreshOutline()
     }
     override func close() {
+        editorController?.prepareForClose()
         recoveryWork?.cancel()
         let id = model.id
         Task { try? await Self.recovery.remove(id: id) }

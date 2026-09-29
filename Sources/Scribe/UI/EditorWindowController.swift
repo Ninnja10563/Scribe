@@ -17,6 +17,8 @@ import DocumentCore
     private let outlineHint = NSTextField(wrappingLabelWithString: "Apply heading styles to build your document outline.")
     var isFocused = false
     private var statsWork: DispatchWorkItem?
+    private var statsTask: Task<Void, Never>?
+    private(set) var isClosing = false
     var fileDocument: ScribeFileDocument { document as! ScribeFileDocument }
     init(document: ScribeFileDocument) {
         editor = PaginatedEditor(document: document)
@@ -108,6 +110,7 @@ import DocumentCore
     }
     private func divider() -> NSView { let view = NSBox(); view.boxType = .separator; view.widthAnchor.constraint(equalToConstant: 1).isActive = true; view.heightAnchor.constraint(equalToConstant: 18).isActive = true; return view }
     func refreshOutline() {
+        guard !isClosing else { return }
         let model = fileDocument.snapshot(); commentsSidebar.reload(model); entries = model.outline; outlineHint.isHidden = !entries.isEmpty; outline.reloadData()
         let selected = stylePicker.titleOfSelectedItem
         stylePicker.removeAllItems(); stylePicker.addItems(withTitles: model.styles.map(\.name))
@@ -116,12 +119,14 @@ import DocumentCore
         updateStatus()
     }
     func scheduleStatistics() {
+        guard !isClosing else { return }
+        statsTask?.cancel()
         statsWork?.cancel(); let job = DispatchWorkItem { [weak self] in
             guard let self else { return }
             let text = self.editor.semanticText.text, revision = self.editor.revision
-            Task {
+            self.statsTask = Task { [weak self] in
                 let words = await Task.detached { DocumentStatistics(text: text).words }.value
-                guard revision == self.editor.revision else { return }
+                guard !Task.isCancelled, let self, !self.isClosing, revision == self.editor.revision else { return }
                 self.cachedWords = words; self.updateStatus()
             }
         }
@@ -129,6 +134,7 @@ import DocumentCore
     }
     private var cachedWords = 0
     func updateStatus() {
+        guard !isClosing else { return }
         if let warning = editor.layoutWarning { status.stringValue = warning; return }
         let view = editor.activeTextView
         let selection = view.selectedRange()
@@ -137,7 +143,14 @@ import DocumentCore
         status.stringValue = "Page \(page) of \(editor.textViews.count)    ·    \(cachedWords.formatted()) words\(selectedWords.map { " (\($0) selected)" } ?? "")    ·    English (Australia)    ·    \(Int((editor.zoom * 100).rounded()))%"
         if let id = view.typingAttributes[.scribeStyle] as? String, let style = fileDocument.model.styles.first(where: { $0.id == id }) { stylePicker.selectItem(withTitle: style.name) }
     }
-    func showStatus(_ message: String) { status.stringValue = message }
+    func showStatus(_ message: String) { if !isClosing { status.stringValue = message } }
+    func prepareForClose() {
+        guard !isClosing else { return }
+        isClosing = true; statsWork?.cancel(); statsTask?.cancel()
+        searchBar.cancelPendingWork()
+        window?.makeFirstResponder(nil)
+        editor.prepareForClose()
+    }
     func numberOfRows(in tableView: NSTableView) -> Int { entries.count }
     func tableView(_ tableView: NSTableView, viewFor tableColumn: NSTableColumn?, row: Int) -> NSView? {
         let label = NSTextField(labelWithString: String(repeating: "   ", count: max(0, entries[row].level - 1)) + (entries[row].title.isEmpty ? "Untitled heading" : entries[row].title))
