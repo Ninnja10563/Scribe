@@ -93,7 +93,6 @@ import ImportExport
         if recordReview, let author = editorController?.editor.reviewEditing.author {
             do {
                 try after.recordParagraphFormattingChanges(from: before, identity: RevisionIdentity(author: author))
-                try NativeFormat.validate(after)
                 editorController?.editor.reviewEditing.resetGrouping()
             } catch { NSApp.presentError(error); return }
         }

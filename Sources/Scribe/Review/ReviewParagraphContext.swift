@@ -6,7 +6,7 @@ extension ReviewTextProjection {
     /// paragraph's identity, table cell or style association.
     static func preservingParagraphContext(_ incoming: NSAttributedString, original: NSAttributedString,
                                            range: NSRange, in editor: PaginatedEditor) -> NSAttributedString {
-        guard incoming.string != original.string, !incoming.string.contains("\n"), !original.string.contains("\n"), incoming.length > 0 else { return incoming }
+        guard !incoming.string.contains("\n"), !original.string.contains("\n"), incoming.length > 0 else { return incoming }
         let attributes: [NSAttributedString.Key: Any]
         if editor.storage.length == 0 || (range.location == editor.storage.length && editor.storage.string.hasSuffix("\n")) {
             attributes = editor.activeTextView.typingAttributes

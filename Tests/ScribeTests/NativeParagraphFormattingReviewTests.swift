@@ -12,13 +12,15 @@ import DocumentCore
         document.undoManager?.removeAllActions()
         return document
     }
-    func testNativeAlignmentAndSpacingKeepIndependentDecisionsThroughUndo() throws {
+    func testNativeAlignmentAndSpacingKeepIndependentDecisionsThroughUndo() async throws {
         let document = document([Paragraph("Body")]); defer { document.close() }
         let editor = document.editorController!.editor
         editor.select(NSRange(location: 0, length: 4)); editor.activeTextView.alignCenter(nil)
         let first = document.snapshot(), alignment = try XCTUnwrap(first.pendingRevisionIDs.first)
         XCTAssertEqual(first.paragraphs[0].formatting?.alignment, .center)
+        try await Task.sleep(nanoseconds: 30_000_000) // Separate user commands arrive in separate events.
         try document.editorController!.applyParagraphGeometry([14, 0, 8, 0, 0, 0])
+        try await Task.sleep(nanoseconds: 30_000_000)
         let both = document.snapshot(); XCTAssertEqual(both.pendingRevisionIDs.count, 2)
         try NativeFormat.validate(both)
         document.undoManager?.undo(); XCTAssertEqual(document.snapshot().paragraphs[0].formattingReview, first.paragraphs[0].formattingReview)
@@ -56,6 +58,23 @@ import DocumentCore
         document.undoManager?.undo(); XCTAssertFalse(document.snapshot().hasPendingRevisions)
         XCTAssertEqual(document.snapshot().paragraphs[0].styleID, "normal")
         document.undoManager?.redo(); XCTAssertEqual(document.snapshot().paragraphs[0].formattingReview, changed.paragraphs[0].formattingReview)
+    }
+    func testSameTextRichPasteKeepsDestinationParagraphHistory() throws {
+        let document = document([Paragraph("Body")]); defer { document.close() }
+        let editor = document.editorController!.editor
+        editor.applyStyle("heading1")
+        let before = document.snapshot()
+        editor.select(NSRange(location: 0, length: 4))
+        let incoming = NSAttributedString(string: "Body", attributes: [
+            .font: NSFont.systemFont(ofSize: 15), .scribeStyle: "normal",
+            .scribeParagraphID: UUID().uuidString, .paragraphStyle: NSParagraphStyle.default])
+        editor.activeTextView.replaceSelection(incoming, action: "Paste")
+        let after = document.snapshot(); try NativeFormat.validate(after)
+        XCTAssertEqual(after.paragraphs[0].id, before.paragraphs[0].id)
+        XCTAssertEqual(after.paragraphs[0].styleID, "heading1")
+        XCTAssertEqual(after.paragraphs[0].formattingReview, before.paragraphs[0].formattingReview)
+        XCTAssertEqual(after.paragraphs[0].runs.first?.format.fontSize, 15)
+        XCTAssertEqual(after.pendingRevisionIDs.count, 2)
     }
     func testMultiParagraphAlignmentUsesOneRevisionIdentity() throws {
         let document = document([Paragraph("First"), Paragraph("Second")]); defer { document.close() }

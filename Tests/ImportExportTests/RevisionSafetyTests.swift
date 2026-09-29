@@ -4,6 +4,17 @@ import DocumentCore
 import ImportExport
 
 final class RevisionSafetyTests: XCTestCase {
+    func testParagraphOnlyRevisionsCannotBeSilentlyFlattenedIntoDOCX() throws {
+        var document = ScribeDocument(); document.sections[0].paragraphs[0] = Paragraph("Heading")
+        let original = document
+        document.sections[0].paragraphs[0].styleID = "heading1"
+        try document.recordParagraphFormattingChanges(from: original, identity: .init(author: .init(name: "Reviewer")))
+        XCTAssertThrowsError(try DOCX.encode(document))
+        try document.resolveAllRevisions(accepting: true)
+        let imported = try DOCX.decode(DOCX.encode(document)).document
+        XCTAssertEqual(imported.paragraphs[0].styleID, "heading1")
+        XCTAssertEqual(imported.paragraphs[0].text, "Heading")
+    }
     func testPendingRevisionsCannotBeSilentlyFlattenedIntoDOCX() throws {
         let author = RevisionAuthor(name: "Reviewer")
         var text = RevisionText(runs: [TextRun("Original")])
