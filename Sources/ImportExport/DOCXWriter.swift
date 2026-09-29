@@ -122,6 +122,7 @@ final class DOCXWriter {
             properties += "<w:tabs><w:tab w:val=\"right\" w:pos=\"\(Int((contentWidth - formatting.tailIndent) * 20))\"/></w:tabs>"
             properties += DOCX.paragraphProperties(formatting)
         } else if let f = p.formatting { properties += DOCX.paragraphProperties(f) }
+        properties += revisions.paragraphMark(p.breakReview)
         var text = "", offset = 0
         let boundaries = comments.boundaries(paragraphID: p.id)
         for run in p.runs {

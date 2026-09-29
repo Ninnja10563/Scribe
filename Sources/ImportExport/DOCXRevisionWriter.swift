@@ -18,17 +18,16 @@ final class DOCXRevisionWriter {
             throw DocumentError.invalid("tracked-change DOCX export is still being implemented")
         }
         for paragraph in document.paragraphs + document.notes.flatMap(\.paragraphs) {
-            guard paragraph.breakReview?.pendingIDs.isEmpty ?? true,
-                  paragraph.formattingReview?.pendingIDs.isEmpty ?? true else {
+            guard paragraph.formattingReview?.pendingIDs.isEmpty ?? true else {
                 throw DocumentError.invalid("DOCX paragraph revision export is not yet supported")
+            }
+            for identity in [paragraph.breakReview?.insertion, paragraph.breakReview?.deletion].compactMap({ $0 }) {
+                try validateIdentity(identity)
             }
             for run in paragraph.runs {
                 guard let review = run.review, !review.isEmpty else { continue }
                 for identity in [review.insertion, review.deletion].compactMap({ $0 }) + review.formatting.map(\.identity) {
-                    try DocumentMetadata.validateText(identity.author.name)
-                    guard (-62_135_596_800..<253_402_300_800).contains(identity.date.timeIntervalSince1970) else {
-                        throw DocumentError.invalid("DOCX revision dates must be within years 1 through 9999")
-                    }
+                    try validateIdentity(identity)
                 }
                 guard review.formatting.count <= 1 else {
                     throw DocumentError.invalid("DOCX layered formatting revision export is not yet supported")
@@ -38,6 +37,20 @@ final class DOCXRevisionWriter {
                 }
             }
         }
+    }
+
+    private static func validateIdentity(_ identity: RevisionIdentity) throws {
+        try DocumentMetadata.validateText(identity.author.name)
+        guard (-62_135_596_800..<253_402_300_800).contains(identity.date.timeIntervalSince1970) else {
+            throw DocumentError.invalid("DOCX revision dates must be within years 1 through 9999")
+        }
+    }
+
+    func paragraphMark(_ review: RunReview?) -> String {
+        var content = ""
+        if let insertion = review?.insertion { content += "<w:ins \(attributes(insertion))/>" }
+        if let deletion = review?.deletion { content += "<w:del \(attributes(deletion))/>" }
+        return content.isEmpty ? "" : "<w:rPr>\(content)</w:rPr>"
     }
 
     /// Every emitted XML annotation has a distinct numeric ID, including when

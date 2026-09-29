@@ -168,7 +168,7 @@ public enum DOCX {
             for (variant, id) in references {
                 guard ["default", "first", "even"].contains(variant), let target = delegate.targets[id], let data = files["word/" + target] else { continue }
                 let reader = WordReader(revisionContext: revisionContext); try parse(data, delegate: reader)
-                if revisionContext != nil, reader.paragraphs.contains(where: { $0.runs.contains(where: { !($0.review?.pendingIDs.isEmpty ?? true) }) }) {
+                if revisionContext != nil, reader.paragraphs.contains(where: { !($0.breakReview?.pendingIDs.isEmpty ?? true) || $0.runs.contains(where: { !($0.review?.pendingIDs.isEmpty ?? true) }) }) {
                     throw DocumentError.invalid("Preserving DOCX running-content revisions is not yet supported.")
                 }
                 delegate.warnings.formUnion(reader.warnings)
@@ -556,6 +556,7 @@ class WordReader: NSObject, XMLParserDelegate {
         case "p":
             let inherited = paragraph.flatMap { styleLists[$0.styleID] }
             if let id = listID ?? inherited?.id { paragraph?.list = numbering.descriptor(id: id, level: listLevel ?? inherited?.level ?? 0) }
+            paragraph?.breakReview = revisionReader?.paragraphBreak
             if let p = paragraph { paragraphs.append(p) }; paragraph = nil
         case "hyperlink": link = nil
         default: break

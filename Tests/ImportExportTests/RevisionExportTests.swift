@@ -84,7 +84,7 @@ final class RevisionExportTests: XCTestCase {
         }
     }
 
-    func testFormattingSeparatorsAndObjectsRemainGuarded() throws {
+    func testLayeredFormattingAndObjectPropertiesRemainGuarded() throws {
         var document = ScribeDocument()
         var text = RevisionText(runs: [TextRun("Bold")])
         try text.format(NSRange(location: 0, length: 4), identity: identity) { original in
@@ -94,11 +94,6 @@ final class RevisionExportTests: XCTestCase {
             var result = original; result.italic = true; return result
         }
         document.sections[0].paragraphs[0].runs = text.runs
-        try NativeFormat.validate(document)
-        XCTAssertThrowsError(try DOCXWriter(document, revisions: .runChanges).encode())
-        document.sections[0].paragraphs = [Paragraph("First"), Paragraph("Second")]
-        var separator = RunReview(); separator.insertion = identity
-        document.sections[0].paragraphs[0].breakReview = separator
         try NativeFormat.validate(document)
         XCTAssertThrowsError(try DOCXWriter(document, revisions: .runChanges).encode())
         var equation = changed("\u{fffc}")

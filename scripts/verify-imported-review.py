@@ -42,3 +42,18 @@ for mode in ('Accepted', 'Rejected'):
         bounds = page.get_image_rects(image[0])[0]
         assert abs(bounds.width - 64) < 0.1 and abs(bounds.height - 32) < 0.1
 print('Imported Office object review: accepted image geometry and rejected note payload verified')
+
+for mode in ('Accepted', 'Rejected'):
+    pdf = pymupdf.open(folder / ('ImportedParagraphReview' + mode + '.pdf'))
+    assert len(pdf) == 1
+    page = pdf[0]
+    assert not page.get_images()
+    for prefix in ('Body', 'Note'):
+        if mode == 'Accepted':
+            assert len(page.search_for(prefix + ' first' + prefix + ' second')) == 1
+        else:
+            first = page.search_for(prefix + ' first')
+            second = page.search_for(prefix + ' second')
+            assert len(first) == len(second) == 1
+            assert second[0].y0 - first[0].y0 > 5, (mode, prefix, first, second)
+print('Imported Office paragraph review: body/note joins and retained boundaries verified')

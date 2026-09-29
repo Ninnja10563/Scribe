@@ -42,6 +42,7 @@ final class DOCXRevisionReader {
     private let scope = UUID()
     private var elements: [(String?, String)] = []
     private var insertion: RevisionIdentity?, deletion: RevisionIdentity?
+    private(set) var paragraphBreak: RunReview?
     private var previousDepth = 0
     private var previous = TextFormatting()
     private var formattingIdentity: RevisionIdentity?
@@ -73,7 +74,18 @@ final class DOCXRevisionReader {
                 throw DocumentError.invalid("Preserving this DOCX structural revision is not yet supported.")
             }
             switch name {
+            case "p": paragraphBreak = nil
             case "ins", "del":
+                if !inRun, parent?.0 == DOCX.wordNS, parent?.1 == "rPr", elements.count >= 3,
+                   elements[elements.count - 3].0 == DOCX.wordNS, elements[elements.count - 3].1 == "pPr" {
+                    var review = paragraphBreak ?? RunReview()
+                    guard name == "ins" ? review.insertion == nil : review.deletion == nil else {
+                        throw DocumentError.invalid("Duplicate DOCX paragraph-mark revision.")
+                    }
+                    let identity = try context.identity(attributes, kind: name, scope: scope)
+                    if name == "ins" { review.insertion = identity } else { review.deletion = identity }
+                    paragraphBreak = review; return true
+                }
                 guard parent?.0 == DOCX.wordNS, ["p", "hyperlink", "ins", "del"].contains(parent?.1 ?? ""),
                       name == "ins" ? insertion == nil : deletion == nil else {
                     throw DocumentError.invalid("Unsupported nested or structural DOCX revision.")

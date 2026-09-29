@@ -77,6 +77,16 @@ with ZipFile(folder / 'ObjectRevisions.docx') as package:
     assert len([x for x in package.namelist() if x.startswith('word/media/')]) == 1
     assert 'Retained note payload' in package.read('word/footnotes.xml').decode()
 
+for name, tag in [('ParagraphInsertionRevisions', 'ins'), ('ParagraphDeletionRevisions', 'del')]:
+    with ZipFile(folder / (name + '.docx')) as package:
+        root = etree.fromstring(package.read('word/document.xml'))
+        paragraphs = root.findall('.//' + W + 'body/' + W + 'p')
+        assert len(paragraphs) == 2
+        mark = paragraphs[0].find(W + 'pPr/' + W + 'rPr/' + W + tag)
+        assert mark is not None and mark.get(W + 'author') == 'Paragraph reviewer'
+        assert [projected(p, True) for p in paragraphs] == ['First', 'Second']
+        assert not root.xpath('//w:p/w:ins | //w:p/w:del', namespaces=NS)
+
 with ZipFile(folder / 'FormattingRevisions.docx') as package:
     root = etree.fromstring(package.read('word/document.xml'))
     current = root.find('.//' + W + 'rPr')
