@@ -172,7 +172,16 @@ import DocumentCore
             if index >= textViews.count { addPage() }
             let container = layout.textContainers[index]
             layout.ensureLayout(for: container)
-            let range = layout.glyphRange(for: container)
+            var range = layout.glyphRange(for: container)
+            if index == textViews.count - 1, index < 1999, NSMaxRange(range) < layout.numberOfGlyphs {
+                addPage()
+                // A terminal container can fit a final line without its trailing spacing.
+                // Once overflow has a successor, recompute this boundary with that
+                // successor present, just as TextKit does during later edits.
+                layout.textContainerChangedGeometry(container)
+                layout.ensureLayout(for: container)
+                range = layout.glyphRange(for: container)
+            }
             overflowingPages.remove(index)
             layout.enumerateLineFragments(forGlyphRange: range) { _, used, lineContainer, _, stop in
                 if lineContainer === container && (used.minY < -1 || used.maxY > container.containerSize.height + 1) {

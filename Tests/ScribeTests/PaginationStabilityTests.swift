@@ -110,10 +110,6 @@ import PDFKit
                 }
             }
         }
-        let coldRanges = fresh.layout.textContainers.map { fresh.layout.glyphRange(for: $0) }
-        fresh.storage.setAttributedString(NSAttributedString(attributedString: fresh.storage)); fresh.paginate()
-        let warmRanges = fresh.layout.textContainers.map { fresh.layout.glyphRange(for: $0) }
-        if coldRanges != warmRanges { print("COLD/WARM DIFFERENCE \(phase): cold \(coldRanges.prefix(12)), warm \(warmRanges.prefix(12))") }
         XCTAssertEqual(editor.textViews.count, fresh.textViews.count)
         var reportedGeometry = false
         for index in 0..<min(editor.textViews.count, fresh.textViews.count) {
