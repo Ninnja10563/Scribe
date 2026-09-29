@@ -60,7 +60,7 @@ import DocumentCore
         editor.select(reference, focus: false)
         let p = editor.canvas.pageSettings
         guard let note = renderedNotes(in: editor)[id], let range = note.sourceRange(semantic) else { return nil }
-        let glyphs = note.layout.glyphRange(forCharacterRange: range, actualGlyphRange: nil)
+        let glyphs = note.layout.glyphRange(forCharacterRange: range, actualCharacterRange: nil)
         for index in editor.canvas.footnotes.keys.sorted() {
             guard let page = editor.canvas.footnotes[index] else { continue }
             let rect = editor.canvas.pageRect(index)
