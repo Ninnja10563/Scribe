@@ -117,6 +117,10 @@ import ImportExport
         let id = model.id
         Task { try? await Self.recovery.remove(id: id) }
         super.close()
+        // A closed window may survive until AppKit finishes its key/main-window
+        // transition. Its controller must not keep a non-owning document link
+        // into a document that can now deallocate.
+        editorController?.document = nil
     }
     @objc func exportDocument(_ sender: NSMenuItem) { editorController?.exportDocument(format: sender.representedObject as? String ?? "pdf") }
     override func printDocument(_ sender: Any?) { editorController?.printDocument() }

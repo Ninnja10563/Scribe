@@ -29,5 +29,18 @@ import XCTest
         try await Task.sleep(nanoseconds: 400_000_000)
         controller.updateStatus(); controller.refreshOutline(); controller.scheduleStatistics()
     }
+    func testSequentialVisibleDocumentsDetachBeforeTheNextWindowOpens() {
+        for _ in 0..<6 {
+            autoreleasepool {
+                let document = ScribeFileDocument(); document.makeWindowControllers()
+                let controller = document.editorController!
+                controller.window?.makeKeyAndOrderFront(nil)
+                controller.window?.contentView?.layoutSubtreeIfNeeded()
+                document.close()
+                XCTAssertTrue(controller.isClosing)
+                XCTAssertNil(controller.document)
+            }
+        }
+    }
 }
 #endif
