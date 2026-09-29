@@ -69,6 +69,8 @@ import DocumentCore
     private var isLayingOut = false
     private var firstDirtyPage = 0
     private var pageCharacterRanges: [NSRange] = []
+    private var paginationStability = PaginationStability()
+    private(set) var lastPaginationVisitedPages = 0
     private var overflowingPages = Set<Int>()
     private let tableValidation = TableLayoutValidation()
     var drawingPrintLinks = false
@@ -149,13 +151,16 @@ import DocumentCore
     }
     func paginate() {
         guard !isLayingOut, firstDirtyPage != Int.max else { return }
-        isLayingOut = true; defer { isLayingOut = false }
+        isLayingOut = true; defer { isLayingOut = false; paginationStability.invalidate() }
+        lastPaginationVisitedPages = 0
+        var stabilized = false
         // TextKit invalidates from the edited glyph; existing page containers are reused.
         layoutWarning = nil
         let start = max(0, min(firstDirtyPage, textViews.count - 1))
         var required = start + 1
         var lastEnd = -1
         for index in start..<2000 {
+            lastPaginationVisitedPages += 1
             if index >= textViews.count { addPage() }
             let container = layout.textContainers[index]
             layout.ensureLayout(for: container)
@@ -175,6 +180,12 @@ import DocumentCore
                 break
             }
             lastEnd = NSMaxRange(range)
+            if paginationStability.canStop(after: index, characterEnd: NSMaxRange(characters), documentLength: storage.length) {
+                let following = paginationStability.remainingRanges(after: index)
+                for (offset, range) in following.enumerated() { pageCharacterRanges[index + 1 + offset] = range }
+                required = pageCharacterRanges.count; stabilized = true
+                break
+            }
             if NSMaxRange(range) >= layout.numberOfGlyphs {
                 // A trailing newline may need a final empty page for its insertion point.
                 if storage.string.hasSuffix("\n"), layout.extraLineFragmentTextContainer == nil, range.length > 0 {
@@ -198,7 +209,7 @@ import DocumentCore
         if layoutWarning == nil, !overflowingPages.isEmpty || tallMerge || tallCell {
             layoutWarning = "A table cell is taller than one page. Move some text to other rows or reduce its size before PDF export or printing."
         }
-        if lastEnd < layout.numberOfGlyphs && layoutWarning == nil { layoutWarning = "This document exceeds the current 2,000-page layout limit." }
+        if !stabilized && lastEnd < layout.numberOfGlyphs && layoutWarning == nil { layoutWarning = "This document exceeds the current 2,000-page layout limit." }
         while textViews.count > required {
             let last = textViews.removeLast()
             if canvas.window?.firstResponder === last { canvas.window?.makeFirstResponder(textViews.last) }
@@ -226,13 +237,21 @@ import DocumentCore
     }
     func setPageSettings(_ settings: PageSettings) {
         canvas.pageSettings = settings
+        paginationStability.invalidate()
         firstDirtyPage = 0
         for container in layout.textContainers { container.containerSize = NSSize(width: settings.contentWidth, height: settings.contentHeight) }
         paginate(); refreshZoom()
     }
     nonisolated func textStorage(_ textStorage: NSTextStorage, didProcessEditing editedMask: NSTextStorageEditActions, range editedRange: NSRange, changeInLength delta: Int) {
         MainActor.assumeIsolated {
-            let page = pageCharacterRanges.firstIndex { NSMaxRange($0) >= editedRange.location } ?? max(0, textViews.count - 1)
+            let ends = paginationStability.expectedEnds ?? pageCharacterRanges.map(NSMaxRange)
+            let page = ends.firstIndex { $0 >= editedRange.location } ?? max(0, textViews.count - 1)
+            let isInsertion = editedMask.contains(.editedCharacters) && delta > 0 && delta <= 128 && editedRange.length == delta && NSMaxRange(editedRange) <= textStorage.length
+            let text = isInsertion ? (textStorage.string as NSString).substring(with: editedRange) : ""
+            let hasFlowControl = text.unicodeScalars.contains { CharacterSet.controlCharacters.contains($0) || $0.value == 0x2028 || $0.value == 0x2029 || $0.value == 0xfffc }
+            if isInsertion && !hasFlowControl && layoutWarning == nil && owner?.model.tables.isEmpty == true {
+                paginationStability.insert(at: editedRange.location, length: delta, previousEnds: ends, startingClean: firstDirtyPage == Int.max)
+            } else { paginationStability.invalidate() }
             firstDirtyPage = min(firstDirtyPage, max(0, page - 1))
             revision += 1
         }
