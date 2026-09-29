@@ -93,6 +93,8 @@ import DocumentCore
         editor.select(NSRange(location: 0, length: 4)); view.underline(nil)
         let first = document.snapshot().pendingRevisionIDs
         XCTAssertEqual(first.count, 1)
+        let previousColour = NSColorPanel.shared.color
+        defer { NSColorPanel.shared.color = previousColour }
         NSColorPanel.shared.color = .red; view.changeColor(NSColorPanel.shared)
         var model = document.snapshot()
         XCTAssertEqual(model.pendingRevisionIDs.count, 2)
