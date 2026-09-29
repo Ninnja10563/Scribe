@@ -1,5 +1,7 @@
 name: Launch and updater diagnostics
 on:
+  push:
+    branches: [development/launch-updates]
   workflow_dispatch:
 permissions:
   contents: read
