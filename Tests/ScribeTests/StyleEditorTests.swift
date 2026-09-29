@@ -6,6 +6,18 @@ import DocumentCore
 
 @MainActor final class StyleEditorTests: XCTestCase {
     override func setUp() { super.setUp(); _ = NSApplication.shared }
+    func testInitialTypingUsesOpeningParagraphFormatting() throws {
+        let document = ScribeFileDocument()
+        document.model.sections[0].paragraphs = [Paragraph("Heading", style: "heading1")]
+        document.model.sections[0].paragraphs[0].runs[0].format.fontSize = 31
+        document.makeWindowControllers(); defer { document.close() }
+        let view = document.editorController!.editor.activeTextView
+        XCTAssertEqual((view.typingAttributes[.font] as? NSFont)?.pointSize, 31)
+        view.insertText("Opening ", replacementRange: NSRange(location: 0, length: 0))
+        XCTAssertEqual(document.snapshot().paragraphs[0].text, "Opening Heading")
+        XCTAssertEqual((view.textStorage?.attribute(.font, at: 0, effectiveRange: nil) as? NSFont)?.pointSize, 31)
+        XCTAssertEqual(document.snapshot().paragraphs[0].styleID, "heading1")
+    }
     func testModifyDefinitionUpdatesInheritedFormattingAndPreservesOverrides() throws {
         let document = ScribeFileDocument()
         document.model.sections[0].paragraphs = [Paragraph("First heading", style: "heading1"), Paragraph("Second heading", style: "heading1"), Paragraph("Direct heading", style: "heading1")]

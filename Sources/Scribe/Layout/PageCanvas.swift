@@ -123,7 +123,13 @@ import DocumentCore
         view.isAutomaticLinkDetectionEnabled = true
         view.usesFindBar = true; view.isIncrementalSearchingEnabled = true
         view.isAutomaticQuoteSubstitutionEnabled = true
-        view.typingAttributes = AttributedDocument.attributes(style: owner?.model.styles.first ?? .normal)
+        if textViews.isEmpty, storage.length > 0 {
+            var attributes = storage.attributes(at: 0, effectiveRange: nil)
+            for key in [NSAttributedString.Key.attachment, .scribeImage, .scribePageBreakMarker] { attributes.removeValue(forKey: key) }
+            view.typingAttributes = attributes
+        } else if let document = owner?.model, let paragraph = document.paragraphs.first {
+            view.typingAttributes = AttributedDocument.attributes(style: document.style(for: paragraph), paragraph: paragraph)
+        } else { view.typingAttributes = AttributedDocument.attributes(style: .normal) }
         view.setAccessibilityLabel("Document page \(textViews.count + 1)")
         textViews.append(view); canvas.addSubview(view)
     }
