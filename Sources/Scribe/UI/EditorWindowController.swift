@@ -35,8 +35,11 @@ import DocumentCore
         searchBar.editor = editor
         refreshOutline(); updateStatus()
         window.initialFirstResponder = editor.textViews.first
+        NotificationCenter.default.addObserver(self, selector: #selector(windowClosing), name: NSWindow.willCloseNotification, object: window)
     }
     required init?(coder: NSCoder) { fatalError("Programmatic windows only") }
+    deinit { NotificationCenter.default.removeObserver(self) }
+    @objc private func windowClosing() { prepareForClose() }
     private func buildInterface() {
         guard let window else { return }
         let content = ChromeView(frame: window.contentView?.bounds ?? .zero)

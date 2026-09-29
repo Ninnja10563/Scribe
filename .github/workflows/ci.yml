@@ -20,16 +20,20 @@ jobs:
         env:
           SCRIBE_SCHEMA_OUTPUT: build/schema
         run: swift test
-      - name: Recheck native dialog lifecycle
+      - name: Recheck native window and dialog lifecycle
         run: |
           for attempt in 1 2 3; do
-            swift test --skip-build --filter 'ScribeTests.TableOfContentsTests'
+            swift test --skip-build --filter 'ScribeTests'
           done
       - name: Check native memory lifetime with Address Sanitizer
         if: always()
         env:
           ASAN_OPTIONS: detect_leaks=0:halt_on_error=1
-        run: swift test --sanitize=address --scratch-path .build-asan --filter ScribeTests
+        run: |
+          swift test --sanitize=address --scratch-path .build-asan --filter ScribeTests
+          for attempt in 1 2; do
+            swift test --sanitize=address --scratch-path .build-asan --skip-build --filter ScribeTests
+          done
       - name: Diagnose failed native tests with Objective-C zombies
         if: failure()
         env:

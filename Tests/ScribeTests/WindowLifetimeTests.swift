@@ -5,6 +5,15 @@ import XCTest
 
 @MainActor final class WindowLifetimeTests: XCTestCase {
     override func setUp() { super.setUp(); _ = NSApplication.shared }
+    func testWindowCloseAlsoDetachesEditorCallbacks() {
+        let document = ScribeFileDocument(); document.makeWindowControllers()
+        defer { document.close() }
+        let controller = document.editorController!
+        controller.window?.close()
+        XCTAssertTrue(controller.isClosing)
+        XCTAssertNil(controller.editor.onSelection)
+        XCTAssertNil(controller.editor.layout.delegate)
+    }
     func testClosingCancelsPendingUIWorkBeforeDocumentDetaches() async throws {
         let document = ScribeFileDocument(); document.makeWindowControllers()
         let controller = document.editorController!, editor = controller.editor
