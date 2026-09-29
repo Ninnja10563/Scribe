@@ -41,6 +41,24 @@ import DocumentCore
         document.undoManager?.undo(); XCTAssertNil(document.model.sections[0].runningContent); XCTAssertEqual(editor.canvas.runningText(isHeader: false, pageIndex: 0), "")
         document.undoManager?.redo(); XCTAssertEqual(editor.canvas.runningText(isHeader: false, pageIndex: 0), "Cover footer")
     }
+    func testOverflowingRunningTextCannotOverwritePDFAndDormantTextDoesNotBlockOutput() throws {
+        let document = ScribeFileDocument(); document.model.sections[0].header = String(repeating: "Long header text. ", count: 40)
+        let editor = PaginatedEditor(document: document); defer { editor.prepareForClose() }
+        XCTAssertNotNil(editor.outputWarning)
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".pdf")
+        defer { try? FileManager.default.removeItem(at: url) }
+        let original = Data("Keep the previous export".utf8); try original.write(to: url)
+        XCTAssertThrowsError(try PrintRenderer(editor: editor).exportPDF(to: url, title: "", author: ""))
+        XCTAssertEqual(try Data(contentsOf: url), original)
+        editor.canvas.header = "Fits"
+        var variants = RunningContentVariants(); variants.firstHeader = String(repeating: "Dormant ", count: 80)
+        editor.canvas.runningContent = variants
+        XCTAssertNil(editor.outputWarning)
+        editor.canvas.runningContent?.differentFirstPage = true
+        XCTAssertNotNil(editor.outputWarning)
+        editor.canvas.runningContent?.firstHeader = "Two\nlines"
+        XCTAssertNotNil(editor.outputWarning)
+    }
     func testNativeDialogEditsVariantsAndCancelPreservesExistingValues() throws {
         let document = ScribeFileDocument(); document.makeWindowControllers(); defer { document.close() }
         let controller = document.editorController!

@@ -35,10 +35,9 @@ import DocumentCore
             editor.layout.drawBackground(forGlyphRange: range, at: origin)
             editor.layout.drawGlyphs(forGlyphRange: range, at: origin)
         }
-        let attrs: [NSAttributedString.Key: Any] = [.font: NSFont.systemFont(ofSize: 9), .foregroundColor: NSColor.darkGray]
-        (editor.canvas.runningText(isHeader: true, pageIndex: index) as NSString).draw(at: NSPoint(x: p.left, y: 30), withAttributes: attrs)
+        RunningContentLayout.draw(editor.canvas.runningText(isHeader: true, pageIndex: index), at: NSPoint(x: p.left, y: 30), width: p.contentWidth)
         editor.canvas.drawPageNumber(index: index, origin: .zero)
-        (editor.canvas.runningText(isHeader: false, pageIndex: index) as NSString).draw(at: NSPoint(x: p.left, y: p.height - 38), withAttributes: attrs)
+        RunningContentLayout.draw(editor.canvas.runningText(isHeader: false, pageIndex: index), at: NSPoint(x: p.left, y: p.height - 38), width: p.contentWidth)
     }
     private func removingPrivateURLAnnotations(from data: Data) throws -> Data {
         var hasInternalLinks = false
@@ -96,7 +95,7 @@ import DocumentCore
         guard !selected.isEmpty, selected.allSatisfy({ editor.textViews.indices.contains($0) }), selected == Array(Set(selected)).sorted() else {
             throw DocumentError.invalid("invalid PDF page selection")
         }
-        if let warning = editor.layoutWarning { throw DocumentError.invalid(warning) }
+        if let warning = editor.outputWarning { throw DocumentError.invalid(warning) }
         let p = editor.canvas.pageSettings
         var media = CGRect(x: 0, y: 0, width: p.width, height: p.height)
         let data = NSMutableData()

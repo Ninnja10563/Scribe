@@ -26,9 +26,8 @@ import DocumentCore
             shadow.shadowBlurRadius = 3; shadow.shadowOffset = NSSize(width: 0, height: -1); shadow.set()
             NSColor.white.setFill(); rect.fill()
             NSGraphicsContext.restoreGraphicsState()
-            let attrs: [NSAttributedString.Key: Any] = [.font: NSFont.systemFont(ofSize: 9), .foregroundColor: NSColor.darkGray]
-            (runningText(isHeader: true, pageIndex: i) as NSString).draw(at: NSPoint(x: rect.minX + pageSettings.left, y: rect.minY + 30), withAttributes: attrs)
-            (runningText(isHeader: false, pageIndex: i) as NSString).draw(at: NSPoint(x: rect.minX + pageSettings.left, y: rect.maxY - 38), withAttributes: attrs)
+            RunningContentLayout.draw(runningText(isHeader: true, pageIndex: i), at: NSPoint(x: rect.minX + pageSettings.left, y: rect.minY + 30), width: pageSettings.contentWidth)
+            RunningContentLayout.draw(runningText(isHeader: false, pageIndex: i), at: NSPoint(x: rect.minX + pageSettings.left, y: rect.maxY - 38), width: pageSettings.contentWidth)
             drawPageNumber(index: i, origin: rect.origin)
             if let guide = indentGuide, guide.page == i {
                 let line = NSBezierPath(); line.lineWidth = 0.75
@@ -66,6 +65,7 @@ import DocumentCore
     private(set) var paragraphRuler: ParagraphRuler?
     private(set) var textViews: [ScribeTextView] = []
     private(set) var layoutWarning: String?
+    var outputWarning: String? { layoutWarning ?? RunningContentLayout.warning(for: canvas) }
     private weak var selectionView: ScribeTextView?
     var onChange: (() -> Void)?
     var onSelection: (() -> Void)?

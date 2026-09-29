@@ -149,7 +149,7 @@ import DocumentCore
     func updateStatus() {
         guard !isClosing else { return }
         editor.paragraphRuler?.refresh()
-        if let warning = editor.layoutWarning { status.stringValue = warning; return }
+        if let warning = editor.outputWarning { status.stringValue = warning; return }
         let view = editor.activeTextView
         let selection = view.selectedRange()
         let page = editor.textViews.firstIndex(where: { $0 === view }).map { $0 + 1 } ?? 1
