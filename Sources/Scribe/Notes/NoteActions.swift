@@ -30,10 +30,10 @@ extension EditorWindowController {
             note = original
         } else { note = DocumentNote(kind: kind) }
         let originalStorage = NSAttributedString(attributedString: editor.storage)
-        let options = NoteOptions(note: note, styles: model.styles), alert = NSAlert()
-        defer { options.text.cancelSpellingCheck() }
+        let options = NoteOptions(note: note, styles: model.styles, author: editor.reviewEditing.author), alert = NSAlert()
+        defer { options.close() }
         alert.messageText = editing ? "Edit Note" : (kind == .footnote ? "Insert Footnote" : "Insert Endnote")
-        alert.informativeText = "The note number follows its reference in the document."
+        alert.informativeText = editor.reviewEditing.author == nil ? "The note number follows its reference in the document." : "Changes in this note are tracked. Apply keeps the changes; Cancel discards this draft."
         alert.accessoryView = options.view
         alert.addButton(withTitle: editing ? "Apply" : "Insert"); alert.addButton(withTitle: "Cancel")
         alert.window.initialFirstResponder = options.text
