@@ -174,5 +174,36 @@ import DocumentCore
         window?.makeFirstResponder(outline)
         if outline.selectedRow < 0, outline.numberOfRows > 0 { outline.selectRowIndexes(IndexSet(integer: 0), byExtendingSelection: false) }
     }
+    @objc func changeStyle() {
+        let index = stylePicker.indexOfSelectedItem; guard fileDocument.model.styles.indices.contains(index) else { return }
+        editor.applyStyle(fileDocument.model.styles[index].id)
+    }
+    @objc func showFonts() { window?.makeFirstResponder(editor.activeTextView); NSFontManager.shared.orderFrontFontPanel(self) }
+    @objc func bulletList() { editor.applyList(ListDescriptor()) }
+    @objc func numberedList() { editor.applyList(ListDescriptor(kind: .decimal)) }
+    @objc func toggleSidebar() { sidebar.isHidden.toggle() }
+    @objc func focusRuler() {
+        editor.scrollView.rulersVisible = true; editor.paragraphRuler?.refresh()
+        if let handle = editor.paragraphRuler?.handles.first(where: { $0.isEnabled }) { window?.makeFirstResponder(handle) }
+    }
+    @objc func toggleRuler() {
+        editor.scrollView.rulersVisible.toggle(); editor.paragraphRuler?.refresh(); editor.viewportChanged()
+    }
+    @objc func toggleFocus() {
+        if !isFocused { rulerBeforeFocus = editor.scrollView.rulersVisible; editor.scrollView.rulersVisible = false }
+        else { editor.scrollView.rulersVisible = rulerBeforeFocus }
+        if !isFocused { commentsBeforeFocus = !commentsSidebar.isHidden; commentsSidebar.isHidden = true }
+        else { commentsSidebar.isHidden = !commentsBeforeFocus }
+        isFocused.toggle(); sidebar.isHidden = isFocused; toolbar.isHidden = isFocused; if isFocused { searchBar.isHidden = true }; window?.makeFirstResponder(editor.activeTextView) }
+    @objc func showFind() { searchBar.isHidden = false; window?.makeFirstResponder(searchBar.query) }
+    @objc func changeZoom() {
+        let title = zoomPicker.titleOfSelectedItem ?? "100%"
+        if title == "Fit Width" { editor.selectZoom(.fitWidth) }
+        else if title == "Fit Page" { editor.selectZoom(.fitPage) }
+        else { editor.zoom = CGFloat(Double(title.replacingOccurrences(of: "%", with: "")) ?? 100) / 100 }
+    }
+}
+@MainActor private final class ChromeView: NSView {
+    override func draw(_ dirtyRect: NSRect) { NSColor.windowBackgroundColor.setFill(); dirtyRect.fill() }
 }
 #endif
