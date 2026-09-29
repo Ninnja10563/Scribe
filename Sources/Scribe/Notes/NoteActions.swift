@@ -33,7 +33,11 @@ extension EditorWindowController {
         let options = NoteOptions(note: note, styles: model.styles, author: editor.reviewEditing.author), alert = NSAlert()
         defer { options.close() }
         alert.messageText = editing ? "Edit Note" : (kind == .footnote ? "Insert Footnote" : "Insert Endnote")
-        alert.informativeText = editor.reviewEditing.author == nil ? "The note number follows its reference in the document." : "Changes in this note are tracked. Apply keeps the changes; Cancel discards this draft."
+        if editor.reviewEditing.author != nil {
+            alert.informativeText = "Changes in this note are tracked. Apply keeps the changes; Cancel discards this draft."
+        } else if options.hasExistingRevisions {
+            alert.informativeText = "Earlier changes remain marked. New edits are not tracked. Cancel discards this draft."
+        } else { alert.informativeText = "The note number follows its reference in the document." }
         alert.accessoryView = options.view
         alert.addButton(withTitle: editing ? "Apply" : "Insert"); alert.addButton(withTitle: "Cancel")
         alert.window.initialFirstResponder = options.text

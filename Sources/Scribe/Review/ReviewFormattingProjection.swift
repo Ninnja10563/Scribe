@@ -3,6 +3,8 @@ import AppKit
 import DocumentCore
 
 extension ReviewTextProjection {
+    /// Untracked edits become accepted history entries only while older edits
+    /// are pending, so rejecting an older edit cannot erase the newer choice.
     static func formatting(_ original: NSAttributedString, as changed: NSAttributedString,
                            identity: RevisionIdentity, styles: [ParagraphStyle], recordsChange: Bool = true) throws -> NSAttributedString {
         guard original.string == changed.string else { throw DocumentError.invalid("formatting revision changes text") }

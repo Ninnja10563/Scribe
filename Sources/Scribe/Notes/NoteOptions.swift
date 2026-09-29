@@ -10,6 +10,7 @@ import DocumentCore
     var text: ScribeTextView { reviewSession?.editor.activeTextView ?? plainText }
     private let original: DocumentNote
     private let model: ScribeDocument
+    var hasExistingRevisions: Bool { model.hasPendingRevisions }
     init(note: DocumentNote, styles: [ParagraphStyle], author: RevisionAuthor? = nil) {
         original = note
         var isolated = ScribeDocument(); isolated.styles = styles; isolated.sections[0].paragraphs = note.paragraphs
