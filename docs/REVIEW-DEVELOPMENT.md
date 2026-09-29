@@ -1,6 +1,6 @@
 # Track changes implementation plan
 
-The review work is isolated on `development/review`; it is not an exposed editor feature yet.
+Scribe 0.20 includes the internal review infrastructure described here; Track Changes is not an exposed editor feature yet. Further DOCX review interoperability is being developed on `development/docx-review`. Earlier implementation notes below describe the progression of this work.
 
 The current editor uses semantic paragraphs/runs projected into a shared AppKit text storage. Native character formatting goes through NSTextView, while styles, lists and structural operations also use document transactions. Comments already preserve associations through attributed metadata. Track changes must cover both editing paths and retain native undo, input methods and selection.
 
@@ -15,7 +15,7 @@ Remaining integration:
 5. Implement actual Office XML insertion/deletion/format revision structures, author/date preservation and regression fixtures. Until supported, DOCX export of pending revisions must fail explicitly.
 6. Validate native save/reopen/recovery, exported packages and screen/PDF output; profile large revision collections. Remove temporary editor gates only after native editing is safe.
 
-Native format v14 is confined to this development branch. Existing v13 documents migrate in memory, with no pending review metadata. The application currently refuses to open pending revisions while interaction support is incomplete; attributed projection is being tested separately for lossless preservation. No track-changes release or manual Word/accessibility validation is claimed.
+Scribe 0.20 uses native format v14. Existing v13 documents migrate in memory, with no pending review metadata. The application currently refuses to open pending revisions while interaction support is incomplete; attributed projection is being tested separately for lossless preservation. No track-changes release or manual Word/accessibility validation is claimed.
 
 The composition session preserves a stable pre-composition projection for autosave. Before undo/redo, the editor cancels provisional input using [UndoManager notifications](https://developer.apple.com/documentation/foundation/nsnotification/name-swift.struct/nsundomanagerwillundochange). Semantic document commands commit composition before mutating the model. These paths are covered by native tests; they do not replace physical CJK/dead-key/VoiceOver testing.
 

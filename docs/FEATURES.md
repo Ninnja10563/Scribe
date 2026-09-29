@@ -1,4 +1,4 @@
-# Feature status — 0.20 candidate (latest release: 0.19.2)
+# Feature status — 0.20.0
 
 This is a foundation release. “Implemented” means there is working code and an exposed editing path, not that the feature has the interoperability coverage of a mature word processor.
 
