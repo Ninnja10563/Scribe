@@ -70,5 +70,22 @@ import DocumentCore
         XCTAssertEqual(marks.count, 1)
         XCTAssertEqual(marks.first?.kind, .paragraphFormatting)
     }
+    func testNarrowMarginRefusesClippedMarksWithoutOverwritingOutput() throws {
+        var source = try fixture(); source.sections[0].page.left = 10
+        let marked = try ReviewOutputSession(source: source, mode: .marked); defer { marked.close() }
+        let accepted = try ReviewOutputSession(source: source, mode: .accepted); defer { accepted.close() }
+        let options = PDFExportAccessory(pageCount: marked.editor.canvas.pageCount, title: "Review", author: "Writer", hasPendingRevisions: true)
+        options.validateReviewOutput = { try marked.renderer.validateReviewMargins() }
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let url = folder.appendingPathComponent("Existing.pdf"), sentinel = Data("Original file".utf8)
+        try sentinel.write(to: url)
+        XCTAssertThrowsError(try options.panel(NSObject(), validate: url))
+        XCTAssertThrowsError(try marked.renderer.exportPDF(to: url, title: "Review", author: "Writer"))
+        XCTAssertEqual(try Data(contentsOf: url), sentinel)
+        options.validateReviewOutput = { try accepted.renderer.validateReviewMargins() }
+        XCTAssertNoThrow(try options.panel(NSObject(), validate: url))
+    }
 }
 #endif

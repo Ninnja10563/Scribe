@@ -45,6 +45,11 @@ import DocumentCore
         }
         return result
     }
+    static func requiredLeftMargin(for marks: [Mark]) -> CGFloat {
+        var counts: [Int: Int] = [:]
+        for mark in marks { counts[Int((mark.y * 100).rounded()), default: 0] += 1 }
+        return counts.values.map { 22 + CGFloat($0 - 1) * 19 }.max() ?? 0
+    }
     static func draw(_ marks: [Mark], at origin: NSPoint) {
         var occupied: [Int: Int] = [:]
         for mark in marks {
@@ -66,12 +71,13 @@ import DocumentCore
 
 #if canImport(AppKit)
 extension PaginatedEditor {
-    func drawStructuralReview(on page: Int, at origin: NSPoint) {
-        guard layout.textContainers.indices.contains(page) else { return }
+    func drawStructuralReview(on page: Int, at origin: NSPoint) { ReviewStructuralMarks.draw(structuralReviewMarks(on: page), at: origin) }
+    func structuralReviewMarks(on page: Int) -> [ReviewStructuralMarks.Mark] {
+        guard layout.textContainers.indices.contains(page) else { return [] }
         let container = layout.textContainers[page]
         let trailing = owner?.model.paragraphs.last.flatMap { $0.text.isEmpty ? $0.formattingReview : nil }
-        ReviewStructuralMarks.draw(ReviewStructuralMarks.marks(storage: storage, layout: layout, container: container,
-            glyphs: layout.glyphRange(for: container), trailingReview: trailing), at: origin)
+        return ReviewStructuralMarks.marks(storage: storage, layout: layout, container: container,
+            glyphs: layout.glyphRange(for: container), trailingReview: trailing)
     }
 }
 #endif

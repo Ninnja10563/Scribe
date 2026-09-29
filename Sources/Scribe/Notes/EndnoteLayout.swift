@@ -56,13 +56,17 @@ import DocumentCore
         }
         throw DocumentError.invalid("endnotes exceed the current 2,000-page document layout limit")
     }
+    func structuralReviewMarks(on page: Int) -> [ReviewStructuralMarks.Mark] {
+        guard containers.indices.contains(page) else { return [] }
+        return ReviewStructuralMarks.marks(storage: storage, layout: layout, container: containers[page], glyphs: layout.glyphRange(for: containers[page]), trailingReview: trailingReview)
+    }
     func draw(page: Int, at origin: NSPoint, showsReviewMarkup: Bool = true) {
         guard containers.indices.contains(page) else { return }
         let range = layout.glyphRange(for: containers[page])
         layout.drawBackground(forGlyphRange: range, at: origin)
         layout.drawGlyphs(forGlyphRange: range, at: origin)
         if showsReviewMarkup {
-            ReviewStructuralMarks.draw(ReviewStructuralMarks.marks(storage: storage, layout: layout, container: containers[page], glyphs: range, trailingReview: trailingReview), at: origin)
+            ReviewStructuralMarks.draw(structuralReviewMarks(on: page), at: origin)
         }
     }
 }

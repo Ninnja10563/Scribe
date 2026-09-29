@@ -61,6 +61,22 @@ import DocumentCore
         editor.canvas.drawPageNumber(index: index, origin: .zero)
         RunningContentLayout.draw(editor.canvas.runningText(isHeader: false, pageIndex: index), at: NSPoint(x: p.left, y: p.height - 38), width: p.contentWidth)
     }
+    func validateReviewMargins() throws {
+        guard showsReviewMarkup else { return }
+        var required: CGFloat = 0
+        func include(_ marks: [ReviewStructuralMarks.Mark]) { required = max(required, ReviewStructuralMarks.requiredLeftMargin(for: marks)) }
+        for page in editor.layout.textContainers.indices { include(editor.structuralReviewMarks(on: page)) }
+        for page in editor.canvas.footnotes.values {
+            for fragment in page.notes {
+                let note = fragment.note
+                include(ReviewStructuralMarks.marks(storage: note.storage, layout: note.layout, container: note.container, glyphs: fragment.glyphs, trailingReview: note.trailingReview))
+            }
+        }
+        if let notes = editor.canvas.endnotes { for page in notes.containers.indices { include(notes.structuralReviewMarks(on: page)) } }
+        guard editor.canvas.pageSettings.left >= Double(required) else {
+            throw DocumentError.invalid("tracked paragraph markers need a left margin of at least \(Int(ceil(required))) points; enlarge the margin or choose accepted/rejected output")
+        }
+    }
     private func finalizingLinkAnnotations(from data: Data) throws -> Data {
         var hasLinks = false
         for storage in contentStorages {
@@ -124,6 +140,7 @@ import DocumentCore
     }
     func exportPDF(to url: URL, title: String, author: String, pages: [Int]? = nil, subject: String = "", keywords: [String] = []) throws {
         editor.paginate()
+        try validateReviewMargins()
         let page = editor.canvas.pageSettings
         frame.size = NSSize(width: page.width, height: page.height * Double(editor.canvas.pageCount))
         let selected = pages ?? Array(0..<editor.canvas.pageCount)

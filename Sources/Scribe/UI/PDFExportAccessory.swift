@@ -7,6 +7,7 @@ import ImportExport
     let pages = NSTextField(), title = NSTextField(), author = NSTextField(), subject = NSTextField(), keywords = NSTextField()
     private(set) var pageCount: Int
     let reviewChoice = NSPopUpButton()
+    var validateReviewOutput: (() throws -> Void)?
     var onReviewModeChange: ((ReviewOutputMode) throws -> Int)?
     private var validatedMode = ReviewOutputMode.marked
     var reviewMode: ReviewOutputMode { ReviewOutputMode.allCases[max(0, reviewChoice.indexOfSelectedItem)] }
@@ -46,6 +47,6 @@ import ImportExport
         }
     }
     func selectedPages() throws -> [Int] { try ExportPageSelection.indices(pages.stringValue, pageCount: pageCount) }
-    func panel(_ sender: Any, validate url: URL) throws { _ = try selectedPages() }
+    func panel(_ sender: Any, validate url: URL) throws { _ = try selectedPages(); try validateReviewOutput?() }
 }
 #endif

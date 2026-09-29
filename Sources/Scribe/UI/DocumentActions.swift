@@ -44,6 +44,7 @@ extension EditorWindowController {
                 reviewOutput?.close(); reviewOutput = replacement
                 return replacement.editor.canvas.pageCount
             }
+            options.validateReviewOutput = { try reviewOutput?.renderer.validateReviewMargins() }
             panel.accessoryView = options; panel.delegate = options; pdfOptions = options
         } else { pdfOptions = nil }
         panel.beginSheetModal(for: window) { response in
@@ -82,7 +83,10 @@ extension EditorWindowController {
             choice.setAccessibilityLabel("Tracked changes in printout"); alert.accessoryView = choice
             alert.addButton(withTitle: "Continue to Print"); alert.addButton(withTitle: "Cancel")
             guard alert.runModal() == .alertFirstButtonReturn else { return }
-            do { output = try ReviewOutputSession(source: model, mode: ReviewOutputMode.allCases[choice.indexOfSelectedItem]) }
+            do {
+                output = try ReviewOutputSession(source: model, mode: ReviewOutputMode.allCases[choice.indexOfSelectedItem])
+                try output?.renderer.validateReviewMargins()
+            }
             catch { presentError(error); return }
         }
         let outputEditor = output?.editor ?? editor

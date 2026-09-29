@@ -26,7 +26,9 @@ enum ReviewOutputMode: String, CaseIterable {
         document = ScribeFileDocument(); document.model = projected
         editor = PaginatedEditor(document: document)
         renderer = PrintRenderer(editor: editor, showsReviewMarkup: mode == .marked)
-        if let warning = editor.outputWarning { editor.prepareForClose(); throw DocumentError.invalid(warning) }
+        do {
+            if let warning = editor.outputWarning { throw DocumentError.invalid(warning) }
+        } catch { editor.prepareForClose(); throw error }
     }
     func close() { editor.prepareForClose() }
 }
