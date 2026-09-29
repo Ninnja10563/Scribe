@@ -123,6 +123,7 @@ final class DOCXWriter {
             properties += DOCX.paragraphProperties(formatting)
         } else if let f = p.formatting { properties += DOCX.paragraphProperties(f) }
         properties += revisions.paragraphMark(p.breakReview)
+        properties += revisions.paragraphProperties(p.formattingReview)
         var text = "", offset = 0
         let boundaries = comments.boundaries(paragraphID: p.id)
         for run in p.runs {

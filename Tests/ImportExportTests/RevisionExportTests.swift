@@ -148,6 +148,9 @@ final class RevisionExportTests: XCTestCase {
         let before = document
         document.sections[0].paragraphs[0].styleID = "heading1"
         try document.recordParagraphFormattingChanges(from: before, identity: identity)
+        let intermediate = document
+        document.sections[0].paragraphs[0].styleID = "heading2"
+        try document.recordParagraphFormattingChanges(from: intermediate, identity: .init(author: identity.author))
         try NativeFormat.validate(document)
         XCTAssertThrowsError(try DOCXWriter(document, revisions: .runChanges).encode())
     }

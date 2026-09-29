@@ -50,6 +50,10 @@ public enum DOCX {
         func part(_ name: String, namespace: String = DOCX.relationNS) -> Data? { files["word/" + (partTargets[namespace + "/" + name] ?? name + ".xml")] }
         if let styles = part("styles") {
             let reader = StyleReader(); try parse(styles, delegate: reader)
+            if reader.hasRevisionProperties {
+                if revisionContext != nil { throw DocumentError.invalid("Preserving DOCX style-definition revisions is not yet supported.") }
+                delegate.warnings.insert("Style-definition revisions are imported without review history.")
+            }
             for style in try reader.resolvedStyles() { delegate.document.updateStyle(style) }
             delegate.defaultStyleID = reader.defaultStyleID ?? "normal"
             delegate.styleLists = reader.resolvedLists
@@ -170,7 +174,7 @@ public enum DOCX {
             for (variant, id) in references {
                 guard ["default", "first", "even"].contains(variant), let target = delegate.targets[id], let data = files["word/" + target] else { continue }
                 let reader = WordReader(revisionContext: revisionContext); try parse(data, delegate: reader)
-                if revisionContext != nil, reader.paragraphs.contains(where: { !($0.breakReview?.pendingIDs.isEmpty ?? true) || $0.runs.contains(where: { !($0.review?.pendingIDs.isEmpty ?? true) }) }) {
+                if revisionContext != nil, reader.paragraphs.contains(where: { !($0.formattingReview?.pendingIDs.isEmpty ?? true) || !($0.breakReview?.pendingIDs.isEmpty ?? true) || $0.runs.contains(where: { !($0.review?.pendingIDs.isEmpty ?? true) }) }) {
                     throw DocumentError.invalid("Preserving DOCX running-content revisions is not yet supported.")
                 }
                 delegate.warnings.formUnion(reader.warnings)
@@ -254,7 +258,7 @@ func applyRun(_ name: String, _ a: [String: String], _ f: inout TextFormatting) 
     default: break
     }
 }
-private func applyParagraph(_ name: String, _ a: [String: String], _ f: inout ParagraphFormatting, lineHeight: Bool = true) throws {
+func applyParagraph(_ name: String, _ a: [String: String], _ f: inout ParagraphFormatting, lineHeight: Bool = true) throws {
     switch name {
     case "jc": f.alignment = wordAttribute(a) == "both" ? .justified : Alignment(rawValue: wordAttribute(a) ?? "left") ?? .left
     case "spacing":
@@ -301,6 +305,8 @@ struct StyleList {
     var level: Int?
 }
 private class StyleReader: NSObject, XMLParserDelegate {
+    private var skippedReviewDepth = 0
+    var hasRevisionProperties = false
     private var lists: [String: StyleList] = [:], parents: [String: String] = [:]
     var resolvedLists: [String: StyleList] {
         var result: [String: StyleList] = [:]
@@ -340,7 +346,9 @@ private class StyleReader: NSObject, XMLParserDelegate {
         }
     }
     func parser(_ parser: XMLParser, didStartElement name: String, namespaceURI: String?, qualifiedName: String?, attributes a: [String: String]) {
+        if skippedReviewDepth > 0 { skippedReviewDepth += 1; return }
         guard namespaceURI == DOCX.wordNS else { return }
+        if ["pPrChange", "rPrChange"].contains(name) { hasRevisionProperties = true; skippedReviewDepth = 1; return }
         if name == "docDefaults" { inDefaults = true }
         if inDefaults, name == "lang" { defaultLanguage = wordAttribute(a) }
         if inDefaults, name == "pPr" { inDefaultParagraph = true; defaultParagraph = ParagraphFormatting() }
@@ -364,6 +372,7 @@ private class StyleReader: NSObject, XMLParserDelegate {
         do { try applyParagraph(name, a, &current!.paragraph, lineHeight: false) } catch { parser.abortParsing() }
     }
     func parser(_ parser: XMLParser, didEndElement name: String, namespaceURI: String?, qualifiedName: String?) {
+        if skippedReviewDepth > 0 { skippedReviewDepth -= 1; return }
         guard namespaceURI == DOCX.wordNS else { return }
         if name == "docDefaults" { inDefaults = false }
         if name == "pPr" { inDefaultParagraph = false }
@@ -591,6 +600,10 @@ class WordReader: NSObject, XMLParserDelegate {
             let inherited = paragraph.flatMap { styleLists[$0.styleID] }
             if let id = listID ?? inherited?.id { paragraph?.list = numbering.descriptor(id: id, level: listLevel ?? inherited?.level ?? 0) }
             paragraph?.breakReview = revisionReader?.paragraphBreak
+            if var value = paragraph {
+                do { try revisionReader?.applyParagraph(to: &value, document: document, defaultStyleID: defaultStyleID, styleLists: styleLists); paragraph = value }
+                catch { revisionReader?.fail(error, parser: parser); return }
+            }
             if let p = paragraph { paragraphs.append(p) }; paragraph = nil
         case "hyperlink": link = nil
         default: break

@@ -18,8 +18,20 @@ final class DOCXRevisionWriter {
             throw DocumentError.invalid("tracked-change DOCX export is still being implemented")
         }
         for paragraph in document.paragraphs + document.notes.flatMap(\.paragraphs) {
-            guard paragraph.formattingReview?.pendingIDs.isEmpty ?? true else {
-                throw DocumentError.invalid("DOCX paragraph revision export is not yet supported")
+            if let history = paragraph.formattingReview, !history.pendingIDs.isEmpty {
+                guard history.changes.count == 1, let change = history.changes.first,
+                      change.before.list == nil, change.after.list == nil, paragraph.toc == nil else {
+                    throw DocumentError.invalid("DOCX layered, list and generated paragraph revisions are not yet supported")
+                }
+                let before = change.before.formatting ?? change.inheritedBefore
+                let after = change.after.formatting ?? change.inheritedAfter
+                let beforeGap: Double = before.lineHeight == nil ? 3 : 0
+                let afterGap: Double = after.lineHeight == nil ? 3 : 0
+                guard before.lineSpacing == after.lineSpacing,
+                      before.lineSpacing == beforeGap, after.lineSpacing == afterGap else {
+                    throw DocumentError.invalid("DOCX cannot preserve this additional-line-spacing revision")
+                }
+                try validateIdentity(change.identity)
             }
             for identity in [paragraph.breakReview?.insertion, paragraph.breakReview?.deletion].compactMap({ $0 }) {
                 try validateIdentity(identity)
@@ -51,6 +63,15 @@ final class DOCXRevisionWriter {
         if let insertion = review?.insertion { content += "<w:ins \(attributes(insertion))/>" }
         if let deletion = review?.deletion { content += "<w:del \(attributes(deletion))/>" }
         return content.isEmpty ? "" : "<w:rPr>\(content)</w:rPr>"
+    }
+
+    func paragraphProperties(_ review: ParagraphFormattingReview?) -> String {
+        guard let change = review?.changes.first(where: { !$0.accepted }) else { return "" }
+        let before = change.before
+        var properties = "<w:pStyle w:val=\"\(DOCX.xml(before.styleID))\"/>"
+        if before.pageBreakBefore { properties += "<w:pageBreakBefore/>" }
+        if let format = before.formatting { properties += DOCX.paragraphProperties(format) }
+        return "<w:pPrChange \(attributes(change.identity))><w:pPr>\(properties)</w:pPr></w:pPrChange>"
     }
 
     /// Every emitted XML annotation has a distinct numeric ID, including when
