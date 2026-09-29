@@ -23,6 +23,28 @@ final class LineHeightInterchangeTests: XCTestCase {
             }
         }
     }
+    func testDocumentDefaultsAndDefaultParagraphStyleApplyWithoutExplicitStyle() throws {
+        for explicitDefault in [false, true] {
+            var parts = try ZipArchive.decode(DOCX.encode(ScribeDocument()))
+            let style = explicitDefault ? "<w:style w:type=\"paragraph\" w:default=\"1\" w:styleId=\"DefaultBody\"><w:pPr><w:spacing w:line=\"480\" w:lineRule=\"exact\"/></w:pPr></w:style>" : ""
+            parts["word/styles.xml"] = Data("<w:styles xmlns:w=\"\(DOCX.wordNS)\"><w:docDefaults><w:pPrDefault><w:pPr><w:spacing w:line=\"360\" w:lineRule=\"auto\"/></w:pPr></w:pPrDefault></w:docDefaults>\(style)</w:styles>".utf8)
+            parts["word/document.xml"] = Data("<w:document xmlns:w=\"\(DOCX.wordNS)\"><w:body><w:p><w:r><w:t>Default body</w:t></w:r></w:p></w:body></w:document>".utf8)
+            let document = try DOCX.decode(ZipArchive.encode(parts)).document
+            let paragraph = try XCTUnwrap(document.paragraphs.first)
+            XCTAssertEqual(document.style(for: paragraph).paragraph.lineHeight, explicitDefault ? .init(rule: .exact, value: 24) : .init(rule: .multiple, value: 1.5))
+        }
+    }
+    func testExportNaturalHeightReference() throws {
+        var document = ScribeDocument()
+        document.styles[0].paragraph.lineSpacing = 0
+        document.sections[0].paragraphs = [Paragraph("First line\u{2028}Second line\u{2028}Third line")]
+        let bytes = try DOCX.encode(document)
+        if let folder = ProcessInfo.processInfo.environment["SCRIBE_SCHEMA_OUTPUT"] {
+            let url = URL(fileURLWithPath: folder, isDirectory: true)
+            try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
+            try bytes.write(to: url.appendingPathComponent("LineHeight-natural.docx"), options: .atomic)
+        }
+    }
     func testStyleDefaultsInheritanceAndPartialOverrides() throws {
         var parts = try ZipArchive.decode(DOCX.encode(ScribeDocument()))
         parts["word/styles.xml"] = Data("""

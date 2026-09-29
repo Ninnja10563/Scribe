@@ -141,6 +141,8 @@ jobs:
         run: python scripts/verify-revision-render.py build
       - name: Render DOCX exports in LibreOffice
         run: python scripts/verify-office-render.py build
+      - name: Verify native and Office line-height measurements
+        run: python scripts/verify-line-height.py build/schema --office build/office-render
       - uses: actions/upload-artifact@v4
         if: always()
         with:

@@ -15,6 +15,9 @@ extension EditorWindowController {
             if format == "rtf" { alert.informativeText = "RTF export omits images. Use Word Document or PDF to retain them. Your Scribe document is kept intact." }
             if ["rtf", "txt", "md"].contains(format), model.paragraphs.contains(where: { $0.runs.contains(where: { $0.equation != nil }) }) { alert.informativeText += " Equations are exported as readable mathematical source, without their visual layout." }
             if format == "docx", model.paragraphs.contains(where: { $0.runs.contains(where: { $0.equation != nil }) }) { alert.informativeText += " Equation font sizes and spacing can vary across editors; PDF preserves Scribe’s layout." }
+            if format == "docx", (model.paragraphs + model.notes.flatMap(\.paragraphs)).contains(where: { ($0.formatting ?? model.style(for: $0).paragraph).lineSpacing != 0 }) {
+                alert.informativeText += " Additional spacing between lines is not retained in Word; explicit multiple, minimum and exact line heights are preserved."
+            }
             if format == "docx", model.comments.contains(where: { $0.isDetached == true }) { alert.informativeText += " Detached comments are retained in the package, but other editors may hide them." }
             if format == "docx", model.styles.contains(where: { $0.text.fontFace != nil }) || model.paragraphs.contains(where: { $0.runs.contains(where: { $0.format.fontFace != nil }) }) {
                 alert.informativeText += " Specific font faces and intermediate weights may be approximated by their family and bold/italic traits in Word."

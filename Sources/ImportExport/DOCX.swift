@@ -51,6 +51,7 @@ public enum DOCX {
         if let styles = part("styles") {
             let reader = StyleReader(); try parse(styles, delegate: reader)
             for style in try reader.resolvedStyles() { delegate.document.updateStyle(style) }
+            delegate.defaultStyleID = reader.defaultStyleID ?? "normal"
             delegate.styleLists = reader.resolvedLists
             if let language = reader.defaultLanguage, let normalized = try? DocumentMetadata.languageIdentifier(language) { delegate.document.language = normalized }
             if reader.styleLanguages.contains(where: { (try? DocumentMetadata.languageIdentifier($0)) != delegate.document.language }) {
@@ -70,6 +71,7 @@ public enum DOCX {
             let notesReader = DOCXNotesReader(kind: kind) {
                 let reader = WordReader(revisionContext: revisionContext); reader.files = files
                 reader.document.styles = delegate.document.styles
+                reader.defaultStyleID = delegate.defaultStyleID
                 reader.document.language = delegate.document.language
                 reader.styleLists = delegate.styleLists; reader.numbering = delegate.numbering
                 reader.targets = noteRelationships.targets; reader.links = noteRelationships.links
@@ -320,9 +322,14 @@ private class StyleReader: NSObject, XMLParserDelegate {
     private var inDefaults = false
     private var inDefaultParagraph = false
     private var defaultParagraph: ParagraphFormatting?
+    var defaultStyleID: String?
     private var lineSettings: [String: [String: String]] = [:]
     func resolvedStyles() throws -> [ParagraphStyle] {
-        try styles.map { style in
+        var source = styles
+        if !source.contains(where: { $0.id == "normal" }), let defaultParagraph {
+            var normal = ParagraphStyle.normal; normal.paragraph = defaultParagraph; source.append(normal)
+        }
+        return try source.map { style in
             var chain: [String] = [], visited = Set<String>(), next: String? = style.id
             while let id = next, visited.insert(id).inserted { chain.append(id); next = parents[id] }
             var inherited = defaultParagraph ?? ParagraphFormatting()
@@ -342,6 +349,7 @@ private class StyleReader: NSObject, XMLParserDelegate {
         }
         if name == "style", wordAttribute(a, "type") == "paragraph", let id = wordAttribute(a, "styleId") {
             current = ParagraphStyle(id: id, name: id)
+            if ["1", "true", "on"].contains(wordAttribute(a, "default") ?? "") { defaultStyleID = id }
             if let defaultParagraph { current?.paragraph = defaultParagraph }
         }
         guard current != nil else { return }
@@ -366,6 +374,7 @@ class WordReader: NSObject, XMLParserDelegate {
     private let revisionReader: DOCXRevisionReader?
     init(revisionContext: DOCXRevisionImportContext? = nil) { revisionReader = revisionContext.map(DOCXRevisionReader.init) }
 
+    var defaultStyleID = "normal"
     var document = ScribeDocument(), paragraphs: [Paragraph] = [], warnings: Set<String> = []
     var paragraph: Paragraph?, run = TextRun(""), collecting = false, links: [String: String] = [:], link: String?
     var numbering = DOCXNumberingReader()
@@ -410,7 +419,7 @@ class WordReader: NSObject, XMLParserDelegate {
         switch name {
         case "document": sawDocument = true
         case "p":
-            paragraph = Paragraph(); paragraph?.runs = []; listID = nil; listLevel = nil
+            paragraph = Paragraph(style: defaultStyleID); paragraph?.runs = []; listID = nil; listLevel = nil
             if let t = tableIndex, row >= 0, column >= 0 { paragraph?.tableCell = TableCellReference(tableID: document.tables[t].id, row: row, column: column) }
         case "r": run = TextRun("", link: link); inRun = true; revisionReader?.apply(to: &run)
         case "t", "delText": collecting = name == "t" || revisionReader != nil
