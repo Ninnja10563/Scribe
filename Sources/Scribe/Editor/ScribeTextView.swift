@@ -41,8 +41,14 @@ import DocumentCore
         menu.addItem(.separator()); menu.addItem(NSMenuItem(title: "Add Comment…", action: #selector(EditorWindowController.addComment), keyEquivalent: ""))
         return menu
     }
+    override var writablePasteboardTypes: [NSPasteboard.PasteboardType] {
+        var types = super.writablePasteboardTypes
+        if isRichText, selectedRange().length > 0, !types.contains(.rtfd) { types.insert(.rtfd, at: 0) }
+        return types
+    }
     override func writeSelection(to pasteboard: NSPasteboard, type: NSPasteboard.PasteboardType) -> Bool {
-        guard type == .rtfd, let textStorage else { return super.writeSelection(to: pasteboard, type: type) }
+        // AppKit still requests the pre-UTI RTFD name during ordinary Copy.
+        guard type == .rtfd || type.rawValue == "NeXT RTFD pasteboard type", let textStorage else { return super.writeSelection(to: pasteboard, type: type) }
         do {
             let value = try ExternalImageProjection.render(textStorage.attributedSubstring(from: selectedRange()))
             let data = try value.data(from: NSRange(location: 0, length: value.length), documentAttributes: [.documentType: NSAttributedString.DocumentType.rtfd])
