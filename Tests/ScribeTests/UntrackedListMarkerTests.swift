@@ -100,6 +100,23 @@ import ImportExport
         XCTAssertEqual(document.snapshot(), before)
         XCTAssertFalse(document.undoManager?.canUndo ?? true)
     }
+    func testUndoDuringCrossListCompositionCancelsPreviewBeforeUndoingPriorEdit() throws {
+        let document = fixture(["First", "Second"]); defer { document.close() }
+        let editor = document.editorController!.editor, original = document.snapshot()
+        editor.select(NSRange(location: editor.storage.length, length: 0))
+        editor.activeTextView.insertText("!", replacementRange: NSRange(location: NSNotFound, length: 0))
+        let source = editor.storage.string as NSString
+        let start = source.range(of: "First").location + 2
+        let end = source.range(of: "Second").location + 2
+        editor.select(NSRange(location: start, length: end - start))
+        editor.activeTextView.setMarkedText("語", selectedRange: NSRange(location: 1, length: 0), replacementRange: NSRange(location: NSNotFound, length: 0))
+        document.undoManager?.undo()
+        XCTAssertNil(editor.activeTextView.reviewComposition)
+        XCTAssertEqual(document.snapshot(), original)
+        document.undoManager?.redo()
+        XCTAssertEqual(document.snapshot().paragraphs.map(\.text), ["First", "Second!"])
+        XCTAssertFalse(document.snapshot().hasPendingRevisions)
+    }
     func testTypingIntoMarkerPreservesNumberAndNativeUndo() throws {
         let document = fixture(); defer { document.close() }
         let editor = document.editorController!.editor, before = document.snapshot()
