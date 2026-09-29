@@ -1,7 +1,7 @@
 import Foundation
 
 public struct ScribeDocument: Codable, Equatable, Sendable {
-    public static let currentVersion = 13
+    public static let currentVersion = 14
     public var formatVersion = currentVersion
     public var id = UUID()
     public var title = "Untitled"
@@ -93,6 +93,7 @@ public struct TextRun: Codable, Equatable, Sendable {
     public var image: InlineImage?
     public var equation: Equation?
     public var noteID: UUID?
+    public var review: RunReview?
     public init(_ text: String, format: TextFormatting = TextFormatting(), link: String? = nil) {
         self.text = text; self.format = format; self.link = link
     }

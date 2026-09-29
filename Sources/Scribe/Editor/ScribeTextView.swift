@@ -54,7 +54,7 @@ import DocumentCore
     override func draw(_ dirtyRect: NSRect) { super.draw(dirtyRect); drawImageSelection() }
     override func mouseDown(with event: NSEvent) { if !resizeImageIfNeeded(with: event) { super.mouseDown(with: event) } }
     override func insertText(_ insertString: Any, replacementRange: NSRange) {
-        for key in [NSAttributedString.Key.attachment, .scribeEquation, .scribeImage, .scribeNote, .scribeNoteNumber] { typingAttributes.removeValue(forKey: key) }
+        for key in [NSAttributedString.Key.attachment, .scribeEquation, .scribeImage, .scribeNote, .scribeNoteNumber, .scribeReview] { typingAttributes.removeValue(forKey: key) }
         let range = replacementRange.location == NSNotFound ? selectedRange() : replacementRange
         let ids = commentIDs(forReplacement: range)
         if ids.isEmpty { typingAttributes.removeValue(forKey: .scribeComments) }

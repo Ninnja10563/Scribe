@@ -42,6 +42,7 @@ public enum NativeFormat {
             // v10 → v11: absent runningContent uses the legacy header/footer on every page.
             // v11 → v12: absent equation retains legacy text and image runs.
             if version < 13 { json["notes"] = [] } // v12 → v13: earlier documents have no note registry.
+            // v13 → v14: absent run review metadata means accepted content.
             json["formatVersion"] = ScribeDocument.currentVersion
             migrated = try JSONSerialization.data(withJSONObject: json)
         }
@@ -55,6 +56,7 @@ public enum NativeFormat {
     }
     public static func validate(_ document: ScribeDocument) throws {
         guard document.formatVersion == ScribeDocument.currentVersion else { throw DocumentError.unsupportedVersion(document.formatVersion) }
+        try validateReviews(document)
         guard !document.sections.isEmpty else { throw DocumentError.invalid("missing section") }
         guard document.sections.allSatisfy({ $0.page.isValid && !$0.paragraphs.isEmpty }) else {
             throw DocumentError.invalid("invalid page geometry or empty section")
@@ -154,7 +156,7 @@ public enum NativeFormat {
             }
         }
     }
-    private static func validateText(_ format: TextFormatting) throws {
+    static func validateText(_ format: TextFormatting) throws {
         if format.clearHighlight == true, format.highlight != nil { throw DocumentError.invalid("conflicting highlight overrides") }
         if let face = format.fontFace, face.isEmpty || face.utf8.count > 512 || face.unicodeScalars.contains(where: { CharacterSet.controlCharacters.contains($0) }) {
             throw DocumentError.invalid("invalid font face")

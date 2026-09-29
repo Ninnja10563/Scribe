@@ -3,6 +3,7 @@ import AppKit
 import DocumentCore
 
 extension NSAttributedString.Key {
+    static let scribeReview = NSAttributedString.Key("org.scribe.review")
     static let scribePageBreakMarker = NSAttributedString.Key("org.scribe.pageBreakMarker")
     static let scribeTOC = NSAttributedString.Key("org.scribe.tableOfContents")
     static let scribeStyle = NSAttributedString.Key("org.scribe.paragraphStyle")
@@ -42,6 +43,7 @@ extension NSAttributedString.Key {
             for run in paragraph.runs {
                 var attrs = base
                 apply(run.format, over: style.text, to: &attrs)
+                if let review = run.review { attrs[.scribeReview] = try? JSONEncoder().encode(review) }
                 if let link = run.link { attrs[.link] = link }
                 if let id = run.noteID, let note = notes[id] {
                     attrs[.attachment] = NoteProjection.attachment(note, baseFont: ScriptProjection.logicalFont(in: attrs) ?? .systemFont(ofSize: 12))
@@ -116,6 +118,7 @@ extension NSAttributedString.Key {
                     let format = captureTextFormat(attributes, style: style)
                     let link = (attributes[.link] as? URL)?.absoluteString ?? attributes[.link] as? String
                     var run = TextRun(value, format: format, link: link)
+                    if let data = attributes[.scribeReview] as? Data { run.review = try? JSONDecoder().decode(RunReview.self, from: data) }
                     if let attachment = attributes[.attachment] as? NSTextAttachment {
                         if let data = attributes[.scribeNote] as? Data, data.count <= NativeFormat.maximumBytes,
                            let note = try? JSONDecoder().decode(DocumentNote.self, from: data) {

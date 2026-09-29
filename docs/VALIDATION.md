@@ -257,3 +257,8 @@ The first complete running-content run, [36524090953](https://github.com/Ninnja1
 - Targeted macOS run [36539859708](https://github.com/Ninnja10563/Scribe/actions/runs/36539859708) passed 12 tests, covering body/note search order, Unicode, generated marker exclusion, note navigation, continuation pages, retained formatting/list identities, atomic failure and batch undo/redo.
 - Run [36540133553](https://github.com/Ninnja10563/Scribe/actions/runs/36540133553) passed the listed-note correction and related native regressions. Its actual PDF was downloaded and visually inspected: the note label, list marker and short content share one line.
 - The PDF-highlight regression was subsequently strengthened to retain the same renderer and assert that live highlight attributes remain present after export; this avoids a false pass caused by reconstructing note layout before printing. Full final validation is pending.
+
+## Review foundation (unreleased branch)
+
+- Initial portable review run passed 138 tests with one AppKit-only placeholder skipped. It covers retaining deletions, independent insertion/deletion decisions, stable author identity, edits to one's own insertion, UTF-16 scalar boundaries, ordered formatting decisions, native v14 round-trip/v13 migration and explicit refusal to flatten pending changes through the current DOCX writer.
+- Document-wide decision and native projection checks are in progress. Track Changes is not exposed in the editor; temporary open/recovery and DOCX-export gates protect pending revisions until interaction and interchange support are implemented. See REVIEW-DEVELOPMENT.md for the remaining integration requirements.

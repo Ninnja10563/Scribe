@@ -13,6 +13,7 @@ public enum DOCX {
     static let relationNS = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
     public static func encode(_ document: ScribeDocument) throws -> Data {
         try NativeFormat.validate(document)
+        guard !document.hasPendingRevisions else { throw DocumentError.invalid("tracked-change DOCX export is still being implemented") }
         return try DOCXWriter(document).encode()
     }
     public static func decode(_ data: Data) throws -> ImportResult {
