@@ -2,7 +2,7 @@
 
 A native document-authoring application for Apple Silicon Macs, built with Swift and AppKit. This repository is an early foundation for a professional word processor, not a finished Word or Pages replacement.
 
-[Download Scribe 0.10.0 for Apple Silicon](https://github.com/Ninnja10563/Scribe/releases/tag/v0.10.0) · [Feature status](docs/FEATURES.md)
+[Download Scribe 0.11.0 for Apple Silicon](https://github.com/Ninnja10563/Scribe/releases/tag/v0.11.0) · [Feature status](docs/FEATURES.md)
 
 ![Scribe's native document window with a table and inline image](docs/images/scribe-light.png)
 
@@ -30,7 +30,7 @@ On Linux, install Swift 6 plus the zlib development headers (`zlib1g-dev` on Deb
 - Shared TextKit storage with real glyph flow across physical pages; A4, Letter, Legal, custom paper dimensions, orientation and margins.
 - Named paragraph styles, style modifications, custom styles, headings and outline navigation.
 - Common character formatting, font panel, alignment, spacing/indents, basic lists, page breaks, headers/footers and configurable page numbers.
-- Structured tables with row/column editing, cell formatting and minimum row heights; inline images with proportional resize handles and accessibility descriptions.
+- Structured tables with row/column editing, cell formatting and minimum row heights; inline images with proportional resize handles, reversible crop/rotation/opacity and accessibility descriptions.
 - Find/replace with case and whole-word matching, selected-text word counts, focus mode and zoom.
 - Anchored comments with native review controls, multi-paragraph ranges, edit-aware associations, resolution and DOCX interchange.
 - Automatic tables of contents, named paragraph bookmarks and internal heading/bookmark links in native, DOCX and PDF documents.
