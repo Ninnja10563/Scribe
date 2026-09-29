@@ -81,16 +81,13 @@ extension EditorWindowController {
     }
     @objc func editHeaderFooter() {
         let alert = NSAlert(); alert.messageText = "Headers and Footers"
-        let header = NSTextField(string: fileDocument.model.sections[0].header), footer = NSTextField(string: fileDocument.model.sections[0].footer)
-        header.placeholderString = "Header"; footer.placeholderString = "Footer"
-        let stack = NSStackView(views: [NSTextField(labelWithString: "Header"), header, NSTextField(labelWithString: "Footer"), footer])
-        stack.orientation = .vertical; stack.alignment = .leading; stack.spacing = 8; stack.frame = NSRect(x: 0, y: 0, width: 320, height: 110)
-        header.widthAnchor.constraint(equalToConstant: 320).isActive = true; footer.widthAnchor.constraint(equalToConstant: 320).isActive = true
-        alert.accessoryView = stack; alert.addButton(withTitle: "Apply"); alert.addButton(withTitle: "Cancel")
+        let options = RunningContentOptions(section: fileDocument.snapshot().sections[0])
+        alert.accessoryView = options.view; alert.addButton(withTitle: "Apply"); alert.addButton(withTitle: "Cancel")
         if alert.runModal() == .alertFirstButtonReturn {
-            fileDocument.performEdit("Headers and Footers") { $0.sections[0].header = header.stringValue; $0.sections[0].footer = footer.stringValue }
+            fileDocument.performEdit("Headers and Footers") { options.apply(to: &$0.sections[0]) }
         }
     }
+
     @objc func deleteStyle() {
         let index = stylePicker.indexOfSelectedItem; guard fileDocument.model.styles.indices.contains(index) else { return }
         let style = fileDocument.model.styles[index]

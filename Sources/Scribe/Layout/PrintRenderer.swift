@@ -36,9 +36,9 @@ import DocumentCore
             editor.layout.drawGlyphs(forGlyphRange: range, at: origin)
         }
         let attrs: [NSAttributedString.Key: Any] = [.font: NSFont.systemFont(ofSize: 9), .foregroundColor: NSColor.darkGray]
-        (editor.canvas.header as NSString).draw(at: NSPoint(x: p.left, y: 30), withAttributes: attrs)
+        (editor.canvas.runningText(isHeader: true, pageIndex: index) as NSString).draw(at: NSPoint(x: p.left, y: 30), withAttributes: attrs)
         editor.canvas.drawPageNumber(index: index, origin: .zero)
-        (editor.canvas.footer as NSString).draw(at: NSPoint(x: p.left, y: p.height - 38), withAttributes: attrs)
+        (editor.canvas.runningText(isHeader: false, pageIndex: index) as NSString).draw(at: NSPoint(x: p.left, y: p.height - 38), withAttributes: attrs)
     }
     private func removingPrivateURLAnnotations(from data: Data) throws -> Data {
         var hasInternalLinks = false

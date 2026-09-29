@@ -1,7 +1,7 @@
 import Foundation
 
 public struct ScribeDocument: Codable, Equatable, Sendable {
-    public static let currentVersion = 10
+    public static let currentVersion = 11
     public var formatVersion = currentVersion
     public var id = UUID()
     public var title = "Untitled"
@@ -51,6 +51,7 @@ public struct Section: Codable, Equatable, Sendable, Identifiable {
     public var header = ""
     public var footer = ""
     public var pageNumbering: PageNumbering?
+    public var runningContent: RunningContentVariants?
     public init() {}
 }
 

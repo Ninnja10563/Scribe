@@ -27,6 +27,7 @@ final class DOCXWriter {
         for paragraph in document.paragraphs where linked.contains(paragraph.id) { bookmarkIDs[paragraph.id] = bookmarkIDs.count }
         namedBookmarks = DOCXBookmarks(document, startingID: bookmarkIDs.count, reservedNames: Set(bookmarkIDs.keys.map(DocumentLink.officeBookmark)))
         var body = ""
+        let usesEvenPages = document.sections.contains { $0.runningContent?.differentOddEvenPages == true }
         for (index, section) in document.sections.enumerated() {
             contentWidth = section.page.contentWidth
             var emitted: Set<UUID> = []
@@ -37,27 +38,17 @@ final class DOCXWriter {
             }
             var sectionXML = DOCX.sectionProperties(section.page)
             var references = ""
-            for isHeader in [true, false] {
-                let text = isHeader ? section.header : section.footer
-                let numbering = section.pageNumbering.flatMap { ([.topLeft, .topCenter, .topRight].contains($0.position) == isHeader) ? $0 : nil }
-                guard !text.isEmpty || numbering != nil else { continue }
-                let kind = isHeader ? "header" : "footer", root = isHeader ? "hdr" : "ftr"
-                let path = "\(kind)\(index + 1).xml"
-                var content = text.isEmpty ? "" : "<w:p><w:r><w:rPr><w:sz w:val=\"18\"/></w:rPr><w:t xml:space=\"preserve\">\(DOCX.xml(text))</w:t></w:r></w:p>"
-                if let numbering {
-                    let alignment = [.topCenter, .bottomCenter].contains(numbering.position) ? "center" : [.topRight, .bottomRight].contains(numbering.position) ? "right" : "left"
-                    let page = "<w:fldSimple w:instr=\"PAGE\"><w:r><w:t>\(numbering.start)</w:t></w:r></w:fldSimple>"
-                    var field = page
-                    if numbering.format == .page || numbering.format == .pageOfTotal { field = "<w:r><w:t xml:space=\"preserve\">Page </w:t></w:r>" + field }
-                    if numbering.format == .pageOfTotal { field += "<w:r><w:t xml:space=\"preserve\"> of </w:t></w:r><w:fldSimple w:instr=\"NUMPAGES\"><w:r><w:t>1</w:t></w:r></w:fldSimple>" }
-                    content += "<w:p><w:pPr><w:jc w:val=\"\(alignment)\"/></w:pPr>\(field)</w:p>"
-                }
-                put("word/\(path)", "<w:\(root) xmlns:w=\"\(DOCX.wordNS)\">\(content)</w:\(root)>")
-                let id = relationship(type: kind, target: path)
-                references += "<w:\(kind)Reference w:type=\"default\" r:id=\"\(id)\"/>"
-                overrides.append("<Override PartName=\"/word/\(path)\" ContentType=\"application/vnd.openxmlformats-officedocument.wordprocessingml.\(kind)+xml\"/>")
+            for part in DOCXRunningContent.parts(section: section, index: index, documentUsesEvenPages: usesEvenPages) {
+                put("word/" + part.path, part.xml)
+                let id = relationship(type: part.kind, target: part.path)
+                references += "<w:\(part.kind)Reference w:type=\"\(part.variant)\" r:id=\"\(id)\"/>"
+                overrides.append("<Override PartName=\"/word/\(part.path)\" ContentType=\"application/vnd.openxmlformats-officedocument.wordprocessingml.\(part.kind)+xml\"/>")
             }
             if let numbering = section.pageNumbering { sectionXML = sectionXML.replacingOccurrences(of: "</w:sectPr>", with: "<w:pgNumType w:fmt=\"\(numbering.format == .roman ? "lowerRoman" : "decimal")\" w:start=\"\(numbering.start)\"/></w:sectPr>") }
+            if section.pageNumbering == nil, let start = section.runningContent?.startingPageNumber {
+                sectionXML = sectionXML.replacingOccurrences(of: "</w:sectPr>", with: "<w:pgNumType w:start=\"\(start)\"/></w:sectPr>")
+            }
+            if section.runningContent?.differentFirstPage == true { sectionXML = sectionXML.replacingOccurrences(of: "</w:sectPr>", with: "<w:titlePg/></w:sectPr>") }
             sectionXML = sectionXML.replacingOccurrences(of: "<w:sectPr>", with: "<w:sectPr>" + references)
             body += index == document.sections.count - 1 ? sectionXML : "<w:p><w:pPr>\(sectionXML)</w:pPr></w:p>"
         }
@@ -80,7 +71,7 @@ final class DOCXWriter {
             overrides.append("<Override PartName=\"/word/commentsExtended.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.wordprocessingml.commentsExtended+xml\"/>")
             overrides.append("<Override PartName=\"/word/comments.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.wordprocessingml.comments+xml\"/>")
         }
-        put("word/settings.xml", "<w:settings xmlns:w=\"\(DOCX.wordNS)\"><w:updateFields w:val=\"true\"/></w:settings>")
+        put("word/settings.xml", "<w:settings xmlns:w=\"\(DOCX.wordNS)\">\(usesEvenPages ? "<w:evenAndOddHeaders/>" : "")<w:updateFields w:val=\"true\"/></w:settings>")
         _ = relationship(type: "settings", target: "settings.xml")
         put("word/_rels/document.xml.rels", "<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\">\(relationships.joined())</Relationships>")
         put("docProps/core.xml", try DOCXMetadata.xml(document))

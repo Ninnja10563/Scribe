@@ -100,13 +100,31 @@ public enum DOCX {
         if files.keys.contains(where: { $0.contains("commentsExtensible") }) {
             delegate.warnings.insert("Newer comment identity and collaboration metadata are not imported.")
         }
-        for (id, isHeader) in [(delegate.headerID, true), (delegate.footerID, false)] {
-            guard let id, let target = delegate.targets[id], let data = files["word/" + target] else { continue }
-            let reader = WordReader(); try parse(data, delegate: reader)
-            let text = reader.paragraphs.map(\.text).joined(separator: " ")
-            if isHeader { delegate.document.sections[0].header = text } else { delegate.document.sections[0].footer = text }
-            if String(data: data, encoding: .utf8)?.contains("fld") == true { delegate.warnings.insert("Running-content fields are imported as their cached text; update page numbering in Scribe if needed.") }
+        let runningSettings = DOCXRunningContentSettingsReader()
+        if let settings = part("settings") { try parse(settings, delegate: runningSettings) }
+        var variants = RunningContentVariants()
+        variants.startingPageNumber = delegate.runningNumberStart
+        variants.differentFirstPage = delegate.differentFirstPage
+        variants.differentOddEvenPages = runningSettings.differentOddEvenPages
+        for isHeader in [true, false] {
+            let references = isHeader ? delegate.headerIDs : delegate.footerIDs
+            for (variant, id) in references {
+                guard ["default", "first", "even"].contains(variant), let target = delegate.targets[id], let data = files["word/" + target] else { continue }
+                let reader = WordReader(); try parse(data, delegate: reader)
+                let text = reader.paragraphs.map(\.text).joined(separator: " ")
+                switch (variant, isHeader) {
+                case ("default", true): delegate.document.sections[0].header = text
+                case ("default", false): delegate.document.sections[0].footer = text
+                case ("first", true): variants.firstHeader = text
+                case ("first", false): variants.firstFooter = text
+                case ("even", true): variants.evenHeader = text
+                case ("even", false): variants.evenFooter = text
+                default: break
+                }
+                if String(data: data, encoding: .utf8)?.contains("fld") == true { delegate.warnings.insert("Running-content fields are imported as their cached text; update page numbering in Scribe if needed.") }
+            }
         }
+        if variants != RunningContentVariants() { delegate.document.sections[0].runningContent = variants }
         // Validate bounds and merge references before constructing the full grid.
         try NativeFormat.validate(delegate.document)
         for table in delegate.document.tables { delegate.document.normalizeTableFlow(tableID: table.id) }
@@ -251,7 +269,9 @@ private class WordReader: NSObject, XMLParserDelegate {
     var collectingInstruction = false, instruction = ""
     private var fieldInstructions: [String] = []
     var files: [String: Data] = [:], targets: [String: String] = [:]
-    var headerID: String?, footerID: String?
+    var headerIDs: [String: String] = [:], footerIDs: [String: String] = [:]
+    var differentFirstPage = false
+    var runningNumberStart: Int?
     var tableDepth = 0, tableIndex: Int?, row = -1, column = -1
     private let tableFormatting = DOCXTableFormattingReader()
     private let tableMerging = DOCXTableMergingReader()
@@ -355,10 +375,12 @@ private class WordReader: NSObject, XMLParserDelegate {
             if !run.text.isEmpty { paragraph?.runs.append(run); run = TextRun("", link: link) }
             inDrawing = true; imageReader.reset()
         case "pict": warnings.insert("Legacy drawings are not imported.")
-        case "headerReference": headerID = a["r:id"] ?? a["id"]
-        case "footerReference": footerID = a["r:id"] ?? a["id"]
+        case "headerReference": headerIDs[wordAttribute(a, "type") ?? "default"] = a["r:id"] ?? a["id"]
+        case "footerReference": footerIDs[wordAttribute(a, "type") ?? "default"] = a["r:id"] ?? a["id"]
+        case "titlePg": differentFirstPage = flag(a)
+        case "pgNumType": runningNumberStart = wordAttribute(a, "start").flatMap(Int.init)
         case "ins", "del": warnings.insert("Tracked changes are flattened; review history is not retained.")
-        case "sectPr": if !paragraphs.isEmpty && paragraph != nil { warnings.insert("Section settings are flattened to one page layout.") }
+        case "sectPr": differentFirstPage = false; if !paragraphs.isEmpty && paragraph != nil { warnings.insert("Section settings are flattened to one page layout.") }
         default: if inRun { applyRun(name, a, &run.format) }
         }
         if tableDepth == 1, let t = tableIndex { tableFormatting.start(name, a, table: &document.tables[t], row: row, column: column, warnings: &warnings) }

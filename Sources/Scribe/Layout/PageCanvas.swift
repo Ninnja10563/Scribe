@@ -9,6 +9,7 @@ import DocumentCore
     var header = ""
     var footer = ""
     var pageNumbering: PageNumbering?
+    var runningContent: RunningContentVariants?
     var indentGuide: (page: Int, offset: Double)? { didSet { needsDisplay = true } }
     override var isFlipped: Bool { true }
     var pageSize: NSSize { NSSize(width: pageSettings.width, height: pageSettings.height) }
@@ -26,8 +27,8 @@ import DocumentCore
             NSColor.white.setFill(); rect.fill()
             NSGraphicsContext.restoreGraphicsState()
             let attrs: [NSAttributedString.Key: Any] = [.font: NSFont.systemFont(ofSize: 9), .foregroundColor: NSColor.darkGray]
-            (header as NSString).draw(at: NSPoint(x: rect.minX + pageSettings.left, y: rect.minY + 30), withAttributes: attrs)
-            (footer as NSString).draw(at: NSPoint(x: rect.minX + pageSettings.left, y: rect.maxY - 38), withAttributes: attrs)
+            (runningText(isHeader: true, pageIndex: i) as NSString).draw(at: NSPoint(x: rect.minX + pageSettings.left, y: rect.minY + 30), withAttributes: attrs)
+            (runningText(isHeader: false, pageIndex: i) as NSString).draw(at: NSPoint(x: rect.minX + pageSettings.left, y: rect.maxY - 38), withAttributes: attrs)
             drawPageNumber(index: i, origin: rect.origin)
             if let guide = indentGuide, guide.page == i {
                 let line = NSBezierPath(); line.lineWidth = 0.75
@@ -36,6 +37,10 @@ import DocumentCore
                 NSColor.controlAccentColor.withAlphaComponent(0.6).setStroke(); line.stroke()
             }
         }
+    }
+    func runningText(isHeader: Bool, pageIndex: Int) -> String {
+        let fallback = isHeader ? header : footer
+        return runningContent?.text(defaultText: fallback, isHeader: isHeader, pageIndex: pageIndex, startingNumber: pageNumbering?.start ?? runningContent?.startingPageNumber ?? 1) ?? fallback
     }
     func drawPageNumber(index: Int, origin: NSPoint) {
         guard let numbering = pageNumbering else { return }
@@ -94,6 +99,7 @@ import DocumentCore
         super.init()
         canvas.pageSettings = document.model.sections[0].page
         canvas.pageNumbering = document.model.sections[0].pageNumbering
+        canvas.runningContent = document.model.sections[0].runningContent
         canvas.header = document.model.sections[0].header; canvas.footer = document.model.sections[0].footer
         storage.delegate = self
         storage.addLayoutManager(layout); layout.delegate = self

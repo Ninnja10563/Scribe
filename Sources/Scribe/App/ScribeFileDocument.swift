@@ -94,6 +94,7 @@ import ImportExport
             editor.storage.setAttributedString(AttributedDocument.render(value))
             editor.setPageSettings(value.sections[0].page)
             editor.canvas.pageNumbering = value.sections[0].pageNumbering
+            editor.canvas.runningContent = value.sections[0].runningContent
             editor.canvas.header = value.sections[0].header; editor.canvas.footer = value.sections[0].footer
             editor.select(NSRange(location: min(selection.location, editor.storage.length), length: min(selection.length, max(0, editor.storage.length - selection.location))))
             if selection.length == 0 {

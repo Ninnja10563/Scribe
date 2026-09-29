@@ -39,6 +39,7 @@ public enum NativeFormat {
             // v7 → v8: absent mergedCells retains the original rectangular grid.
             // v8 → v9: absent image adjustments preserve original image presentation.
             // v9 → v10: absent clearHighlight retains inherited highlight semantics.
+            // v10 → v11: absent runningContent uses the legacy header/footer on every page.
             json["formatVersion"] = ScribeDocument.currentVersion
             migrated = try JSONSerialization.data(withJSONObject: json)
         }
@@ -64,6 +65,7 @@ public enum NativeFormat {
               document.tablesOfContents.allSatisfy({ (1...9).contains($0.maximumLevel) }) else { throw DocumentError.invalid("invalid table of contents") }
         let tocIDs = Set(document.tablesOfContents.map(\.id))
         for section in document.sections {
+            if let start = section.runningContent?.startingPageNumber, !(1...1_000_000).contains(start) { throw DocumentError.invalid("invalid running-content starting page number") }
             if let numbering = section.pageNumbering, !(1...1_000_000).contains(numbering.start) { throw DocumentError.invalid("invalid starting page number") }
         }
         guard Set(document.tables.map(\.id)).count == document.tables.count else { throw DocumentError.invalid("duplicate table identifiers") }
