@@ -48,4 +48,12 @@ final class TableMergeTests: XCTestCase {
         XCTAssertTrue(imported.document.plainText.contains("Keep this"))
         XCTAssertTrue(imported.warnings.contains { $0.contains("no matching preceding") })
     }
+    func testLeadingGridOffsetAndLegacyMergeDiscloseApproximation() throws {
+        let xml = "<w:document xmlns:w=\"\(DOCX.wordNS)\"><w:body><w:tbl><w:tblGrid><w:gridCol w:w=\"1500\"/><w:gridCol w:w=\"1500\"/></w:tblGrid><w:tr><w:trPr><w:gridBefore w:val=\"1\"/></w:trPr><w:tc><w:tcPr><w:hMerge w:val=\"restart\"/></w:tcPr><w:p><w:r><w:t>Offset cell</w:t></w:r></w:p></w:tc></w:tr></w:tbl></w:body></w:document>"
+        let imported = try DOCX.decode(ZipArchive.encode(["word/document.xml": Data(xml.utf8)]))
+        XCTAssertEqual(imported.document.paragraphs.first { $0.text == "Offset cell" }?.tableCell?.column, 1)
+        XCTAssertEqual(imported.document.paragraphs.first?.text, "")
+        XCTAssertTrue(imported.warnings.contains { $0.contains("Legacy horizontal") })
+        XCTAssertTrue(imported.warnings.contains { $0.contains("leading offsets") })
+    }
 }

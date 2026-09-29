@@ -61,6 +61,7 @@ import DocumentCore
     private var isLayingOut = false
     private var firstDirtyPage = 0
     private var pageCharacterRanges: [NSRange] = []
+    private var overflowingPages = Set<Int>()
     var drawingPrintLinks = false
     private(set) var revision = 0
     private var semanticCache: (revision: Int, snapshot: SemanticTextSnapshot)?
@@ -138,6 +139,12 @@ import DocumentCore
             let container = layout.textContainers[index]
             layout.ensureLayout(for: container)
             let range = layout.glyphRange(for: container)
+            overflowingPages.remove(index)
+            layout.enumerateLineFragments(forGlyphRange: range) { _, used, lineContainer, _, stop in
+                if lineContainer === container && (used.minY < -1 || used.maxY > container.containerSize.height + 1) {
+                    self.overflowingPages.insert(index); stop.pointee = true
+                }
+            }
             let characters = layout.characterRange(forGlyphRange: range, actualGlyphRange: nil)
             if pageCharacterRanges.indices.contains(index) { pageCharacterRanges[index] = characters }
             else { pageCharacterRanges.append(characters) }
@@ -157,6 +164,10 @@ import DocumentCore
         }
         if layoutWarning == nil, owner?.model.tables.contains(where: { ($0.minimumRowHeights ?? []).compactMap { $0 }.contains { $0 > canvas.pageSettings.contentHeight } }) == true {
             layoutWarning = "A table row's minimum height exceeds the page writing area. Reduce it using Table → Row Height before PDF export or printing."
+        }
+        overflowingPages = overflowingPages.filter { $0 < required }
+        if layoutWarning == nil, !overflowingPages.isEmpty {
+            layoutWarning = "Content extends beyond a page. A cell taller than one page must be split or shortened before PDF export or printing."
         }
         if lastEnd < layout.numberOfGlyphs && layoutWarning == nil { layoutWarning = "This document exceeds the current 2,000-page layout limit." }
         while textViews.count > required {

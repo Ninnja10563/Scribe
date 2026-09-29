@@ -16,9 +16,15 @@ import DocumentCore
 extension EditorWindowController {
     @objc func mergeCells() {
         guard let cell = selectedTableCell else { showStatus("Place the cursor in the top-left cell to merge."); return }
+        guard let table = fileDocument.model.tables.first(where: { $0.id == cell.tableID }) else { return }
+        let availableRows = table.rows - cell.row, availableColumns = table.columnWidths.count - cell.column
+        guard availableRows > 1 || availableColumns > 1 else { showStatus("Choose a cell with another row below it or column to its right."); return }
         let options = MergeCellsOptions(), alert = NSAlert()
+        if let merge = table.merge(atRow: cell.row, column: cell.column) {
+            options.rows.stringValue = String(merge.rowSpan); options.columns.stringValue = String(merge.columnSpan)
+        } else if availableColumns == 1 { options.rows.stringValue = "2"; options.columns.stringValue = "1" }
         alert.messageText = "Merge Cells"
-        alert.informativeText = "Merge a rectangle starting at the current cell. All text is retained in reading order; the first cell’s formatting is used."
+        alert.informativeText = "Merge a rectangle starting at the current cell (up to \(availableRows) rows and \(availableColumns) columns). All text is retained in reading order; the first cell’s formatting is used."
         alert.accessoryView = options.view; alert.addButton(withTitle: "Merge"); alert.addButton(withTitle: "Cancel")
         while alert.runModal() == .alertFirstButtonReturn {
             do {

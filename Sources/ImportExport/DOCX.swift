@@ -319,6 +319,9 @@ private class WordReader: NSObject, XMLParserDelegate {
                 tableMerging.span = span
             }
         case "vMerge": if tableDepth == 1 { tableMerging.vertical = wordAttribute(a, "val") ?? "continue" }
+        case "hMerge": warnings.insert("Legacy horizontal merge properties are imported as separate cells; all cell text is retained.")
+        case "gridBefore", "gridAfter": warnings.insert("Omitted table grid cells are approximated with a rectangular table; leading offsets are retained.")
+            if name == "gridBefore", tableDepth == 1, let count = wordAttribute(a, "val").flatMap(Int.init), (0...19).contains(count) { column = count - 1 }
         case "drawing":
             if !run.text.isEmpty { paragraph?.runs.append(run); run = TextRun("", link: link) }
             inDrawing = true; drawingTarget = nil; drawingWidth = 100; drawingHeight = 100; drawingAlt = ""
