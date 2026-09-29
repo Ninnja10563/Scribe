@@ -25,6 +25,7 @@ import DocumentCore
         XCTAssertEqual(panel.selectedChange?.id, insertion.insertion?.id)
         XCTAssertTrue(panel.accept.isEnabled)
         XCTAssertTrue(panel.detail.stringValue.contains(author.name))
+        XCTAssertTrue(panel.detail.stringValue.hasSuffix("New introduction"))
         XCTAssertTrue(owner.window?.firstResponder === panel.table)
         owner.window?.contentView?.layoutSubtreeIfNeeded()
         NativeDialogCapture.save(panel, name: "ReviewSidebar")
@@ -42,6 +43,9 @@ import DocumentCore
         XCTAssertEqual(panel.detail.stringValue, "No pending changes.")
         document.undoManager?.undo()
         XCTAssertGreaterThan(panel.table.numberOfRows, 0)
+        panel.rejectAllChanges()
+        XCTAssertEqual(panel.table.numberOfRows, 0)
+        XCTAssertFalse(document.snapshot().hasPendingRevisions)
     }
 }
 #endif

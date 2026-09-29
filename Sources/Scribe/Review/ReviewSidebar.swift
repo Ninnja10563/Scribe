@@ -8,6 +8,7 @@ import DocumentCore
     let detail = NSTextField(wrappingLabelWithString: "No pending changes.")
     let accept = NSButton(title: "Accept", target: nil, action: nil)
     let reject = NSButton(title: "Reject", target: nil, action: nil)
+    private let all = NSPopUpButton(frame: .zero, pullsDown: true)
     private let count = NSTextField(labelWithString: "Changes")
     private var changes: [IndexedRevision] = []
     private var reloading = false
@@ -36,7 +37,13 @@ import DocumentCore
         let navigation = NSStackView(views: [previous, next])
         accept.target = self; accept.action = #selector(acceptChange)
         reject.target = self; reject.action = #selector(rejectChange)
-        let actions = NSStackView(views: [accept, reject])
+        all.addItem(withTitle: "All Changes")
+        for (title, action) in [("Accept All Changes", #selector(acceptAllChanges)), ("Reject All Changes", #selector(rejectAllChanges))] {
+            let item = NSMenuItem(title: title, action: action, keyEquivalent: ""); item.target = self
+            all.menu?.addItem(item)
+        }
+        all.controlSize = .small; all.setAccessibilityLabel("Decide all changes")
+        let actions = NSStackView(views: [accept, reject, all])
         for button in [previous, next, accept, reject] { button.bezelStyle = .rounded; button.controlSize = .small }
         let stack = NSStackView(views: [header, navigation, scroll, detail, actions])
         stack.orientation = .vertical; stack.alignment = .leading; stack.spacing = 12
@@ -79,13 +86,20 @@ import DocumentCore
         return labels.joined(separator: " and ")
     }
     private func updateDetail() {
+        all.isEnabled = !changes.isEmpty
         accept.isEnabled = selectedChange != nil; reject.isEnabled = selectedChange != nil
         guard let change = selectedChange else { detail.stringValue = changes.isEmpty ? "No pending changes." : "Select a change to review it."; return }
         var excerpt = ""
         if let location = change.locations.first, let model {
             let paragraphs = location.noteID.flatMap { id in model.notes.first(where: { $0.id == id })?.paragraphs } ?? model.paragraphs
             if let paragraph = paragraphs.first(where: { $0.id == location.paragraphID }) {
-                excerpt = location.isParagraphSeparator ? "Paragraph break" : String(paragraph.text.prefix(160))
+                if location.isParagraphSeparator { excerpt = "Paragraph break" }
+                else {
+                    let text = paragraph.text as NSString, range = location.range
+                    if range.location >= 0, range.length >= 0, range.location <= text.length, range.length <= text.length - range.location {
+                        excerpt = String(text.substring(with: range).prefix(160))
+                    }
+                }
                 if location.noteID != nil { excerpt = "Note: " + excerpt }
             }
         }
@@ -103,6 +117,13 @@ import DocumentCore
     private func decide(accepting: Bool) {
         guard let owner, let change = selectedChange, owner.reviewNavigation.select(change.id) else { return }
         do { try owner.reviewNavigation.resolveCurrent(accepting: accepting); reload(owner.fileDocument.snapshot()); focusList() }
+        catch { owner.window?.presentError(error) }
+    }
+    @objc func acceptAllChanges() { decideAll(accepting: true) }
+    @objc func rejectAllChanges() { decideAll(accepting: false) }
+    private func decideAll(accepting: Bool) {
+        guard let owner else { return }
+        do { try owner.reviewNavigation.resolveAll(accepting: accepting); reload(owner.fileDocument.snapshot()); focusList() }
         catch { owner.window?.presentError(error) }
     }
     @objc private func closePanel() { isHidden = true; owner?.window?.makeFirstResponder(owner?.editor.activeTextView) }
