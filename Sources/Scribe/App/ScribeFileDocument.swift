@@ -156,7 +156,9 @@ import ImportExport
             let document = ScribeFileDocument()
             switch url.pathExtension.lowercased() {
             case "docx":
-                let result = try DOCX.decode(data); document.model = result.document; document.importWarnings = result.warnings
+                let result = try DOCX.decode(data)
+                guard result.document.notes.isEmpty else { throw DocumentError.invalid("note import editing is not available in this development build; the original DOCX is preserved") }
+                document.model = result.document; document.importWarnings = result.warnings
             case "rtf":
                 let value = try NSAttributedString(data: data, options: [.documentType: NSAttributedString.DocumentType.rtf], documentAttributes: nil)
                 value.enumerateAttribute(.paragraphStyle, in: NSRange(location: 0, length: value.length)) { style, _, stop in

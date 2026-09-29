@@ -3,7 +3,7 @@ import DocumentCore
 @testable import ImportExport
 
 final class NoteSafetyTests: XCTestCase {
-    func testTextExportsRetainReferencesAndNoteContentWhileUnimplementedDOCXIsRejected() throws {
+    func testTextExportsRetainReferencesAndNoteContent() throws {
         var document = ScribeDocument()
         let note = DocumentNote(kind: .footnote, text: "Citation with résumé and Unicode 👩🏽‍💻.")
         document.notes = [note]
@@ -13,6 +13,6 @@ final class NoteSafetyTests: XCTestCase {
         XCTAssertTrue(markdown.contains("Statement[^footnote1]"))
         XCTAssertTrue(markdown.contains("[^footnote1]: Citation with résumé and Unicode 👩🏽‍💻."))
         XCTAssertFalse(markdown.contains("\u{FFFC}"))
-        XCTAssertThrowsError(try DOCX.encode(document), "An incomplete exporter must not silently lose note content")
+        XCTAssertEqual(try DOCX.decode(DOCX.encode(document)).document.notes.first?.plainText, note.plainText)
     }
 }

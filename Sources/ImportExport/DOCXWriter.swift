@@ -8,13 +8,14 @@ final class DOCXWriter {
     private var overrides: [String] = []
     private var nextID = 1
     private let document: ScribeDocument
+    private let noteIDs: [UUID: (kind: String, id: Int)]
     private let numbering: DOCXNumberingWriter
     private let comments: DOCXCommentsWriter
     private let contents: DOCXTableOfContents
     private var contentWidth = 451.276
     private var bookmarkIDs: [UUID: Int] = [:]
     private var namedBookmarks: DOCXBookmarks?
-    init(_ document: ScribeDocument) { self.document = document; numbering = DOCXNumberingWriter(paragraphs: document.paragraphs); comments = DOCXCommentsWriter(document: document); contents = DOCXTableOfContents(document: document) }
+    init(_ document: ScribeDocument) { self.document = document; noteIDs = Dictionary(uniqueKeysWithValues: document.notes.enumerated().map { ($0.element.id, ($0.element.kind.rawValue, $0.offset + 1)) }); numbering = DOCXNumberingWriter(paragraphs: document.paragraphs + document.notes.flatMap(\.paragraphs)); comments = DOCXCommentsWriter(document: document); contents = DOCXTableOfContents(document: document) }
     private func put(_ path: String, _ xml: String) { parts[path] = Data(xml.utf8) }
     private func relationship(type: String, target: String, external: Bool = false, namespace: String = DOCX.relationNS) -> String {
         let id = "rId\(nextID)"; nextID += 1
@@ -23,8 +24,7 @@ final class DOCXWriter {
     }
     func encode() throws -> Data {
         try NativeFormat.validate(document)
-        guard document.notes.isEmpty else { throw DocumentError.invalid("DOCX note interchange is not available in this development build") }
-        let linked = Set(document.paragraphs.flatMap(\.runs).compactMap { $0.link.flatMap(DocumentLink.paragraphID) })
+        let linked = Set((document.paragraphs + document.notes.flatMap(\.paragraphs)).flatMap(\.runs).compactMap { $0.link.flatMap(DocumentLink.paragraphID) })
         for paragraph in document.paragraphs where linked.contains(paragraph.id) { bookmarkIDs[paragraph.id] = bookmarkIDs.count }
         namedBookmarks = DOCXBookmarks(document, startingID: bookmarkIDs.count, reservedNames: Set(bookmarkIDs.keys.map(DocumentLink.officeBookmark)))
         var body = ""
@@ -50,11 +50,34 @@ final class DOCXWriter {
                 sectionXML = sectionXML.replacingOccurrences(of: "</w:sectPr>", with: "<w:pgNumType w:start=\"\(start)\"/></w:sectPr>")
             }
             if section.runningContent?.differentFirstPage == true { sectionXML = sectionXML.replacingOccurrences(of: "</w:sectPr>", with: "<w:titlePg/></w:sectPr>") }
+            for kind in DocumentNote.Kind.allCases where document.notes.contains(where: { $0.kind == kind }) {
+                references += "<w:\(kind.rawValue)Pr><w:numFmt w:val=\"decimal\"/><w:numRestart w:val=\"continuous\"/></w:\(kind.rawValue)Pr>"
+            }
             sectionXML = sectionXML.replacingOccurrences(of: "<w:sectPr>", with: "<w:sectPr>" + references)
             body += index == document.sections.count - 1 ? sectionXML : "<w:p><w:pPr>\(sectionXML)</w:pPr></w:p>"
         }
         let namespaces = "xmlns:w=\"\(DOCX.wordNS)\" xmlns:r=\"\(DOCX.relationNS)\" xmlns:wp=\"http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing\" xmlns:a=\"http://schemas.openxmlformats.org/drawingml/2006/main\" xmlns:pic=\"http://schemas.openxmlformats.org/drawingml/2006/picture\""
         put("word/document.xml", "<?xml version=\"1.0\" encoding=\"UTF-8\"?><w:document \(namespaces)><w:body>\(body)</w:body></w:document>")
+        for kind in DocumentNote.Kind.allCases where document.notes.contains(where: { $0.kind == kind }) {
+            let bodyRelationships = relationships
+            relationships = []
+            let notes = document.notes.filter { $0.kind == kind }.map { note -> String in
+                var paragraphs = note.paragraphs.map(paragraph)
+                if let end = paragraphs[0].range(of: "</w:pPr>") {
+                    paragraphs[0].insert(contentsOf: "<w:r><w:rPr><w:vertAlign w:val=\"superscript\"/></w:rPr><w:\(kind.rawValue)Ref/></w:r><w:r><w:t xml:space=\"preserve\"> </w:t></w:r>", at: end.upperBound)
+                }
+                return "<w:\(kind.rawValue) w:id=\"\(noteIDs[note.id]!.id)\">\(paragraphs.joined())</w:\(kind.rawValue)>"
+            }.joined()
+            let root = kind.rawValue + "s"
+            let separators = "<w:\(kind.rawValue) w:type=\"separator\" w:id=\"-1\"><w:p><w:r><w:separator/></w:r></w:p></w:\(kind.rawValue)><w:\(kind.rawValue) w:type=\"continuationSeparator\" w:id=\"0\"><w:p><w:r><w:continuationSeparator/></w:r></w:p></w:\(kind.rawValue)>"
+            put("word/" + root + ".xml", "<w:\(root) \(namespaces)>\(separators)\(notes)</w:\(root)>")
+            if !relationships.isEmpty {
+                put("word/_rels/" + root + ".xml.rels", "<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\">\(relationships.joined())</Relationships>")
+            }
+            relationships = bodyRelationships
+            _ = relationship(type: root, target: root + ".xml")
+            overrides.append("<Override PartName=\"/word/\(root).xml\" ContentType=\"application/vnd.openxmlformats-officedocument.wordprocessingml.\(root)+xml\"/>")
+        }
         let styles = document.styles.map { s in
             "<w:style w:type=\"paragraph\" w:styleId=\"\(DOCX.xml(s.id))\"\(s.id == "normal" ? " w:default=\"1\"" : "")><w:name w:val=\"\(DOCX.xml(s.name))\"/><w:pPr>\(DOCX.paragraphProperties(s.paragraph))\(s.headingLevel.map { "<w:outlineLvl w:val=\"\($0 - 1)\"/>" } ?? "")</w:pPr><w:rPr>\(DOCX.runProperties(s.text))</w:rPr></w:style>"
         }.joined()
@@ -113,6 +136,9 @@ final class DOCXWriter {
         return "<w:p><w:pPr>\(properties)</w:pPr>\(bookmark)\(namedBookmarks?.markers(at: p.id) ?? "")\(contents.start(p.id))\(text)\(contents.end(p.id))</w:p>"
     }
     private func runXML(_ run: TextRun) -> String {
+            if let id = run.noteID, let note = noteIDs[id] {
+                return "<w:r><w:rPr><w:vertAlign w:val=\"superscript\"/></w:rPr><w:\(note.kind)Reference w:id=\"\(note.id)\"/></w:r>"
+            }
             if let equation = run.equation { return DOCXEquations.xml(equation) }
             if let image = run.image { return imageRun(image) }
             let text = DOCX.xml(run.text).replacingOccurrences(of: "\t", with: "</w:t><w:tab/><w:t xml:space=\"preserve\">").replacingOccurrences(of: "\u{2028}", with: "</w:t><w:br/><w:t xml:space=\"preserve\">")

@@ -47,7 +47,34 @@ public enum DOCX {
             }
         }
         if let numbering = part("numbering") { try parse(numbering, delegate: delegate.numbering) }
+        var noteCatalog: [UUID: DocumentNote] = [:]
+        for kind in DocumentNote.Kind.allCases {
+            let root = kind.rawValue + "s"
+            guard let data = part(root) else { continue }
+            let path = partTargets[DOCX.relationNS + "/" + root] ?? root + ".xml"
+            let components = path.split(separator: "/").map(String.init)
+            let noteRelationships = RelationshipReader(baseDirectory: Array(components.dropLast()))
+            let relPath = "word/" + (components.dropLast() + ["_rels", components.last! + ".rels"]).joined(separator: "/")
+            if let relations = files[relPath] { try parse(relations, delegate: noteRelationships) }
+            let notesReader = DOCXNotesReader(kind: kind) {
+                let reader = WordReader(); reader.files = files
+                reader.document.styles = delegate.document.styles
+                reader.document.language = delegate.document.language
+                reader.styleLists = delegate.styleLists; reader.numbering = delegate.numbering
+                reader.targets = noteRelationships.targets; reader.links = noteRelationships.links
+                return reader
+            }
+            try parse(data, delegate: notesReader)
+            delegate.warnings.formUnion(notesReader.warnings)
+            for (id, note) in notesReader.notes {
+                noteCatalog[note.id] = note; delegate.noteIDs[kind.rawValue + ":" + id] = note.id
+            }
+        }
         try parse(content, delegate: delegate)
+        let referencedNotes = delegate.paragraphs.flatMap(\.runs).compactMap(\.noteID)
+        guard Set(referencedNotes).count == referencedNotes.count else { throw DocumentError.invalid("a DOCX note has more than one body reference") }
+        delegate.document.notes = referencedNotes.compactMap { noteCatalog[$0] }
+        if noteCatalog.count > referencedNotes.count { delegate.warnings.insert("Unreferenced note definitions are not included in the imported document.") }
         delegate.warnings.formUnion(delegate.numbering.warnings)
         guard delegate.sawDocument else { throw DocumentError.invalid("missing Word document root") }
         if delegate.paragraphs.isEmpty { delegate.paragraphs = [Paragraph()] }
@@ -71,7 +98,7 @@ public enum DOCX {
             }
         }
         delegate.document.sections[0].paragraphs = delegate.paragraphs
-        for p in delegate.paragraphs where !delegate.document.styles.contains(where: { $0.id == p.styleID }) {
+        for p in delegate.paragraphs + delegate.document.notes.flatMap(\.paragraphs) where !delegate.document.styles.contains(where: { $0.id == p.styleID }) {
             delegate.document.updateStyle(ParagraphStyle(id: p.styleID, name: p.styleID))
         }
         let resolutions = DOCXCommentResolutionReader()
@@ -94,11 +121,30 @@ public enum DOCX {
                 delegate.document.comments.append(comment)
             }
         }
-        if files.keys.contains(where: { $0.contains("footnotes") || $0.contains("endnotes") }) {
-            delegate.warnings.insert("Footnotes and endnotes are not imported in this version.")
-        }
         if files.keys.contains(where: { $0.contains("commentsExtensible") }) {
             delegate.warnings.insert("Newer comment identity and collaboration metadata are not imported.")
+        }
+        if !delegate.document.notes.isEmpty {
+            let settings = DOCXNoteSettingsReader()
+            try parse(content, delegate: settings)
+            if let data = part("settings") { try parse(data, delegate: settings) }
+            delegate.warnings.formUnion(settings.warnings)
+            for note in delegate.document.notes.indices {
+                for paragraph in delegate.document.notes[note].paragraphs.indices {
+                    for run in delegate.document.notes[note].paragraphs[paragraph].runs.indices {
+                        guard let link = delegate.document.notes[note].paragraphs[paragraph].runs[run].link, link.hasPrefix("#") else { continue }
+                        let name = String(link.dropFirst())
+                        if let bookmark = namedBookmarks[name] {
+                            delegate.document.notes[note].paragraphs[paragraph].runs[run].link = DocumentLink.bookmark(bookmark.id)
+                        } else if let id = delegate.bookmarkParagraphs[name] {
+                            delegate.document.notes[note].paragraphs[paragraph].runs[run].link = DocumentLink.paragraph(id)
+                        } else {
+                            delegate.document.notes[note].paragraphs[paragraph].runs[run].link = nil
+                            delegate.warnings.insert("A note hyperlink has a missing bookmark destination; its text was retained.")
+                        }
+                    }
+                }
+            }
         }
         let runningSettings = DOCXRunningContentSettingsReader()
         if let settings = part("settings") { try parse(settings, delegate: runningSettings) }
@@ -206,19 +252,34 @@ private func applyParagraph(_ name: String, _ a: [String: String], _ f: inout Pa
     default: break
     }
 }
-private class RelationshipReader: NSObject, XMLParserDelegate {
+class RelationshipReader: NSObject, XMLParserDelegate {
+    private let baseDirectory: [String]?
+    init(baseDirectory: [String]? = nil) { self.baseDirectory = baseDirectory }
+    private func internalTarget(_ target: String) -> String? {
+        guard !target.hasPrefix("/"), !target.contains("\\"), !target.contains(":") else { return nil }
+        guard var path = baseDirectory else {
+            return target.split(separator: "/").contains("..") ? nil : target
+        }
+        for component in target.split(separator: "/") {
+            if component == "." { continue }
+            if component == ".." {
+                guard !path.isEmpty else { return nil }; path.removeLast()
+            } else { path.append(String(component)) }
+        }
+        return path.isEmpty ? nil : path.joined(separator: "/")
+    }
     var links: [String: String] = [:], targets: [String: String] = [:], partTargets: [String: String] = [:]
     func parser(_ parser: XMLParser, didStartElement name: String, namespaceURI: String?, qualifiedName: String?, attributes a: [String: String]) {
         if name == "Relationship", let id = a["Id"], let target = a["Target"] {
             if a["Type"]?.hasSuffix("/hyperlink") == true { links[id] = target }
-            else if a["TargetMode"] != "External", !target.hasPrefix("/"), !target.split(separator: "/").contains("..") {
-                targets[id] = target
-                if let type = a["Type"] { partTargets[type] = target }
+            else if a["TargetMode"] != "External", let resolved = internalTarget(target) {
+                targets[id] = resolved
+                if let type = a["Type"] { partTargets[type] = resolved }
             }
         }
     }
 }
-private struct StyleList {
+struct StyleList {
     var id: String?
     var level: Int?
 }
@@ -263,10 +324,11 @@ private class StyleReader: NSObject, XMLParserDelegate {
         if name == "style", let style = current { styles.append(style); current = nil }
     }
 }
-private class WordReader: NSObject, XMLParserDelegate {
+class WordReader: NSObject, XMLParserDelegate {
     var document = ScribeDocument(), paragraphs: [Paragraph] = [], warnings: Set<String> = []
     var paragraph: Paragraph?, run = TextRun(""), collecting = false, links: [String: String] = [:], link: String?
-    let numbering = DOCXNumberingReader()
+    var numbering = DOCXNumberingReader()
+    var noteIDs: [String: UUID] = [:]
     var commentStarts: [String: TextAnchor] = [:], commentEnds: [String: TextAnchor] = [:], commentReferences: [String: TextAnchor] = [:]
     var styleLists: [String: StyleList] = [:]
     var bookmarkParagraphs: [String: UUID] = [:]
@@ -315,6 +377,13 @@ private class WordReader: NSObject, XMLParserDelegate {
             case "end": if let code = fieldInstructions.popLast() { inspectFieldInstruction(code) }
             default: break
             }
+        case "footnoteReference", "endnoteReference":
+            let kind = name == "footnoteReference" ? "footnote" : "endnote"
+            guard let rawID = wordAttribute(a, "id"), let number = Int(rawID), let id = noteIDs[kind + ":" + String(number)] else { parser.abortParsing(); return }
+            if !run.text.isEmpty { paragraph?.runs.append(run) }
+            var reference = TextRun("\u{fffc}", format: run.format); reference.noteID = id; reference.format.baseline = nil
+            paragraph?.runs.append(reference); run = TextRun("", format: run.format, link: link)
+            if wordAttribute(a, "customMarkFollows") == "1" { warnings.insert("Custom note reference marks use automatic numbering in Scribe.") }
         case "tab": run.text += "\t"
         case "br":
             if wordAttribute(a, "type") == "page" { run.text += "\u{c}" }

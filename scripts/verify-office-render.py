@@ -17,7 +17,7 @@ args = parser.parse_args()
 build = args.build.resolve()
 output = build / 'office-render'
 output.mkdir(parents=True, exist_ok=True)
-sources = [build / 'smoke/Smoke.docx', build / 'schema/MergedTable.docx', build / 'schema/DocumentProperties.docx', build / 'schema/ImageAdjustments.docx', build / 'schema/ImageRotation.docx', build / 'schema/StyleOverrides.docx', build / 'schema/ScriptTypography.docx', build / 'schema/ParagraphIndents.docx', build / 'schema/RunningContent.docx', build / 'schema/RunningContentStandard.docx', build / 'schema/Equations.docx']
+sources = [build / 'smoke/Smoke.docx', build / 'schema/MergedTable.docx', build / 'schema/DocumentProperties.docx', build / 'schema/ImageAdjustments.docx', build / 'schema/ImageRotation.docx', build / 'schema/StyleOverrides.docx', build / 'schema/ScriptTypography.docx', build / 'schema/ParagraphIndents.docx', build / 'schema/RunningContent.docx', build / 'schema/RunningContentStandard.docx', build / 'schema/Equations.docx', build / 'schema/Notes.docx']
 result = subprocess.run([
     'libreoffice', '-env:UserInstallation=' + (output / 'profile').as_uri(),
     '--headless', '--norestore', '--convert-to', 'pdf:writer_pdf_Export',
@@ -195,3 +195,16 @@ for name in ['EquationLayout', 'NativeEquation']:
     assert len(pdf) == 1 and not pdf[0].get_images(), f'{name}: native equation output must stay vector'
     pdf[0].get_pixmap(matrix=pymupdf.Matrix(1.5, 1.5)).save(output / (name + '.png'))
 print('Office Math exports render as vector formulas; native standalone and document equations remain vector.')
+
+notes_pdf = pymupdf.open(output / 'Notes.pdf')
+notes_text = '\n'.join(page.get_text() for page in notes_pdf)
+for token in ['Body claim', 'Footnote citation', 'résumé', 'Second citation paragraph', 'Endnote conclusion']:
+    assert token in notes_text, f'LibreOffice lost note content: {token}'
+assert notes_text.count('Footnote citation') == 1 and notes_text.count('Endnote conclusion') == 1
+first_page = notes_pdf[0]
+body_box = first_page.search_for('Body claim')[0]
+footnote_box = first_page.search_for('Footnote citation')[0]
+assert footnote_box.y0 > first_page.rect.height / 2 and footnote_box.y0 > body_box.y1, 'Footnote is not at the page bottom'
+for index, page in enumerate(notes_pdf):
+    page.get_pixmap(matrix=pymupdf.Matrix(1.5, 1.5)).save(output / f'Notes-{index + 1}.png')
+print('Footnote and endnote parts render with their body references and retained citation text.')
