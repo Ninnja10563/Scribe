@@ -4,6 +4,7 @@ import DocumentCore
 
 @MainActor final class ScribeTextView: NSTextView {
     weak var editor: PaginatedEditor?
+    private var applyingReviewReplacement = false
     private(set) var spellingTask: Task<Void, Never>?
     override func superscript(_ sender: Any?) { setScriptLevel(1) }
     override func `subscript`(_ sender: Any?) { setScriptLevel(-1) }
@@ -59,12 +60,35 @@ import DocumentCore
         let ids = commentIDs(forReplacement: range)
         if ids.isEmpty { typingAttributes.removeValue(forKey: .scribeComments) }
         else { typingAttributes[.scribeComments] = ids }
+        if editor?.reviewEditing.author != nil, !applyingReviewReplacement, undoManager?.isUndoing != true, undoManager?.isRedoing != true {
+            let value = (insertString as? NSAttributedString) ?? NSAttributedString(string: (insertString as? String) ?? "", attributes: typingAttributes)
+            applyTrackedReplacement(value, range: range, action: "Typing"); return
+        }
         if let attributed = insertString as? NSAttributedString {
             let value = NSMutableAttributedString(attributedString: attributed)
             value.removeAttribute(.scribeComments, range: NSRange(location: 0, length: value.length))
             if !ids.isEmpty { value.addAttribute(.scribeComments, value: ids, range: NSRange(location: 0, length: value.length)) }
             super.insertText(value, replacementRange: replacementRange)
         } else { super.insertText(insertString, replacementRange: replacementRange) }
+    }
+    override func shouldChangeText(in affectedCharRange: NSRange, replacementString: String?) -> Bool {
+        if replacementString == "", affectedCharRange.length > 0, editor?.reviewEditing.author != nil,
+           !applyingReviewReplacement, undoManager?.isUndoing != true, undoManager?.isRedoing != true {
+            let selection = selectedRange()
+            applyTrackedReplacement(NSAttributedString(string: ""), range: affectedCharRange, action: "Delete")
+            if selection.length == 0, NSMaxRange(affectedCharRange) == selection.location { setSelectedRange(NSRange(location: affectedCharRange.location, length: 0)) }
+            return false
+        }
+        return super.shouldChangeText(in: affectedCharRange, replacementString: replacementString)
+    }
+    private func applyTrackedReplacement(_ value: NSAttributedString, range: NSRange, action: String) {
+        guard let editor else { return }
+        do {
+            guard let replacement = try editor.reviewEditing.replacement(in: editor, range: range, with: value) else { return }
+            applyingReviewReplacement = true
+            defer { applyingReviewReplacement = false }
+            setSelectedRange(range); replaceSelection(replacement, action: action)
+        } catch { presentError(error) }
     }
     override func menu(for event: NSEvent) -> NSMenu? {
         let menu = super.menu(for: event) ?? NSMenu()

@@ -69,6 +69,7 @@ import DocumentCore
     let layout = NSLayoutManager()
     let canvas = PageCanvas()
     let noteControls = PageNoteControls()
+    let reviewEditing = NativeReviewEditing()
     let scrollView = NSScrollView()
     private(set) var paragraphRuler: ParagraphRuler?
     private(set) var textViews: [ScribeTextView] = []
