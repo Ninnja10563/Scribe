@@ -76,6 +76,12 @@ import DocumentCore
             document.windowControllers.first?.window?.orderOut(nil)
             _ = applicationShouldHandleReopen(NSApp, hasVisibleWindows: false)
             guard document.windowControllers.first?.window?.isVisible == true else { exit(3) }
+            documents.newDocument(nil)
+            guard documents.documents.count == 2,
+                  documents.documents.allSatisfy({ $0.windowControllers.first?.window?.isVisible == true }) else { exit(5) }
+            for openDocument in documents.documents { openDocument.updateChangeCount(.changeCleared); openDocument.close() }
+            ensureDocumentWindow()
+            guard documents.documents.count == 1, documents.documents.first?.windowControllers.first?.window?.isVisible == true else { exit(6) }
             if let flag = CommandLine.arguments.firstIndex(of: "--startup-report"), flag + 1 < CommandLine.arguments.count {
                 do { try Data("Normal startup, typing and Dock reopen passed".utf8).write(to: URL(fileURLWithPath: CommandLine.arguments[flag + 1]), options: .atomic) }
                 catch { exit(4) }
