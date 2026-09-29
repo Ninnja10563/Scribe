@@ -265,8 +265,9 @@ The first complete running-content run, [36524090953](https://github.com/Ninnja1
 - Tag `v0.19.1` points to the validated revision. Release run [36541388374](https://github.com/Ninnja10563/Scribe/actions/runs/36541388374) passed all validation and published the DMG. The published Apple Silicon DMG was downloaded and its SHA-256 checksum verified successfully.
 
 
-## 0.19.2 window-lifetime fix (release preparation)
+## 0.19.2 window-lifetime fix (published)
 
 - Visible-window review testing exposed a stale document reference when opening the next window. Diagnostic [36570848458](https://github.com/Ninnja10563/Scribe/actions/runs/36570848458) reported `respondsToSelector:` being sent to a deallocated `ScribeFileDocument` under Objective-C zombies.
 - Closed window controllers now clear their document reference after closing. Development-branch native [36571294558](https://github.com/Ninnja10563/Scribe/actions/runs/36571294558) passed the failing scenario and a repeated visible-window lifecycle regression. The isolated close fix and lifecycle test are backported here; unreleased review features are not included.
-- The main-branch portable suite passed 130 tests (129 passed, one AppKit placeholder skipped), recorded in `scribe-0192-core.log`. Full main-branch macOS validation follows before tagging. No 0.19.2 release is claimed published yet. Native format remains v13.
+- The main-branch portable suite passed 130 tests (129 passed, one AppKit placeholder skipped), recorded in `scribe-0192-core.log`. Full main-branch run [36572075231](https://github.com/Ninnja10563/Scribe/actions/runs/36572075231) passed native tests, lifecycle repeats, Address Sanitizer, actual app launch/save/export/render and independent Office validation. Native format remains v13.
+- Tag `v0.19.2` points to validated revision `2ccb345`. Release run [36573081446](https://github.com/Ninnja10563/Scribe/actions/runs/36573081446) passed and published the Apple Silicon DMG and SHA-256 file. Both published assets were downloaded, and `sha256sum -c` passed. The native notes smoke capture was visually inspected; physical-Mac manual input/accessibility and Word/Pages testing remain pending.
