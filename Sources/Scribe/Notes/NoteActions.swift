@@ -25,6 +25,8 @@ extension EditorWindowController {
             guard range.location < editor.storage.length,
                   let data = editor.storage.attribute(.scribeNote, at: range.location, effectiveRange: nil) as? Data,
                   let original = try? JSONDecoder().decode(DocumentNote.self, from: data) else { showStatus("Select a note reference first."); return }
+            do { try validateNoteReferenceForEditing(NSRange(location: range.location, length: 1)) }
+            catch { showStatus(error.localizedDescription); return }
             note = original
         } else { note = DocumentNote(kind: kind) }
         let originalStorage = NSAttributedString(attributedString: editor.storage)
@@ -44,11 +46,26 @@ extension EditorWindowController {
             } catch { alert.informativeText = error.localizedDescription }
         }
     }
+    /// Retained deletions are review evidence, not an editable note reference.
+    /// Reject before opening the dialog and again at commit for direct callers.
+    private func validateNoteReferenceForEditing(_ range: NSRange) throws {
+        guard range.length > 0, range.location >= 0, range.location < editor.storage.length else { return }
+        let length = min(range.length, editor.storage.length - range.location)
+        var deleted = false
+        editor.storage.enumerateAttributes(in: NSRange(location: range.location, length: length)) { attributes, _, stop in
+            guard attributes[.scribeNote] != nil,
+                  let data = attributes[.scribeReview] as? Data,
+                  let review = try? JSONDecoder().decode(RunReview.self, from: data), review.deletion != nil else { return }
+            deleted = true; stop.pointee = true
+        }
+        if deleted { throw DocumentError.invalid("reject the note reference’s tracked deletion before editing or replacing the note") }
+    }
     func applyNote(_ note: DocumentNote, replacing range: NSRange, action: String) throws {
         guard !isClosing, range.location >= 0, range.length >= 0,
               range.location <= editor.storage.length, range.length <= editor.storage.length - range.location else {
             throw DocumentError.invalid("the note selection is unavailable or its placement is not supported yet")
         }
+        try validateNoteReferenceForEditing(range)
         let numbered = try NoteNumbering.resolve(referenceIDs: [note.id], notes: [note])[0]
         let model = fileDocument.snapshot()
         _ = try NoteTextLayout(note: numbered, styles: model.styles, width: editor.canvas.pageSettings.contentWidth)
