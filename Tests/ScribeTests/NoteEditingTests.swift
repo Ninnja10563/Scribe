@@ -5,6 +5,20 @@ import DocumentCore
 @testable import Scribe
 
 @MainActor final class NoteEditingTests: XCTestCase {
+    func testLongEndnoteCanBeInsertedAndEditedWithoutFlatteningBodyText() throws {
+        _ = NSApplication.shared
+        let document = ScribeFileDocument(); document.makeWindowControllers(); defer { document.close() }
+        let controller = document.editorController!
+        var note = DocumentNote(kind: .endnote)
+        note.paragraphs = (1...50).map { Paragraph("Source \($0). " + String(repeating: "Endnote detail. ", count: 10)) }
+        try controller.applyNote(note, replacing: NSRange(location: 0, length: 0), action: "Insert Endnote")
+        XCTAssertEqual(document.snapshot().notes, [note])
+        XCTAssertGreaterThan(controller.editor.canvas.pageCount, 2)
+        XCTAssertEqual(document.snapshot().paragraphs.count, 1)
+        document.undoManager?.undo(); controller.editor.paginate()
+        XCTAssertTrue(document.snapshot().notes.isEmpty)
+        XCTAssertEqual(controller.editor.canvas.pageCount, 1)
+    }
     func testNativeNoteDialogInsertEditCancelAndUndo() throws {
         _ = NSApplication.shared
         let document = ScribeFileDocument(); document.makeWindowControllers(); defer { document.close() }
