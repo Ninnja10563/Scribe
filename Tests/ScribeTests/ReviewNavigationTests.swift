@@ -61,5 +61,42 @@ import DocumentCore
         XCTAssertNil(navigation.navigate()); XCTAssertFalse(navigation.select(UUID()))
         XCTAssertNoThrow(try navigation.resolveAll(accepting: true))
     }
+    func testGroupedPasteDecisionRestoresOriginalWithOneNativeUndo() throws {
+        let document = ScribeFileDocument(); document.model.sections[0].paragraphs = [Paragraph("AB")]
+        let original = document.model
+        var title = Paragraph(); title.styleID = "title"
+        var quote = Paragraph(); quote.styleID = "quote"
+        _ = try document.model.replaceTrackedRange(.init(paragraphID: original.paragraphs[0].id, offset: 1, length: 0),
+            withLines: [[TextRun("X")], [TextRun("Y")]],
+            paragraphProperties: [ParagraphRevisionState(title), ParagraphRevisionState(quote)], author: .init(name: "Writer"))
+        document.makeWindowControllers(); defer { document.close() }
+        let pasted = document.snapshot(), navigation = document.editorController!.reviewNavigation
+        let change = try XCTUnwrap(navigation.navigate())
+        XCTAssertEqual(change.componentIDs.count, 2)
+        document.undoManager?.removeAllActions()
+        try navigation.resolveCurrent(accepting: false)
+        XCTAssertEqual(document.snapshot().paragraphs, original.paragraphs)
+        document.undoManager?.undo(); XCTAssertEqual(document.snapshot().paragraphs, pasted.paragraphs)
+        document.undoManager?.redo(); XCTAssertEqual(document.snapshot().paragraphs, original.paragraphs)
+    }
+    func testNoteDecisionUpdatesRenderedNoteAndNativeUndo() throws {
+        let document = ScribeFileDocument()
+        var note = DocumentNote(kind: .footnote, text: "retained")
+        var review = RunReview(); review.deletion = RevisionIdentity(author: .init(name: "Reviewer"))
+        note.paragraphs[0].runs[0].review = review
+        var reference = TextRun("\u{fffc}"); reference.noteID = note.id
+        document.model.notes = [note]; document.model.sections[0].paragraphs[0].runs = [TextRun("body"), reference]
+        document.makeWindowControllers(); defer { document.close() }
+        let original = document.snapshot(), owner = document.editorController!
+        let change = try XCTUnwrap(owner.reviewNavigation.navigate())
+        XCTAssertEqual(change.locations[0].noteID, note.id)
+        XCTAssertEqual(owner.editor.activeTextView.selectedRange(), NSRange(location: 4, length: 1))
+        document.undoManager?.removeAllActions()
+        try owner.reviewNavigation.resolveCurrent(accepting: true)
+        XCTAssertEqual(document.snapshot().notes[0].plainText, "")
+        XCTAssertFalse(document.snapshot().hasPendingRevisions)
+        document.undoManager?.undo(); XCTAssertEqual(document.snapshot().notes, original.notes)
+        document.undoManager?.redo(); XCTAssertEqual(document.snapshot().notes[0].plainText, "")
+    }
 }
 #endif
