@@ -412,3 +412,9 @@ The first complete running-content run, [36524090953](https://github.com/Ninnja1
 - Index construction does not paginate or assemble a whole-document text string. This is not yet a public review interface, and no new native UI behavior is claimed from these portable tests.
 
 - Native index run [36563740948](https://github.com/Ninnja10563/Scribe/actions/runs/36563740948) passed at `2a38174`. Native projection run [36563918705](https://github.com/Ninnja10563/Scribe/actions/runs/36563918705) passed at `07c20e9`, covering Unicode list content with page-break prefixes, exact separator selection, stale body rejection and semantic note/reference mapping, alongside grouped rich-paste regressions. The native mapping is an internal navigation foundation, not an exposed review workflow.
+
+
+## Native review commands (unreleased)
+
+- Native [36564365807](https://github.com/Ninnja10563/Scribe/actions/runs/36564365807) passed at `8e08804`. Coverage includes exact native selections, previous/next wrapping, automatic advance after rejection, accept/reject undo/redo, stale-selection safety, reject-all undo and commands after closure. Existing native location and rich-paste regressions also passed.
+- Follow-up 36564486305 at `4e3962e` is running grouped rich-paste and note decision/undo coverage. Full index/projection-stage run 36564166501 at `11bd314` is still running; neither is claimed complete here.
