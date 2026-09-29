@@ -26,7 +26,7 @@ import DocumentCore
         XCTAssertThrowsError(try InlineObjectClipboard.restore(payload, in: NSAttributedString(string: "Modified clipboard")))
         let destination = ScribeFileDocument()
         let normal = try XCTUnwrap(destination.model.styles.firstIndex { $0.id == "normal" })
-        destination.model.styles[normal].text.size = 30
+        destination.model.styles[normal].text.fontSize = 30
         destination.makeWindowControllers(); defer { destination.close() }
         let editor = destination.editorController!.editor
         editor.activeTextView.paste(nil); editor.paginate()
@@ -34,7 +34,7 @@ import DocumentCore
         XCTAssertNotEqual(first.id, note.id)
         XCTAssertEqual(first.plainText, note.plainText)
         XCTAssertEqual(first.paragraphs[0].runs[0].format.italic, true)
-        XCTAssertEqual(first.paragraphs[0].runs[0].format.size, ParagraphStyle.defaults.first { $0.id == "normal" }?.text.size)
+        XCTAssertEqual(first.paragraphs[0].runs[0].format.fontSize, ParagraphStyle.defaults.first { $0.id == "normal" }?.text.fontSize)
         XCTAssertTrue(Set(first.paragraphs.map(\.id)).isDisjoint(with: Set(note.paragraphs.map(\.id))))
         // Separate native user events close the implicit undo group.
         RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.02))
