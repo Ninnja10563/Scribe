@@ -122,7 +122,7 @@ extension NSAttributedString.Key {
                     if let color = attributes[.backgroundColor] as? NSColor {
                         if color.hex != style.text.highlight { format.highlight = color.hex }
                     } else if style.text.highlight != nil { format.clearHighlight = true }
-                    let baseline = attributes[.superscript] as? Int ?? 0
+                    let baseline = ScriptProjection.level(in: attributes)
                     if baseline != (style.text.baseline ?? 0) { format.baseline = baseline }
                     let link = (attributes[.link] as? URL)?.absoluteString ?? attributes[.link] as? String
                     var run = TextRun(value, format: format, link: link)
@@ -187,8 +187,7 @@ extension NSAttributedString.Key {
         let highlight = f.clearHighlight == true ? nil : f.highlight ?? (base.clearHighlight == true ? nil : base.highlight)
         if let color = highlight { attributes[.backgroundColor] = NSColor(hex: color) }
         else { attributes.removeValue(forKey: .backgroundColor) }
-        if let baseline = f.baseline ?? base.baseline { attributes[.superscript] = baseline }
-        ScriptProjection.apply(to: &attributes)
+        ScriptProjection.setLevel(f.baseline ?? base.baseline ?? 0, in: &attributes)
     }
     static func paragraphFormatting(_ ns: NSParagraphStyle) -> ParagraphFormatting {
         var f = ParagraphFormatting()

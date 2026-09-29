@@ -124,6 +124,9 @@ for label, path in [('Native', build / 'schema/ScriptTypography.pdf'), ('LibreOf
     assert up['size'] < base['size']*0.8 and down['size'] < base['size']*0.8, f'{label}: script glyphs were not reduced'
     assert up['origin'][1] < base['origin'][1]-1, f'{label}: superscript was not raised'
     assert down['origin'][1] > base['origin'][1]+1, f'{label}: subscript was not lowered'
+    if label == 'Native':
+        assert abs(base['origin'][1]-up['origin'][1]-7) < 0.1, 'Native superscript baseline offset was applied twice'
+        assert abs(down['origin'][1]-base['origin'][1]-4) < 0.1, 'Native subscript baseline offset was applied twice'
     assert not page.get_images(), f'{label}: script text should remain vector text'
     page.get_pixmap(matrix=pymupdf.Matrix(2, 2)).save(output / (label + '-ScriptTypography.png'))
 print('Native and LibreOffice retain the logical font size and render vector superscripts/subscripts above and below the baseline.')

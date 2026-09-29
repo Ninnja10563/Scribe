@@ -25,7 +25,7 @@ extension EditorWindowController {
         style.text.foreground = (attributes[.foregroundColor] as? NSColor)?.hex
         style.text.clearHighlight = nil
         style.text.highlight = (attributes[.backgroundColor] as? NSColor)?.hex
-        style.text.baseline = attributes[.superscript] as? Int
+        style.text.baseline = ScriptProjection.level(in: attributes)
         if let paragraph = attributes[.paragraphStyle] as? NSParagraphStyle { style.paragraph = AttributedDocument.paragraphFormatting(paragraph) }
         showStyleEditor(style, creating: true)
     }
