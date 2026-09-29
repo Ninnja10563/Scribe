@@ -60,7 +60,10 @@ import DocumentCore
         var estimatedBytes = payload.text.utf8.count
         var check = ScribeDocument(); check.sections[0].paragraphs[0].runs = []
         for object in payload.objects {
-            estimatedBytes += (object.image?.data.count ?? 0) * 4 / 3 + (object.equation?.source.utf8.count ?? 0) * 6 + 1024
+            let imageBytes: Int = object.image?.data.count ?? 0
+            let sourceBytes: Int = object.equation?.source.utf8.count ?? 0
+            estimatedBytes += imageBytes * 4 / 3
+            estimatedBytes += sourceBytes * 6 + 1024
             guard estimatedBytes <= NativeFormat.maximumBytes else { throw DocumentError.tooLarge }
             guard object.location >= 0, object.location < text.length, text.character(at: object.location) == 0xFFFC,
                   (object.equation != nil) != (object.image != nil) else { throw DocumentError.invalid("invalid clipboard object position") }

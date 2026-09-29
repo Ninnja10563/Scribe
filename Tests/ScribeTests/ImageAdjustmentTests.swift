@@ -61,6 +61,9 @@ import DocumentCore
         XCTAssertEqual(pastedImage.height, changed.height, accuracy: 0.1)
         XCTAssertNil(pastedImage.adjustments, "External RTFD images are already flattened")
         XCTAssertEqual(try current().data, data, "Copy must not alter native source bytes")
+        let nativeObjects = try XCTUnwrap(pasteboard.data(forType: InlineObjectClipboard.type))
+        let nativePaste = try InlineObjectClipboard.restore(nativeObjects, in: rich)
+        XCTAssertEqual(AttributedDocument.capture(nativePaste, preserving: ScribeDocument()).paragraphs.flatMap(\.runs).compactMap(\.image).first, changed, "Scribe-to-Scribe copying must retain original bytes and reversible adjustments")
         editor.paginate(); XCTAssertNil(editor.layoutWarning)
         let directory = ProcessInfo.processInfo.environment["SCRIBE_SCHEMA_OUTPUT"].map { URL(fileURLWithPath: $0, isDirectory: true) } ?? FileManager.default.temporaryDirectory
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
