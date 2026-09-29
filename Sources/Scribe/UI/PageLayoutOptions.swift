@@ -24,6 +24,8 @@ import DocumentCore
         landscape.state = settings.width > settings.height ? .on : .off
         let grid = NSGridView(views: zip(labels, fields).map { [NSTextField(labelWithString: $0.0), $0.1] })
         grid.rowSpacing = 8; grid.columnSpacing = 16
+        for row in 0..<grid.numberOfRows { grid.row(at: row).height = 24 }
+        grid.column(at: 0).width = 145; grid.column(at: 1).width = 125
         for child in [paper as NSView, landscape, grid] { view.addArrangedSubview(child) }
         view.orientation = .vertical; view.alignment = .leading; view.spacing = 12
         view.frame = NSRect(x: 0, y: 0, width: 320, height: 260)

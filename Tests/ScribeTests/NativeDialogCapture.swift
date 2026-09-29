@@ -8,7 +8,10 @@ import AppKit
         view.cacheDisplay(in: view.bounds, to: bitmap)
         let image = NSImage(size: view.bounds.size, flipped: false) { rect in
             NSColor.windowBackgroundColor.setFill(); rect.fill()
-            bitmap.draw(in: rect); return true
+            if let cgImage = bitmap.cgImage {
+                NSImage(cgImage: cgImage, size: rect.size).draw(in: rect, from: .zero, operation: .sourceOver, fraction: 1)
+            }
+            return true
         }
         guard let tiff = image.tiffRepresentation, let composited = NSBitmapImageRep(data: tiff),
               let png = composited.representation(using: .png, properties: [:]) else { return }
