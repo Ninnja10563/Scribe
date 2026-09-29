@@ -56,6 +56,35 @@ import ImportExport
             document.undoManager?.redo(); XCTAssertEqual(document.snapshot().paragraphs, changed.paragraphs)
         }
     }
+    func testCompositionAcrossListItemsCommitsSemanticallyOrCancelsWithoutMutation() throws {
+        for commit in [false, true] {
+            let document = fixture(["First", "Second"]); defer { document.close() }
+            let editor = document.editorController!.editor, before = document.snapshot()
+            let source = editor.storage.string as NSString
+            let start = source.range(of: "First").location + 2
+            let end = source.range(of: "Second").location + 2
+            editor.select(NSRange(location: start, length: end - start))
+            let text = editor.activeTextView
+            text.setMarkedText("仮", selectedRange: NSRange(location: 1, length: 0), replacementRange: NSRange(location: NSNotFound, length: 0))
+            XCTAssertNotNil(text.reviewComposition)
+            XCTAssertEqual(document.snapshot(), before)
+            text.setMarkedText("語", selectedRange: NSRange(location: 1, length: 0), replacementRange: NSRange(location: NSNotFound, length: 0))
+            XCTAssertEqual(document.snapshot(), before)
+            if commit {
+                text.unmarkText()
+                let changed = document.snapshot()
+                XCTAssertEqual(changed.paragraphs.map(\.text), ["Fi語cond"])
+                XCTAssertFalse(changed.hasPendingRevisions)
+                try NativeFormat.validate(changed)
+                document.undoManager?.undo(); XCTAssertEqual(document.snapshot(), before)
+                document.undoManager?.redo(); XCTAssertEqual(document.snapshot(), changed)
+            } else {
+                text.cancelOperation(nil)
+                XCTAssertEqual(document.snapshot(), before)
+                XCTAssertFalse(document.undoManager?.canUndo ?? true)
+            }
+        }
+    }
     func testTypingIntoMarkerPreservesNumberAndNativeUndo() throws {
         let document = fixture(); defer { document.close() }
         let editor = document.editorController!.editor, before = document.snapshot()

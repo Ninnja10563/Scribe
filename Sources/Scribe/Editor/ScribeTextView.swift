@@ -98,7 +98,9 @@ import DocumentCore
             let adjusted = editableListRange(requested)
             if adjusted != requested { replacement = adjusted; setSelectedRange(adjusted) }
         }
-        guard editor?.reviewEditing.author != nil, !applyingReviewReplacement, let storage = textStorage else {
+        let requested = replacement.location == NSNotFound ? self.selectedRange() : replacement
+        let needsSnapshot = reviewComposition != nil || editor?.reviewEditing.author != nil || needsListCompositionSnapshot(requested)
+        guard needsSnapshot, !applyingReviewReplacement, let storage = textStorage else {
             super.setMarkedText(string, selectedRange: selectedRange, replacementRange: replacement); return
         }
         if reviewComposition == nil {

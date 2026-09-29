@@ -15,17 +15,7 @@ extension ScribeTextView {
               let first = listContext(for: NSRange(location: range.location, length: 0)),
               let last = listContext(for: NSRange(location: NSMaxRange(range), length: 0)) else { return false }
         let author = editor.reviewEditing.author
-        if author == nil {
-            var containsList = false
-            let extent = NSRange(location: range.location, length: min(editor.storage.length - range.location, max(1, range.length)))
-            editor.storage.enumerateAttribute(.scribeList, in: extent) { value, _, stop in
-                if value != nil { containsList = true; stop.pointee = true }
-            }
-            if !containsList, NSMaxRange(range) < editor.storage.length {
-                containsList = editor.storage.attribute(.scribeList, at: NSMaxRange(range), effectiveRange: nil) != nil
-            }
-            guard containsList else { return false }
-        }
+        if author == nil, !selectionContainsList(range) { return false }
         do {
             let before = owner.snapshot(), paragraphs = before.paragraphs
             guard paragraphs.indices.contains(first.index), paragraphs.indices.contains(last.index) else {
