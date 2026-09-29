@@ -25,6 +25,11 @@ jobs:
           for attempt in 1 2 3; do
             swift test --skip-build --filter 'ScribeTests.TableOfContentsTests'
           done
+      - name: Check native memory lifetime with Address Sanitizer
+        if: always()
+        env:
+          ASAN_OPTIONS: detect_leaks=0:halt_on_error=1
+        run: swift test --sanitize=address --scratch-path .build-asan --filter ScribeTests
       - name: Diagnose failed native tests with Objective-C zombies
         if: failure()
         env:
@@ -41,12 +46,13 @@ jobs:
           import shutil
           import time
           time.sleep(2)
-          source = Path.home() / 'Library/Logs/DiagnosticReports'
+          sources = [Path.home() / 'Library/Logs/DiagnosticReports', Path('/Library/Logs/DiagnosticReports')]
           destination = Path('build/schema/diagnostics')
           destination.mkdir(parents=True, exist_ok=True)
-          for path in source.glob('*'):
-              if path.is_file() and any(name in path.name.lower() for name in ('scribe', 'xctest', 'swift')):
-                  shutil.copy2(path, destination / path.name)
+          for source in sources:
+              for path in source.rglob('*'):
+                  if path.is_file() and any(name in path.name.lower() for name in ('scribe', 'xctest', 'swift')):
+                      shutil.copy2(path, destination / path.name)
           PYCODE
       - name: Retain test export diagnostics
         if: always()
