@@ -4,6 +4,7 @@ import DocumentCore
 
 @main struct ScribeMain {
     @MainActor static func main() {
+        if CommandLine.arguments.contains("--startup-smoke-test") { print("Startup arguments: \(CommandLine.arguments)"); fflush(stdout) }
         let delegate = AppDelegate()
         // The shared accessor finishes document-type and visible-UI initialization.
         _ = NSDocumentController.shared
