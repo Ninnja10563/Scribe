@@ -27,6 +27,7 @@ import ImportExport
     override init() { super.init(); hasUndoManager = true }
     static func recovering(_ snapshot: RecoverySnapshot) throws -> ScribeFileDocument {
         try NativeFormat.validate(snapshot.document)
+        guard !snapshot.document.hasFloatingImages else { throw DocumentError.invalid("floating-image editing is still being implemented in this development build") }
         guard !snapshot.document.hasPendingRevisions else { throw DocumentError.invalid("tracked-change editing is still being implemented in this development build") }
         guard snapshot.document.sections.count == 1 else { throw DocumentError.invalid("this version cannot edit multiple native sections without losing their layout") }
         let recovered = ScribeFileDocument()
@@ -70,6 +71,7 @@ import ImportExport
     override func data(ofType typeName: String) throws -> Data { try NativeFormat.encode(snapshot()) }
     override func read(from data: Data, ofType typeName: String) throws {
         let decoded = try NativeFormat.decode(data)
+        guard !decoded.hasFloatingImages else { throw DocumentError.invalid("floating-image editing is still being implemented in this development build") }
         guard !decoded.hasPendingRevisions else { throw DocumentError.invalid("tracked-change editing is still being implemented in this development build") }
         guard decoded.sections.count == 1 else { throw DocumentError.invalid("this version cannot edit multiple native sections without losing their layout") }
         MainActor.assumeIsolated { model = decoded }

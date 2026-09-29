@@ -10,7 +10,7 @@ final class LineHeightTests: XCTestCase {
         data["formatVersion"] = 14
         let original = try JSONSerialization.data(withJSONObject: data)
         let migrated = try NativeFormat.decode(original)
-        XCTAssertEqual(migrated.formatVersion, 15)
+        XCTAssertEqual(migrated.formatVersion, ScribeDocument.currentVersion)
         XCTAssertEqual(migrated.styles[0].paragraph.lineSpacing, 7)
         XCTAssertNil(migrated.styles[0].paragraph.lineHeight)
         XCTAssertEqual((try JSONSerialization.jsonObject(with: original) as? [String: Any])?["formatVersion"] as? Int, 14)

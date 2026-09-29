@@ -11,6 +11,7 @@ enum NoteValidation {
         for note in document.notes {
             guard !note.paragraphs.isEmpty, note.paragraphs.count <= 1000 else { throw DocumentError.invalid("invalid note paragraph count") }
             for paragraph in note.paragraphs {
+                guard paragraph.runs.allSatisfy({ $0.image?.placement == nil }) else { throw DocumentError.invalid("floating images are not yet supported inside notes") }
                 guard paragraphIDs.insert(paragraph.id).inserted else { throw DocumentError.invalid("duplicate note paragraph identifier") }
                 guard paragraph.tableCell == nil, paragraph.toc == nil, !paragraph.pageBreakBefore,
                       !paragraph.text.contains("\u{c}"), paragraph.runs.allSatisfy({ $0.noteID == nil }) else { throw DocumentError.invalid("notes cannot contain other notes, tables, contents or page breaks") }

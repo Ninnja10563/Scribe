@@ -1,7 +1,7 @@
 import Foundation
 
 public struct ScribeDocument: Codable, Equatable, Sendable {
-    public static let currentVersion = 15
+    public static let currentVersion = 16
     public var formatVersion = currentVersion
     public var id = UUID()
     public var title = "Untitled"

@@ -26,6 +26,7 @@ final class DOCXWriter {
     }
     func encode() throws -> Data {
         try NativeFormat.validate(document)
+        guard !document.hasFloatingImages else { throw DocumentError.invalid("floating-image DOCX interchange is still being implemented") }
         try DOCXRevisionWriter.validate(document, mode: revisionMode)
         let linked = Set((document.paragraphs + document.notes.flatMap(\.paragraphs)).flatMap(\.runs).compactMap { $0.link.flatMap(DocumentLink.paragraphID) })
         for paragraph in document.paragraphs where linked.contains(paragraph.id) { bookmarkIDs[paragraph.id] = bookmarkIDs.count }
