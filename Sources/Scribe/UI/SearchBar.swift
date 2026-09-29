@@ -116,8 +116,8 @@ import DocumentCore
         } catch { presentError(error) }
     }
     func refreshHighlights() {
-        guard !isHidden, let editor else { return }
-        notePage = nil; refreshMatchesForNavigation(); presentation.highlight(matches, in: editor)
+        guard !isHidden else { return }
+        notePage = nil; presentation.clear(); search()
     }
     private func updateCount() {
         if let currentMatch, let index = matches.firstIndex(of: currentMatch) {
