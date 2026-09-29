@@ -183,6 +183,9 @@ import DocumentCore
     func paginate() {
         guard !isLayingOut, firstDirtyPage != Int.max else { return }
         isLayingOut = true; defer { isLayingOut = false; paginationStability.invalidate() }
+        let focusedView = canvas.window?.firstResponder as? ScribeTextView
+        let focusedSelection = focusedView?.editor === self ? focusedView?.selectedRange() : nil
+        let focusedTypingAttributes = focusedView?.typingAttributes
         lastPaginationVisitedPages = 0
         var stabilized = false
         // TextKit invalidates from the edited glyph; existing page containers are reused.
@@ -295,6 +298,9 @@ import DocumentCore
         }
         canvas.bodyPageCount = textViews.count
         canvas.pageCount = textViews.count + (canvas.endnotes?.containers.count ?? 0); resizeCanvas()
+        if let selection = focusedSelection, let attributes = focusedTypingAttributes {
+            restoreCaretAfterPagination(selection, typingAttributes: attributes)
+        }
         onLayout?()
         onSelection?()
     }
