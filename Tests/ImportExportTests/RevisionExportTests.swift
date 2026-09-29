@@ -119,13 +119,31 @@ final class RevisionExportTests: XCTestCase {
         }
     }
 
+    func testAnotherAuthorsDeletionKeepsTheOriginalInsertion() throws {
+        var document = ScribeDocument(), run = changed("temporary")
+        run.review?.deletion = .init(author: .init(name: "Second reviewer"), date: identity.date)
+        document.sections[0].paragraphs[0].runs = [TextRun("Before"), run, TextRun("After")]
+        let bytes = try DOCXWriter(document, revisions: .runChanges).encode()
+        let parts = try ZipArchive.decode(bytes)
+        let xml = try XCTUnwrap(parts["word/document.xml"]).string
+        XCTAssertTrue(xml.contains("<w:ins")); XCTAssertTrue(xml.contains("<w:del"))
+        XCTAssertTrue(xml.contains("</w:del></w:ins>"))
+        XCTAssertTrue(xml.contains("<w:delText xml:space=\"preserve\">temporary"))
+        XCTAssertEqual(try DOCX.decode(bytes).document.paragraphs[0].text, "BeforeAfter")
+        var rejectDeletion = document
+        try rejectDeletion.resolveRevision(run.review!.deletion!.id, accepting: false)
+        XCTAssertEqual(rejectDeletion.paragraphs[0].text, "BeforetemporaryAfter")
+        XCTAssertTrue(rejectDeletion.hasPendingRevisions)
+        var rejectInsertion = document
+        try rejectInsertion.resolveRevision(identity.id, accepting: false)
+        XCTAssertEqual(rejectInsertion.paragraphs[0].text, "BeforeAfter")
+        if let folder = ProcessInfo.processInfo.environment["SCRIBE_SCHEMA_OUTPUT"] {
+            try bytes.write(to: URL(fileURLWithPath: folder).appendingPathComponent("OverlappingTextRevisions.docx"), options: .atomic)
+        }
+    }
+
     func testUnsupportedReviewCannotSilentlyFlatten() throws {
         var document = ScribeDocument()
-        var run = changed("Both")
-        run.review?.deletion = .init(author: .init(name: "Other reviewer"))
-        document.sections[0].paragraphs[0].runs = [run]
-        try NativeFormat.validate(document)
-        XCTAssertThrowsError(try DOCXWriter(document, revisions: .runChanges).encode())
         document.sections[0].paragraphs[0].runs = [TextRun("Heading")]
         let before = document
         document.sections[0].paragraphs[0].styleID = "heading1"

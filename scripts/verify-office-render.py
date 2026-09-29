@@ -17,7 +17,7 @@ args = parser.parse_args()
 build = args.build.resolve()
 output = build / 'office-render'
 output.mkdir(parents=True, exist_ok=True)
-sources = [build / 'smoke/Smoke.docx', build / 'schema/MergedTable.docx', build / 'schema/DocumentProperties.docx', build / 'schema/ImageAdjustments.docx', build / 'schema/ImageRotation.docx', build / 'schema/StyleOverrides.docx', build / 'schema/ScriptTypography.docx', build / 'schema/ParagraphIndents.docx', build / 'schema/RunningContent.docx', build / 'schema/RunningContentStandard.docx', build / 'schema/Equations.docx', build / 'schema/Notes.docx', build / 'schema/TextRevisions.docx', build / 'schema/NoteTextRevisions.docx', build / 'schema/CommentTextRevisions.docx']
+sources = [build / 'smoke/Smoke.docx', build / 'schema/MergedTable.docx', build / 'schema/DocumentProperties.docx', build / 'schema/ImageAdjustments.docx', build / 'schema/ImageRotation.docx', build / 'schema/StyleOverrides.docx', build / 'schema/ScriptTypography.docx', build / 'schema/ParagraphIndents.docx', build / 'schema/RunningContent.docx', build / 'schema/RunningContentStandard.docx', build / 'schema/Equations.docx', build / 'schema/Notes.docx', build / 'schema/TextRevisions.docx', build / 'schema/NoteTextRevisions.docx', build / 'schema/CommentTextRevisions.docx', build / 'schema/OverlappingTextRevisions.docx']
 result = subprocess.run([
     'libreoffice', '-env:UserInstallation=' + (output / 'profile').as_uri(),
     '--headless', '--norestore', '--convert-to', 'pdf:writer_pdf_Export',
@@ -41,7 +41,7 @@ for source in sources:
         for label in ('Scribe', 'Contents', 'Styles and outline', 'Flowing pages'):
             assert label in text, f'Missing {label}'
         assert any(page.get_images() for page in pdf), 'Missing inline image'
-    elif source.stem == 'TextRevisions':
+    elif source.stem in ('TextRevisions', 'OverlappingTextRevisions'):
         assert 'Before' in text and 'After' in text, 'Revision package lost surrounding text'
     elif source.stem == 'NoteTextRevisions':
         assert 'footnote' in text and 'endnote' in text, 'Revision package lost note bodies'

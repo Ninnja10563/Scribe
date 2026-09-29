@@ -55,6 +55,20 @@ with ZipFile(folder / 'CommentTextRevisions.docx') as package:
     end = paragraph.find(W + 'commentRangeEnd')
     assert start.get(W + 'id') == end.get(W + 'id')
     assert projected(start.getnext(), True) == '😀'
+with ZipFile(folder / 'OverlappingTextRevisions.docx') as package:
+    root = etree.fromstring(package.read('word/document.xml'))
+    insertion = root.find('.//' + W + 'ins')
+    deletion = insertion.find(W + 'del')
+    assert insertion.get(W + 'author') == 'A & B <Review>'
+    assert deletion.get(W + 'author') == 'Second reviewer'
+    assert insertion.get(W + 'id') != deletion.get(W + 'id')
+    assert projected(root, True) == projected(root, False) == 'BeforeAfter'
+    # Reject only the deletion, retaining the pending insertion.
+    insertion.remove(deletion)
+    insertion.extend(list(deletion))
+    assert projected(root, True) == 'BeforetemporaryAfter'
+    assert projected(root, False) == 'BeforeAfter'
+
 with ZipFile(folder / 'FormattingRevisions.docx') as package:
     root = etree.fromstring(package.read('word/document.xml'))
     current = root.find('.//' + W + 'rPr')

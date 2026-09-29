@@ -33,9 +33,6 @@ final class DOCXRevisionWriter {
                 guard review.formatting.count <= 1 else {
                     throw DocumentError.invalid("DOCX layered formatting revision export is not yet supported")
                 }
-                guard review.insertion == nil || review.deletion == nil else {
-                    throw DocumentError.invalid("DOCX overlapping insertion and deletion export is not yet supported")
-                }
                 guard run.image == nil, run.equation == nil, run.noteID == nil else {
                     throw DocumentError.invalid("DOCX object revision export is not yet supported")
                 }
@@ -47,9 +44,14 @@ final class DOCXRevisionWriter {
     /// comment boundaries split a native revision. Native compound group IDs are
     /// not represented by this initial Office text-revision prototype.
     func wrap(_ content: String, review: RunReview?) -> String {
-        guard let identity = review?.deletion ?? review?.insertion else { return content }
-        let tag = review?.deletion == nil ? "ins" : "del"
-        return "<w:\(tag) \(attributes(identity))>\(content)</w:\(tag)>"
+        var content = content
+        if let deletion = review?.deletion {
+            content = "<w:del \(attributes(deletion))>\(content)</w:del>"
+        }
+        if let insertion = review?.insertion {
+            content = "<w:ins \(attributes(insertion))>\(content)</w:ins>"
+        }
+        return content
     }
 
     func properties(_ run: TextRun) -> String {
