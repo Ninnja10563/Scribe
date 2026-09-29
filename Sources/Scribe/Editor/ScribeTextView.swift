@@ -92,10 +92,15 @@ import DocumentCore
     override func draw(_ dirtyRect: NSRect) { super.draw(dirtyRect); drawImageSelection() }
     override func mouseDown(with event: NSEvent) { if !resizeImageIfNeeded(with: event) { super.mouseDown(with: event) } }
     override func setMarkedText(_ string: Any, selectedRange: NSRange, replacementRange: NSRange) {
-        guard editor?.reviewEditing.author != nil, !applyingReviewReplacement, let storage = textStorage else {
-            super.setMarkedText(string, selectedRange: selectedRange, replacementRange: replacementRange); return
-        }
         var replacement = replacementRange
+        if !hasMarkedText(), !applyingReviewReplacement {
+            let requested = replacementRange.location == NSNotFound ? self.selectedRange() : replacementRange
+            let adjusted = editableListRange(requested)
+            if adjusted != requested { replacement = adjusted; setSelectedRange(adjusted) }
+        }
+        guard editor?.reviewEditing.author != nil, !applyingReviewReplacement, let storage = textStorage else {
+            super.setMarkedText(string, selectedRange: selectedRange, replacementRange: replacement); return
+        }
         if reviewComposition == nil {
             let requested = replacementRange.location == NSNotFound ? self.selectedRange() : replacementRange
             let range = editableListRange(requested)
@@ -166,7 +171,9 @@ import DocumentCore
             insertText(insertString, replacementRange: NSRange(location: start, length: end - start)); return
         }
         for key in [NSAttributedString.Key.attachment, .scribeEquation, .scribeImage, .scribeNote, .scribeNoteNumber, .scribeReview, .scribeBreakReview] { typingAttributes.removeValue(forKey: key) }
-        let range = replacementRange.location == NSNotFound ? selectedRange() : replacementRange
+        let requested = replacementRange.location == NSNotFound ? selectedRange() : replacementRange
+        let range = applyingReviewReplacement ? requested : editableListRange(requested)
+        let nativeReplacement = range == requested ? replacementRange : range
         let ids = commentIDs(forReplacement: range)
         if ids.isEmpty { typingAttributes.removeValue(forKey: .scribeComments) }
         else { typingAttributes[.scribeComments] = ids }
@@ -180,10 +187,19 @@ import DocumentCore
             let value = NSMutableAttributedString(attributedString: attributed)
             value.removeAttribute(.scribeComments, range: NSRange(location: 0, length: value.length))
             if !ids.isEmpty { value.addAttribute(.scribeComments, value: ids, range: NSRange(location: 0, length: value.length)) }
-            super.insertText(value, replacementRange: replacementRange)
-        } else { super.insertText(insertString, replacementRange: replacementRange) }
+            super.insertText(value, replacementRange: nativeReplacement)
+        } else { super.insertText(insertString, replacementRange: nativeReplacement) }
     }
     override func shouldChangeText(in affectedCharRange: NSRange, replacementString: String?) -> Bool {
+        if replacementString == "", editor?.reviewEditing.author == nil, !applyingReviewReplacement,
+           undoManager?.isUndoing != true, undoManager?.isRedoing != true {
+            let adjusted = editableListRange(affectedCharRange)
+            if adjusted != affectedCharRange {
+                if adjusted.length > 0 { insertText("", replacementRange: adjusted) }
+                setSelectedRange(NSRange(location: adjusted.location, length: 0))
+                return false
+            }
+        }
         if replacementString == "", affectedCharRange.length > 0, editor?.reviewEditing.author != nil,
            !applyingReviewReplacement, undoManager?.isUndoing != true, undoManager?.isRedoing != true {
             if removeOwnTrackedSeparator(in: affectedCharRange) { return false }
@@ -310,8 +326,10 @@ import DocumentCore
             insertText(string.replacingOccurrences(of: "\r\n", with: "\n").replacingOccurrences(of: "\r", with: "\n"), replacementRange: selectedRange())
         }
     }
-    func replaceSelection(_ value: NSAttributedString, action: String) {
-        let range = selectedRange()
+    func replaceSelection(_ incoming: NSAttributedString, action: String) {
+        let (range, value) = applyingReviewReplacement ? (selectedRange(), incoming) :
+            listContentReplacement(incoming, range: selectedRange(), formatting: !["Typing", "Paste", "Delete"].contains(action))
+        if range.length == 0, value.length == 0 { setSelectedRange(range); return }
         if editor?.reviewEditing.author != nil, !applyingReviewReplacement, undoManager?.isUndoing != true, undoManager?.isRedoing != true {
             applyTrackedReplacement(value, range: range, action: action); return
         }
