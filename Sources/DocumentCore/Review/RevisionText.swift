@@ -29,7 +29,7 @@ public struct RevisionText: Equatable, Sendable {
             var value = run, review = RunReview(); review.insertion = insertion
             value.review = review; return value
         }
-        runs = parts.before + removed + additions + parts.after
+        runs = Self.coalescing(parts.before + removed + additions + parts.after)
         return range.location + (removed + additions).reduce(0) { $0 + ($1.text as NSString).length }
     }
 
@@ -46,7 +46,7 @@ public struct RevisionText: Equatable, Sendable {
             review.formatting.append(FormattingRevision(identity: identity, before: run.format, after: result))
             value.format = result; value.review = review; return value
         }
-        runs = parts.before + changed + parts.after
+        runs = Self.coalescing(parts.before + changed + parts.after)
     }
 
     public mutating func accept(_ id: UUID) { resolve(id, accepting: true) }
@@ -55,7 +55,7 @@ public struct RevisionText: Equatable, Sendable {
     public mutating func rejectAll() { for id in pendingIDs.reversed() { reject(id) } }
 
     private mutating func resolve(_ id: UUID, accepting: Bool) {
-        runs = runs.compactMap { original in
+        runs = Self.coalescing(runs.compactMap { original in
             guard var review = original.review else { return original }
             var run = original
             if review.insertion?.id == id {
@@ -73,7 +73,19 @@ public struct RevisionText: Equatable, Sendable {
             }
             run.review = review.isEmpty ? nil : review
             return run
+        })
+    }
+
+    private static func coalescing(_ source: [TextRun]) -> [TextRun] {
+        var result: [TextRun] = []
+        for run in source {
+            if let previous = result.last, previous.format == run.format, previous.link == run.link,
+               previous.review == run.review, previous.image == nil, run.image == nil,
+               previous.equation == nil, run.equation == nil, previous.noteID == nil, run.noteID == nil {
+                result[result.count - 1].text += run.text
+            } else { result.append(run) }
         }
+        return result
     }
 
     private func split(_ range: NSRange) throws -> (before: [TextRun], selected: [TextRun], after: [TextRun]) {

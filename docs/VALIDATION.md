@@ -262,3 +262,7 @@ The first complete running-content run, [36524090953](https://github.com/Ninnja1
 
 - Initial portable review run passed 138 tests with one AppKit-only placeholder skipped. It covers retaining deletions, independent insertion/deletion decisions, stable author identity, edits to one's own insertion, UTF-16 scalar boundaries, ordered formatting decisions, native v14 round-trip/v13 migration and explicit refusal to flatten pending changes through the current DOCX writer.
 - Document-wide decision and native projection checks are in progress. Track Changes is not exposed in the editor; temporary open/recovery and DOCX-export gates protect pending revisions until interaction and interchange support are implemented. See REVIEW-DEVELOPMENT.md for the remaining integration requirements.
+
+- The extended portable run passed 142 tests with one AppKit-only placeholder skipped, including document-wide comment rebasing, detached-comment retention, note-reference decisions and decisions inside notes.
+- macOS run [36541832828](https://github.com/Ninnja10563/Scribe/actions/runs/36541832828) passed the targeted review/core/interchange and native projection tests at `1019c16`. Native projection preserves run history and author formatting; opening pending changes remains gated until review interaction is implemented.
+- A subsequent 14-test portable run passed coalesced 200-character typing and the existing decision/safety regressions. Accepted formatting history is compacted once no related pending decision remains.

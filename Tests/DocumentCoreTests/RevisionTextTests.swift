@@ -68,6 +68,16 @@ final class RevisionTextTests: XCTestCase {
         value.reject(change.id); XCTAssertEqual(value.markupText, original.markupText)
         XCTAssertTrue(value.runs.allSatisfy { $0.format == TextFormatting() && $0.review == nil })
     }
+    func testCoalescedTypingKeepsOneReviewIdentityWithoutFragmentingRuns() throws {
+        var value = RevisionText(runs: [TextRun("Body ")])
+        let insertion = identity(alice), deletion = identity(alice)
+        for _ in 0..<200 {
+            try value.replace(NSRange(location: (value.markupText as NSString).length, length: 0), with: [TextRun("x")], insertion: insertion, deletion: deletion)
+        }
+        XCTAssertEqual(value.runs.count, 2); XCTAssertEqual(value.pendingIDs, [insertion.id])
+        value.acceptAll(); XCTAssertEqual(value.runs.count, 1)
+        XCTAssertEqual(value.markupText, "Body " + String(repeating: "x", count: 200))
+    }
     func testNativeReviewRoundTripAndVersion13Migration() throws {
         var value = RevisionText(runs: [TextRun("Original")])
         try value.replace(NSRange(location: 0, length: 8), with: [TextRun("Replacement")], insertion: identity(alice), deletion: identity(alice))

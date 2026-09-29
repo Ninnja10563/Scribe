@@ -18,6 +18,7 @@ extension NativeFormat {
                 if let deletion = review.deletion { try record(deletion, kind: 1) }
                 guard review.formatting.isEmpty == (review.formattingBase == nil) else { throw DocumentError.invalid("missing revision formatting baseline") }
                 if let base = review.formattingBase {
+                    guard review.formatting.contains(where: { !$0.accepted }) else { throw DocumentError.invalid("resolved formatting history must be compacted") }
                     try validateText(base)
                     var effective = base, seen = Set<UUID>()
                     for change in review.formatting {
