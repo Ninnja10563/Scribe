@@ -17,13 +17,17 @@ import DocumentCore
         let value = NSMutableAttributedString(attributedString: AttributedDocument.render(model))
         let base = AttributedDocument.editingAttributes(for: model.paragraphs[0], in: model)
         value.insert(NSAttributedString(string: "\(note.number).\t", attributes: base), at: 0)
-        let full = NSRange(location: 0, length: value.length)
-        value.enumerateAttribute(.paragraphStyle, in: full) { attributes, range, _ in
+        let text = value.string as NSString
+        var location = 0
+        while location < value.length {
+            let range = text.paragraphRange(for: NSRange(location: location, length: 0))
+            let attributes = value.attribute(.paragraphStyle, at: location, effectiveRange: nil)
             let style = (attributes as? NSParagraphStyle)?.mutableCopy() as? NSMutableParagraphStyle ?? NSMutableParagraphStyle()
             style.headIndent += 18
-            style.firstLineHeadIndent = range.location == 0 ? 0 : style.firstLineHeadIndent + 18
-            style.tabStops.insert(NSTextTab(textAlignment: .left, location: 18), at: 0)
+            style.firstLineHeadIndent = location == 0 ? 0 : style.firstLineHeadIndent + 18
+            style.tabStops = [NSTextTab(textAlignment: .left, location: 18)] + style.tabStops.filter { $0.location > 18 }
             value.addAttribute(.paragraphStyle, value: style, range: range)
+            location = NSMaxRange(range)
         }
         let noteStorage = NSTextStorage(attributedString: value), manager = NSLayoutManager()
         let textContainer = NSTextContainer(containerSize: NSSize(width: width, height: 1_000_000))
