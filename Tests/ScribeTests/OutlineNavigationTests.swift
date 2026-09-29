@@ -64,6 +64,9 @@ import DocumentCore
         XCTAssertTrue(window.firstResponder === outline)
         let expected = (controller.editor.storage.string as NSString).range(of: "Methods").location
         XCTAssertEqual(controller.editor.activeTextView.selectedRange().location, expected)
+        controller.editor.select(NSRange(location: 0, length: 0), focus: false)
+        outline.previewHeading()
+        XCTAssertEqual(controller.editor.activeTextView.selectedRange().location, expected)
         let enter = try XCTUnwrap(NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: [], timestamp: 0, windowNumber: window.windowNumber, context: nil, characters: "\r", charactersIgnoringModifiers: "\r", isARepeat: false, keyCode: 36))
         outline.keyDown(with: enter)
         XCTAssertTrue(window.firstResponder is ScribeTextView)

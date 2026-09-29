@@ -164,6 +164,8 @@ import DocumentCore
         guard !isClosing else { return }
         isClosing = true; statsWork?.cancel(); statsTask?.cancel()
         searchBar.cancelPendingWork()
+        outline.navigate = nil; outline.returnToDocument = nil
+        outline.delegate = nil; outline.dataSource = nil
         window?.makeFirstResponder(nil)
         editor.prepareForClose()
     }

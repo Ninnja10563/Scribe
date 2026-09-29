@@ -22,7 +22,7 @@ import DocumentCore
         headerView = nil; backgroundColor = .windowBackgroundColor; rowHeight = 30
         style = .sourceList; indentationPerLevel = 13
         delegate = self; dataSource = self
-        target = self; doubleAction = #selector(activateHeading)
+        target = self; action = #selector(previewHeading); doubleAction = #selector(activateHeading)
         setAccessibilityLabel("Document outline")
         let menu = NSMenu()
         let expand = NSMenuItem(title: "Expand All Headings", action: #selector(expandAllHeadings), keyEquivalent: "")
@@ -81,6 +81,9 @@ import DocumentCore
     }
     @objc func expandAllHeadings() { collapsed.removeAll(); expandItem(nil, expandChildren: true) }
     @objc func collapseAllHeadings() { collapsed = Set(nodes.values.filter { !$0.children.isEmpty }.map { $0.entry.id }); collapseItem(nil, collapseChildren: true) }
+    @objc func previewHeading() {
+        if let node = item(atRow: selectedRow) as? Node { navigate?(node.entry.id, false) }
+    }
     @objc func activateHeading() {
         if let node = item(atRow: selectedRow) as? Node { navigate?(node.entry.id, true) }
     }
