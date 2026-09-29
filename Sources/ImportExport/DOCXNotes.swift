@@ -42,7 +42,7 @@ final class DOCXNotesReader: NSObject, XMLParserDelegate {
         var note = DocumentNote(kind: kind)
         note.paragraphs = reader.paragraphs.isEmpty ? [Paragraph()] : reader.paragraphs
         // Word convention places a space/tab after the automatic note label.
-        if let first = note.paragraphs[0].runs.first, first.text.hasPrefix(" ") || first.text.hasPrefix("\t") {
+        if reader.hasLeadingNoteLabel, let first = note.paragraphs[0].runs.first, first.text.hasPrefix(" ") || first.text.hasPrefix("\t") {
             note.paragraphs[0].runs[0].text.removeFirst()
         }
         notes[id] = note; warnings.formUnion(reader.warnings)

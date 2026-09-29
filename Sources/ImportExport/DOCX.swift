@@ -352,6 +352,7 @@ class WordReader: NSObject, XMLParserDelegate {
     var bookmarkOrder: [String] = []
     var listID: String?, listLevel: Int?
     var inRun = false, sawDocument = false
+    var hasLeadingNoteLabel = false
     var collectingInstruction = false, instruction = ""
     private var fieldInstructions: [String] = []
     private var skippedReviewDepth = 0
@@ -402,6 +403,10 @@ class WordReader: NSObject, XMLParserDelegate {
                 if let code = fieldInstructions.last { inspectFieldInstruction(code); fieldInstructions[fieldInstructions.count - 1] = "" }
             case "end": if let code = fieldInstructions.popLast() { inspectFieldInstruction(code) }
             default: break
+            }
+        case "footnoteRef", "endnoteRef":
+            if paragraphs.isEmpty, let paragraph, paragraph.runs.allSatisfy({ $0.text.isEmpty }), run.text.isEmpty {
+                hasLeadingNoteLabel = true
             }
         case "footnoteReference", "endnoteReference":
             let kind = name == "footnoteReference" ? "footnote" : "endnote"

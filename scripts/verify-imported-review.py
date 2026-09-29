@@ -20,7 +20,8 @@ for mode, expected, absent in [('Marked', ('Old', 'New', 'stable'), ()),
     stable = next(span for span in spans if 'stable' in span['text'])
     size, color, bold = (14, 0x123456, False) if mode == 'Rejected' else (18, 0x654321, True)
     if mode == 'Marked':
-        color = 0x2952A3
+        assert any(path['color'] and all(abs(a-b) < 0.001 for a,b in zip(path['color'], (0.16, 0.32, 0.64)))
+                   and path['dashes'] != '[] 0' for path in page.get_drawings()), 'Missing dotted formatting mark'
     assert abs(stable['size'] - size) < 0.1, (mode, stable)
     assert all(abs(((stable['color'] >> shift) & 255) - ((color >> shift) & 255)) <= 1 for shift in (0, 8, 16)), (mode, stable)
     assert bool(stable['flags'] & 16) == bold, (mode, stable)
