@@ -38,6 +38,11 @@ import DocumentCore
         NotificationCenter.default.addObserver(self, selector: #selector(windowClosing), name: NSWindow.willCloseNotification, object: window)
     }
     required init?(coder: NSCoder) { fatalError("Programmatic windows only") }
+    override func windowTitle(forDocumentDisplayName displayName: String) -> String {
+        guard !isClosing, let document = document as? ScribeFileDocument,
+              document.isRecoveredCopy, document.fileURL == nil else { return displayName }
+        return document.model.title
+    }
     deinit { NotificationCenter.default.removeObserver(self) }
     @objc private func windowClosing() { prepareForClose() }
     private func buildInterface() {

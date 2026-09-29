@@ -10,6 +10,7 @@ import ImportExport
     var model = ScribeDocument()
     var editorController: EditorWindowController?
     var importWarnings: [String] = []
+    private(set) var isRecoveredCopy = false
     private var recoveryWork: DispatchWorkItem?
     private var recoveryTask: Task<Void, Never>?
     private var isClosed = false
@@ -26,12 +27,14 @@ import ImportExport
         recovered.model = snapshot.document
         recovered.model.id = UUID() // Never share recovery storage with an open original.
         recovered.model.title += " — Recovered"
+        recovered.isRecoveredCopy = true
         recovered.updateChangeCount(.changeDone)
         return recovered
     }
     override func makeWindowControllers() {
         let controller = EditorWindowController(document: self)
         editorController = controller; addWindowController(controller)
+        controller.synchronizeWindowTitleWithDocumentName()
     }
     func snapshot() -> ScribeDocument {
         if let editor = editorController?.editor {

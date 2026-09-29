@@ -22,10 +22,17 @@ import DocumentCore
         XCTAssertEqual(document.model.comments, model.comments)
         XCTAssertEqual(document.model.bookmarks, model.bookmarks)
         document.makeWindowControllers()
+        let controller = try XCTUnwrap(document.editorController)
+        XCTAssertEqual(controller.window?.title, "Research — Recovered")
+        document.didEdit(); controller.synchronizeWindowTitleWithDocumentName()
+        XCTAssertEqual(controller.window?.title, "Research — Recovered")
         let saved = try NativeFormat.decode(document.data(ofType: ScribeFileDocument.typeName))
         XCTAssertEqual(saved.plainText, model.plainText)
         XCTAssertEqual(saved.comments, model.comments)
         XCTAssertEqual(saved.bookmarks, model.bookmarks)
+        document.fileURL = URL(fileURLWithPath: "/tmp/Saved Research.scribe")
+        controller.synchronizeWindowTitleWithDocumentName()
+        XCTAssertEqual(controller.window?.title, document.displayName)
     }
     func testEmptyAndUnsupportedSectionRecoveryAreNonDestructive() throws {
         let model = ScribeDocument()
