@@ -40,6 +40,7 @@ public enum NativeFormat {
             // v8 → v9: absent image adjustments preserve original image presentation.
             // v9 → v10: absent clearHighlight retains inherited highlight semantics.
             // v10 → v11: absent runningContent uses the legacy header/footer on every page.
+            // v11 → v12: absent equation retains legacy text and image runs.
             json["formatVersion"] = ScribeDocument.currentVersion
             migrated = try JSONSerialization.data(withJSONObject: json)
         }
@@ -133,6 +134,9 @@ public enum NativeFormat {
             }
             for run in p.runs {
                 try validateText(run.format)
+                if run.equation != nil {
+                    guard run.text == "\u{FFFC}", run.image == nil else { throw DocumentError.invalid("invalid inline equation") }
+                }
                 if let image = run.image {
                     if let adjustments = image.adjustments {
                         guard adjustments.isValid,

@@ -8,6 +8,7 @@ extension NSAttributedString.Key {
     static let scribeStyle = NSAttributedString.Key("org.scribe.paragraphStyle")
     static let scribeParagraphID = NSAttributedString.Key("org.scribe.paragraphID")
     static let scribeCell = NSAttributedString.Key("org.scribe.tableCell")
+    static let scribeEquation = NSAttributedString.Key("org.scribe.equation")
     static let scribeImage = NSAttributedString.Key("org.scribe.image")
     static let scribeRenderedFace = NSAttributedString.Key("org.scribe.renderedFace")
     static let scribeFontFace = NSAttributedString.Key("org.scribe.fontFace")
@@ -36,6 +37,9 @@ extension NSAttributedString.Key {
                 var attrs = base
                 apply(run.format, over: style.text, to: &attrs)
                 if let link = run.link { attrs[.link] = link }
+                if let equation = run.equation {
+                    attrs[.attachment] = EquationProjection.attachment(equation); attrs[.scribeEquation] = try? JSONEncoder().encode(equation)
+                }
                 if let image = run.image, let attachment = ImageProjection.attachment(image) {
                     attrs[.attachment] = attachment; attrs[.scribeImage] = try? JSONEncoder().encode(image)
                 }
@@ -101,7 +105,8 @@ extension NSAttributedString.Key {
                     let link = (attributes[.link] as? URL)?.absoluteString ?? attributes[.link] as? String
                     var run = TextRun(value, format: format, link: link)
                     if let attachment = attributes[.attachment] as? NSTextAttachment {
-                        if let data = attributes[.scribeImage] as? Data { run.image = try? JSONDecoder().decode(InlineImage.self, from: data) }
+                        if let data = attributes[.scribeEquation] as? Data { run.equation = try? JSONDecoder().decode(Equation.self, from: data) }
+                        else if let data = attributes[.scribeImage] as? Data { run.image = try? JSONDecoder().decode(InlineImage.self, from: data) }
                         else if let bytes = attachment.fileWrapper?.regularFileContents {
                             run.image = try? ImageProjection.image(from: bytes, maximumWidth: original.sections[0].page.contentWidth, maximumHeight: original.sections[0].page.contentHeight - 24)
                         }

@@ -5,7 +5,7 @@ import Foundation
 public struct Equation: Codable, Equatable, Sendable {
     public let source: String
     public let expression: MathExpression
-    public var pointSize: Double
+    public let pointSize: Double
     public init(source: String, pointSize: Double = 18) throws {
         guard pointSize.isFinite, (8...144).contains(pointSize) else { throw DocumentError.invalid("equation size must be between 8 and 144 points") }
         self.source = source; self.pointSize = pointSize

@@ -149,7 +149,7 @@ import DocumentCore
         if let savedTypingAttributes { view.typingAttributes = savedTypingAttributes }
         else if storage.length > 0 {
             var attributes = storage.attributes(at: 0, effectiveRange: nil)
-            for key in [NSAttributedString.Key.attachment, .scribeImage, .scribePageBreakMarker] { attributes.removeValue(forKey: key) }
+            for key in [NSAttributedString.Key.attachment, .scribeImage, .scribeEquation, .scribePageBreakMarker] { attributes.removeValue(forKey: key) }
             view.typingAttributes = attributes
         } else if let document = owner?.model, let paragraph = document.paragraphs.first {
             view.typingAttributes = AttributedDocument.editingAttributes(for: paragraph, in: document)

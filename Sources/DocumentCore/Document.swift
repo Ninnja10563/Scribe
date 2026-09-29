@@ -1,7 +1,7 @@
 import Foundation
 
 public struct ScribeDocument: Codable, Equatable, Sendable {
-    public static let currentVersion = 11
+    public static let currentVersion = 12
     public var formatVersion = currentVersion
     public var id = UUID()
     public var title = "Untitled"
@@ -22,7 +22,7 @@ public struct ScribeDocument: Codable, Equatable, Sendable {
                 let sameRow = paragraph.tableCell != nil && previous?.tableID == paragraph.tableCell?.tableID && previous?.row == paragraph.tableCell?.row && previous?.column != paragraph.tableCell?.column
                 result += sameRow ? "\t" : "\n"
             }
-            result += paragraph.runs.map { $0.image.map { $0.altText.isEmpty ? "[Image]" : "[Image: \($0.altText)]" } ?? $0.text }.joined()
+            result += paragraph.runs.map { $0.equation.map { "[Equation: \($0.source)]" } ?? $0.image.map { $0.altText.isEmpty ? "[Image]" : "[Image: \($0.altText)]" } ?? $0.text }.joined()
             previous = paragraph.tableCell
         }
         return result
@@ -32,7 +32,7 @@ public struct ScribeDocument: Codable, Equatable, Sendable {
         return paragraphs.compactMap { p in
             let marker = numbering.marker(for: p.list)
             guard p.toc == nil, let level = styles.first(where: { $0.id == p.styleID })?.headingLevel else { return nil }
-            let title = p.runs.map { $0.image?.altText ?? $0.text }.joined()
+            let title = p.runs.map { $0.equation?.expression.accessibilityText ?? $0.image?.altText ?? $0.text }.joined()
                 .replacingOccurrences(of: "\t", with: " ")
                 .replacingOccurrences(of: "\u{2028}", with: " ")
                 .replacingOccurrences(of: "\u{c}", with: " ")
@@ -76,6 +76,7 @@ public struct TextRun: Codable, Equatable, Sendable {
     public var format: TextFormatting
     public var link: String?
     public var image: InlineImage?
+    public var equation: Equation?
     public init(_ text: String, format: TextFormatting = TextFormatting(), link: String? = nil) {
         self.text = text; self.format = format; self.link = link
     }

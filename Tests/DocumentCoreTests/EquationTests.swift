@@ -18,6 +18,23 @@ final class EquationTests: XCTestCase {
         XCTAssertEqual(try JSONDecoder().decode(Equation.self, from: JSONEncoder().encode(equation)), equation)
         XCTAssertEqual(try MathParser.parse(#"\text{a \{b\}}"#), .token("a {b}", italic: false))
     }
+    func testNativeEquationRoundTripAndEarlierVersionMigration() throws {
+        var document = ScribeDocument()
+        var run = TextRun("\u{FFFC}")
+        run.equation = try Equation(source: #"\frac{1}{2}"#)
+        document.sections[0].paragraphs[0].runs = [TextRun("Value: "), run]
+        let data = try NativeFormat.encode(document)
+        XCTAssertEqual(try NativeFormat.decode(data), document)
+        XCTAssertTrue(document.plainText.contains(#"\frac{1}{2}"#))
+        document.sections[0].paragraphs[0].runs[1].text = "ordinary text"
+        XCTAssertThrowsError(try NativeFormat.encode(document))
+        let legacy = ScribeDocument()
+        var json = try XCTUnwrap(JSONSerialization.jsonObject(with: NativeFormat.encode(legacy)) as? [String: Any])
+        json["formatVersion"] = 11
+        let oldBytes = try JSONSerialization.data(withJSONObject: json)
+        XCTAssertEqual(try NativeFormat.decode(oldBytes), legacy)
+        XCTAssertEqual((try JSONSerialization.jsonObject(with: oldBytes) as? [String: Any])?["formatVersion"] as? Int, 11)
+    }
     func testInvalidIncompleteAndExcessivelyNestedInputIsRejected() {
         for source in ["", "x^", "x_}", #"\frac{1}"#, #"\frac{}{2}"#, #"\sqrt{x"#, #"\unknown{x}"#, "x^2^3", "(x]", #"\left(x"#, "x)"] {
             XCTAssertThrowsError(try Equation(source: source), source)

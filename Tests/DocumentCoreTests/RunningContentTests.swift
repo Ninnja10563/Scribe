@@ -36,7 +36,7 @@ final class RunningContentTests: XCTestCase {
         json["formatVersion"] = 10
         let oldBytes = try JSONSerialization.data(withJSONObject: json, options: .sortedKeys)
         let reopened = try NativeFormat.decode(oldBytes)
-        XCTAssertEqual(reopened.formatVersion, 11)
+        XCTAssertEqual(reopened.formatVersion, ScribeDocument.currentVersion)
         XCTAssertNil(reopened.sections[0].runningContent)
         XCTAssertEqual(reopened.sections[0].runningText(isHeader: true, pageIndex: 2), "Older header")
         XCTAssertEqual(reopened.sections[0].runningText(isHeader: false, pageIndex: 0), "Older footer")
