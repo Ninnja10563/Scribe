@@ -4,6 +4,7 @@ import DocumentCore
 
 extension EditorWindowController {
     @objc func editStyle() {
+        updateStatus()
         let index = stylePicker.indexOfSelectedItem
         guard fileDocument.model.styles.indices.contains(index) else { return }
         showStyleEditor(fileDocument.model.styles[index], creating: false)

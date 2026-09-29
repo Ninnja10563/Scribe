@@ -13,6 +13,7 @@ import DocumentCore
         document.makeWindowControllers(); defer { document.close() }
         let controller = document.editorController!, editor = controller.editor
         editor.jump(to: document.model.paragraphs[0].id)
+        XCTAssertEqual(controller.stylePicker.titleOfSelectedItem, "Heading 1")
         document.undoManager?.removeAllActions()
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
             func descendants(_ view: NSView) -> [NSView] { [view] + view.subviews.flatMap(descendants) }
