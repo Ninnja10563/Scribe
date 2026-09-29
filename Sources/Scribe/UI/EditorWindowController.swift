@@ -2,9 +2,9 @@
 import AppKit
 import DocumentCore
 
-@MainActor final class EditorWindowController: NSWindowController, NSTableViewDataSource, NSTableViewDelegate {
+@MainActor final class EditorWindowController: NSWindowController {
     let editor: PaginatedEditor
-    let outline = NSTableView()
+    let outline = DocumentOutlineView(frame: .zero)
     let sidebar = NSView()
     let commentsSidebar = CommentsSidebar()
     private var commentsBeforeFocus = false
@@ -106,10 +106,11 @@ import DocumentCore
         let hint = outlineHint
         hint.font = .systemFont(ofSize: 11); hint.textColor = .secondaryLabelColor
         let scroll = NSScrollView(); scroll.hasVerticalScroller = true; scroll.autohidesScrollers = true; scroll.drawsBackground = true; scroll.backgroundColor = .windowBackgroundColor
-        let column = NSTableColumn(identifier: NSUserInterfaceItemIdentifier("heading")); outline.addTableColumn(column)
-        outline.headerView = nil; outline.backgroundColor = .windowBackgroundColor; outline.rowHeight = 30
-        outline.style = .sourceList; outline.delegate = self; outline.dataSource = self
-        outline.target = self; outline.action = #selector(selectHeading); outline.setAccessibilityLabel("Document outline")
+        outline.navigate = { [weak self] id, focus in self?.editor.jump(to: id, focus: focus) }
+        outline.returnToDocument = { [weak self] in
+            guard let self else { return }
+            self.window?.makeFirstResponder(self.editor.activeTextView)
+        }
         scroll.documentView = outline
         let stack = NSStackView(views: [title, hint, scroll]); stack.orientation = .vertical; stack.alignment = .leading; stack.spacing = 12
         stack.translatesAutoresizingMaskIntoConstraints = false; sidebar.addSubview(stack)
@@ -124,7 +125,7 @@ import DocumentCore
     private func divider() -> NSView { let view = NSBox(); view.boxType = .separator; view.widthAnchor.constraint(equalToConstant: 1).isActive = true; view.heightAnchor.constraint(equalToConstant: 18).isActive = true; return view }
     func refreshOutline() {
         guard !isClosing else { return }
-        let model = fileDocument.snapshot(); commentsSidebar.reload(model); entries = model.outline; outlineHint.isHidden = !entries.isEmpty; outline.reloadData()
+        let model = fileDocument.snapshot(); commentsSidebar.reload(model); entries = model.outline; outlineHint.isHidden = !entries.isEmpty; outline.refresh(entries)
         let selected = stylePicker.titleOfSelectedItem
         stylePicker.removeAllItems(); stylePicker.addItems(withTitles: model.styles.map(\.name))
         if let selected { stylePicker.selectItem(withTitle: selected) }
@@ -166,43 +167,12 @@ import DocumentCore
         window?.makeFirstResponder(nil)
         editor.prepareForClose()
     }
-    func numberOfRows(in tableView: NSTableView) -> Int { entries.count }
-    func tableView(_ tableView: NSTableView, viewFor tableColumn: NSTableColumn?, row: Int) -> NSView? {
-        let label = NSTextField(labelWithString: String(repeating: "   ", count: max(0, entries[row].level - 1)) + (entries[row].title.isEmpty ? "Untitled heading" : entries[row].title))
-        label.font = .systemFont(ofSize: 12, weight: entries[row].level == 1 ? .medium : .regular); label.lineBreakMode = .byTruncatingTail
-        return label
+    @objc func focusOutline() {
+        if isFocused { toggleFocus() }
+        sidebar.isHidden = false
+        window?.contentView?.layoutSubtreeIfNeeded()
+        window?.makeFirstResponder(outline)
+        if outline.selectedRow < 0, outline.numberOfRows > 0 { outline.selectRowIndexes(IndexSet(integer: 0), byExtendingSelection: false) }
     }
-    @objc func selectHeading() { if entries.indices.contains(outline.selectedRow) { editor.jump(to: entries[outline.selectedRow].id) } }
-    @objc func changeStyle() {
-        let index = stylePicker.indexOfSelectedItem; guard fileDocument.model.styles.indices.contains(index) else { return }
-        editor.applyStyle(fileDocument.model.styles[index].id)
-    }
-    @objc func showFonts() { window?.makeFirstResponder(editor.activeTextView); NSFontManager.shared.orderFrontFontPanel(self) }
-    @objc func bulletList() { editor.applyList(ListDescriptor()) }
-    @objc func numberedList() { editor.applyList(ListDescriptor(kind: .decimal)) }
-    @objc func toggleSidebar() { sidebar.isHidden.toggle() }
-    @objc func focusRuler() {
-        editor.scrollView.rulersVisible = true; editor.paragraphRuler?.refresh()
-        if let handle = editor.paragraphRuler?.handles.first(where: { $0.isEnabled }) { window?.makeFirstResponder(handle) }
-    }
-    @objc func toggleRuler() {
-        editor.scrollView.rulersVisible.toggle(); editor.paragraphRuler?.refresh(); editor.viewportChanged()
-    }
-    @objc func toggleFocus() {
-        if !isFocused { rulerBeforeFocus = editor.scrollView.rulersVisible; editor.scrollView.rulersVisible = false }
-        else { editor.scrollView.rulersVisible = rulerBeforeFocus }
-        if !isFocused { commentsBeforeFocus = !commentsSidebar.isHidden; commentsSidebar.isHidden = true }
-        else { commentsSidebar.isHidden = !commentsBeforeFocus }
-        isFocused.toggle(); sidebar.isHidden = isFocused; toolbar.isHidden = isFocused; if isFocused { searchBar.isHidden = true }; window?.makeFirstResponder(editor.activeTextView) }
-    @objc func showFind() { searchBar.isHidden = false; window?.makeFirstResponder(searchBar.query) }
-    @objc func changeZoom() {
-        let title = zoomPicker.titleOfSelectedItem ?? "100%"
-        if title == "Fit Width" { editor.selectZoom(.fitWidth) }
-        else if title == "Fit Page" { editor.selectZoom(.fitPage) }
-        else { editor.zoom = CGFloat(Double(title.replacingOccurrences(of: "%", with: "")) ?? 100) / 100 }
-    }
-}
-@MainActor private final class ChromeView: NSView {
-    override func draw(_ dirtyRect: NSRect) { NSColor.windowBackgroundColor.setFill(); dirtyRect.fill() }
 }
 #endif

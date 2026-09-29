@@ -326,13 +326,13 @@ import DocumentCore
         while location < min(NSMaxRange(range), text.length), text.character(at: location) == 12 { location += 1 }
         return location
     }
-    @discardableResult func jump(to id: UUID) -> Bool {
+    @discardableResult func jump(to id: UUID, focus: Bool = true) -> Bool {
         var found: NSRange?
         storage.enumerateAttribute(.scribeParagraphID, in: NSRange(location: 0, length: storage.length)) { value, range, stop in
             if value as? String == id.uuidString { found = range; stop.pointee = true }
         }
-        if let found { select(NSRange(location: navigationLocation(in: found), length: 0)); return true }
-        if owner?.snapshot().paragraphs.last?.id == id { select(NSRange(location: storage.length, length: 0)); return true }
+        if let found { select(NSRange(location: navigationLocation(in: found), length: 0), focus: focus); return true }
+        if owner?.snapshot().paragraphs.last?.id == id { select(NSRange(location: storage.length, length: 0), focus: focus); return true }
         return false
     }
 }

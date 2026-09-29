@@ -44,6 +44,7 @@ import AppKit
         item(edit, "Check Spelling", #selector(NSTextView.checkSpelling(_:)), ";")
         let view = menu("View")
         item(view, "Toggle Outline", #selector(EditorWindowController.toggleSidebar), "1", shift: true)
+        item(view, "Focus Outline", #selector(EditorWindowController.focusOutline))
         item(view, "Toggle Ruler", #selector(EditorWindowController.toggleRuler))
         item(view, "Focus Ruler", #selector(EditorWindowController.focusRuler), "r", shift: true)
         item(view, "Focus Mode", #selector(EditorWindowController.toggleFocus), "f", shift: true)
