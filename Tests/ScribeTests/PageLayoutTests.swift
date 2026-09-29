@@ -21,6 +21,7 @@ import DocumentCore
             guard let field = views.compactMap({ $0 as? NSTextField }).first(where: { $0.isEditable && $0.stringValue == "450.5" }),
                   let button = views.compactMap({ $0 as? NSButton }).first(where: { $0.title == "Apply" }) else { XCTFail("Missing page controls"); NSApp.abortModal(); return }
             field.stringValue = "480.75"
+            NativeDialogCapture.save(content, name: "PageLayoutDialog")
             button.performClick(nil)
         }
         controller.pageSettings()

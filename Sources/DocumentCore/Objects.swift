@@ -41,6 +41,7 @@ public extension ScribeDocument {
         guard let section = sections.firstIndex(where: { $0.paragraphs.contains(where: { $0.id == paragraphID }) }),
               let index = sections[section].paragraphs.firstIndex(where: { $0.id == paragraphID }),
               sections[section].paragraphs[index].tableCell == nil else { return }
+        guard Double(columns) * 12 <= sections[section].page.contentWidth else { return }
         let table = DocumentTable(rows: rows, columns: columns, width: sections[section].page.contentWidth)
         tables.append(table)
         var cells: [Paragraph] = []
@@ -58,7 +59,10 @@ public extension ScribeDocument {
         guard let t = tables.firstIndex(where: { $0.id == tableID }), tables[t].rows < 100 else { return }
         let insertionRow = max(0, min(tables[t].rows, row + 1))
         for s in sections.indices {
-            guard let last = sections[s].paragraphs.lastIndex(where: { $0.tableCell?.tableID == tableID && $0.tableCell!.row < insertionRow }) else { continue }
+            let insertionIndex: Int?
+            if insertionRow == 0 { insertionIndex = sections[s].paragraphs.firstIndex(where: { $0.tableCell?.tableID == tableID }) }
+            else { insertionIndex = sections[s].paragraphs.lastIndex(where: { $0.tableCell?.tableID == tableID && $0.tableCell!.row < insertionRow }).map { $0 + 1 } }
+            guard let insertionIndex else { continue }
             for p in sections[s].paragraphs.indices {
                 if let cell = sections[s].paragraphs[p].tableCell, cell.tableID == tableID, cell.row >= insertionRow { sections[s].paragraphs[p].tableCell?.row += 1 }
             }
@@ -66,7 +70,7 @@ public extension ScribeDocument {
             for column in tables[t].columnWidths.indices {
                 var p = Paragraph(); p.tableCell = TableCellReference(tableID: tableID, row: insertionRow, column: column); newRow.append(p)
             }
-            sections[s].paragraphs.insert(contentsOf: newRow, at: last + 1)
+            sections[s].paragraphs.insert(contentsOf: newRow, at: insertionIndex)
         }
         tables[t].rows += 1
     }
@@ -87,6 +91,7 @@ public extension ScribeDocument {
         guard let t = tables.firstIndex(where: { $0.id == tableID }), tables[t].columnWidths.count < 20 else { return }
         let insertion = max(0, min(tables[t].columnWidths.count, column + 1))
         let total = tables[t].columnWidths.reduce(0, +)
+        guard total / Double(tables[t].columnWidths.count + 1) >= 12 else { return }
         for s in sections.indices {
             for p in sections[s].paragraphs.indices {
                 if let cell = sections[s].paragraphs[p].tableCell, cell.tableID == tableID, cell.column >= insertion { sections[s].paragraphs[p].tableCell?.column += 1 }

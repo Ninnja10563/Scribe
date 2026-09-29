@@ -58,6 +58,7 @@ import DocumentCore
                       let button = views.compactMap({ $0 as? NSButton }).first(where: { $0.title == buttonTitle }) else { XCTFail("Missing controls"); NSApp.abortModal(); return }
                 field.stringValue = name
                 if let actionIndex { views.compactMap { $0 as? NSPopUpButton }.first(where: { $0.numberOfItems == 4 })?.selectItem(at: actionIndex) }
+                NativeDialogCapture.save(content, name: actionIndex == nil ? "AddBookmarkDialog" : "ManageBookmarksDialog")
                 button.performClick(nil)
             }
         }
