@@ -157,6 +157,12 @@ import DocumentCore
         // TextKit invalidates from the edited glyph; existing page containers are reused.
         layoutWarning = nil
         let start = max(0, min(firstDirtyPage, textViews.count - 1))
+        if pageCharacterRanges.indices.contains(start) {
+            // Drop old line-fragment boundaries throughout the affected suffix. TextKit's
+            // narrower automatic invalidation can retain stale paragraph-spacing decisions.
+            let location = min(pageCharacterRanges[start].location, storage.length)
+            layout.invalidateLayout(forCharacterRange: NSRange(location: location, length: storage.length - location), actualCharacterRange: nil)
+        }
         var required = start + 1
         var lastEnd = -1
         for index in start..<2000 {
