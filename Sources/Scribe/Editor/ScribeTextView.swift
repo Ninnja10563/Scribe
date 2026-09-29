@@ -28,7 +28,8 @@ import DocumentCore
     override func accessibilityAttributedString(for range: NSRange) -> NSAttributedString? {
         guard let textStorage, range.location >= 0, range.length >= 0,
               range.location <= textStorage.length, range.length <= textStorage.length - range.location,
-              let native = super.accessibilityAttributedString(for: range), native.length == range.length else { return nil }
+              let native = super.accessibilityAttributedString(for: range) else { return nil }
+        guard native.length == range.length else { return native }
         let result = NSMutableAttributedString(attributedString: native)
         textStorage.enumerateAttribute(.scribeScriptLevel, in: range) { value, subrange, _ in
             guard let level = value as? Int else { return }
