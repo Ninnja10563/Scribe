@@ -89,7 +89,7 @@ import DocumentCore
     override func unmarkText() {
         guard !applyingReviewReplacement, let composition = reviewComposition, let storage = textStorage,
               NSMaxRange(composition.markedRange) <= storage.length else { super.unmarkText(); return }
-        let committed = storage.attributedSubstring(from: composition.markedRange)
+        let committed = (storage.string as NSString).substring(with: composition.markedRange)
         guard let range = restoreReviewComposition() else { return }
         insertText(committed, replacementRange: range)
     }

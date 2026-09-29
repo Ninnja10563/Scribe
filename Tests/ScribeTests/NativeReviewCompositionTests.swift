@@ -47,6 +47,18 @@ import DocumentCore
         XCTAssertFalse(document.undoManager?.canUndo ?? true)
         XCTAssertFalse(document.isDocumentEdited)
     }
+    func testSnapshotKeepsUnrelatedEmptyParagraphStyleDuringComposition() throws {
+        let document = document(); defer { document.close() }
+        document.editorController!.editor.reviewEditing.author = nil
+        document.performEdit("Set paragraphs") { $0.sections[0].paragraphs = [Paragraph("Title", style: "title"), Paragraph("", style: "caption")] }
+        let editor = document.editorController!.editor, view = editor.activeTextView
+        editor.reviewEditing.author = .init(name: "Reviewer")
+        editor.select(NSRange(location: 0, length: 5))
+        view.setMarkedText("Draft", selectedRange: NSRange(location: 5, length: 0), replacementRange: NSRange(location: NSNotFound, length: 0))
+        XCTAssertEqual(document.snapshot().paragraphs.last?.styleID, "caption")
+        XCTAssertEqual(document.snapshot().paragraphs.first?.text, "Title")
+        view.cancelOperation(nil)
+    }
     func testUnmarkCommitsCurrentCompositionOnce() throws {
         let document = document(); defer { document.close() }
         let editor = document.editorController!.editor, view = editor.activeTextView
@@ -55,6 +67,7 @@ import DocumentCore
         view.unmarkText()
         XCTAssertEqual(document.snapshot().paragraphs[0].text, "Old texté")
         XCTAssertEqual(document.snapshot().pendingRevisionIDs.count, 1)
+        XCTAssertNil(document.snapshot().paragraphs[0].runs.last?.format.underline, "IME decoration must not become authored underlining")
         document.undoManager?.undo(); XCTAssertEqual(document.snapshot().paragraphs[0].text, "Old text")
     }
 }

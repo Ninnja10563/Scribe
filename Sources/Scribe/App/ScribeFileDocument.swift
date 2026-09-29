@@ -40,7 +40,8 @@ import ImportExport
     func snapshot() -> ScribeDocument {
         if let editor = editorController?.editor {
             if let composition = editor.textViews.compactMap(\.reviewComposition).first {
-                model = AttributedDocument.capture(composition.originalStorage, preserving: model, typingAttributes: composition.typingAttributes)
+                let insertion = composition.originalRange.location == composition.originalStorage.length ? composition.typingAttributes : nil
+                model = AttributedDocument.capture(composition.originalStorage, preserving: model, typingAttributes: insertion)
                 return model
             }
             let view = editor.activeTextView
