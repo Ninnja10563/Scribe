@@ -52,3 +52,6 @@ Deleting an author's own grouped boundary isolates that boundary from the rest o
 
 
 The internal `ReviewNavigation` coordinator now commits marked input before building its index, selects native body/note locations, wraps previous/next navigation and advances to a surviving change after a decision. Accept/reject current and all use semantic document transactions with native undo. Stale selections cannot resolve a different change; closing windows refuse commands. Native controls remain unexposed while the broader editing integration and visual revision presentation are incomplete.
+
+
+A native review sidebar now lists compound changes with author/date and changed-text details, previous/next, current accept/reject and an explicit all-change menu. It preserves keyboard focus after decisions, reloads through document undo and hides/restores with Focus Mode. Native selection/action tests and rendered panel inspection pass. The panel is instantiated but not exposed in public menus yet; visual revision markings and the remaining editing paths precede removing the development gates.

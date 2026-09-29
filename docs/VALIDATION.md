@@ -417,4 +417,10 @@ The first complete running-content run, [36524090953](https://github.com/Ninnja1
 ## Native review commands (unreleased)
 
 - Native [36564365807](https://github.com/Ninnja10563/Scribe/actions/runs/36564365807) passed at `8e08804`. Coverage includes exact native selections, previous/next wrapping, automatic advance after rejection, accept/reject undo/redo, stale-selection safety, reject-all undo and commands after closure. Existing native location and rich-paste regressions also passed.
-- Follow-up [36564486305](https://github.com/Ninnja10563/Scribe/actions/runs/36564486305) passed at `4e3962e`, covering grouped rich-paste and note decisions through native undo/redo. Full index/projection-stage run 36564166501 at `11bd314` is still running; that broader run is not claimed complete here.
+- Follow-up [36564486305](https://github.com/Ninnja10563/Scribe/actions/runs/36564486305) passed at `4e3962e`, covering grouped rich-paste and note decisions through native undo/redo. Full index/projection-stage [36564166501](https://github.com/Ninnja10563/Scribe/actions/runs/36564166501) passed at `11bd314`, including native repetitions, sanitizer, arm64 build, actual app launch and Office/render validation.
+
+
+## Native review sidebar (unreleased)
+
+- Native [36564966180](https://github.com/Ninnja10563/Scribe/actions/runs/36564966180) passed at `ee08110`; follow-up [36565103838](https://github.com/Ninnja10563/Scribe/actions/runs/36565103838) passed at `7879684`. The tests cover selected changes, native focus after navigation/decisions, Focus Mode restoration, empty-state controls, undo reload and the reject-all menu path. Explicit accept-all sidebar coverage follows; its underlying command coordinator is implemented.
+- Downloaded `ReviewSidebar.png` artifacts were inspected. The final panel fits its 300-point width and displays the selected change excerpt separately from author/date and decisions. This is a hosted native rendering, not a physical VoiceOver or manual desktop usability audit.

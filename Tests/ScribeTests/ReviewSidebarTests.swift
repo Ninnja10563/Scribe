@@ -46,6 +46,11 @@ import DocumentCore
         panel.rejectAllChanges()
         XCTAssertEqual(panel.table.numberOfRows, 0)
         XCTAssertFalse(document.snapshot().hasPendingRevisions)
+        document.undoManager?.undo()
+        XCTAssertGreaterThan(panel.table.numberOfRows, 0)
+        panel.acceptAllChanges()
+        XCTAssertEqual(panel.table.numberOfRows, 0)
+        XCTAssertFalse(document.snapshot().hasPendingRevisions)
     }
 }
 #endif
