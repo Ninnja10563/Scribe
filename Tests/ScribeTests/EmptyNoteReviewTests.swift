@@ -23,6 +23,8 @@ import DocumentCore
             for preceding in [0, 1, 90] {
                 let document = try fixture(kind: kind, preceding: preceding); defer { document.close() }
                 let owner = document.editorController!, editor = owner.editor
+                owner.window?.makeKeyAndOrderFront(nil); owner.window?.contentView?.layoutSubtreeIfNeeded()
+                editor.scrollView.contentView.scroll(to: .zero); editor.scrollView.reflectScrolledClipView(editor.scrollView.contentView)
                 let before = document.snapshot()
                 let change = try XCTUnwrap(RevisionIndex(document: before).changes.first)
                 let location = try XCTUnwrap(change.locations.first)
@@ -31,6 +33,7 @@ import DocumentCore
                 let page = try XCTUnwrap(NoteSearchPresentation().reveal(match, in: editor))
                 let expected = kind == .footnote ? (try XCTUnwrap(editor.canvas.footnotes.keys.max())) + 1 : editor.canvas.pageCount
                 XCTAssertEqual(page, expected)
+                XCTAssertTrue(editor.canvas.visibleRect.intersects(editor.canvas.pageRect(page - 1)))
                 if preceding == 90 { XCTAssertGreaterThan(page, 1) }
                 owner.reviewSidebar.isHidden = false; owner.reviewSidebar.reload(before)
                 owner.reviewSidebar.nextChange()
@@ -38,6 +41,9 @@ import DocumentCore
                 XCTAssertTrue(owner.status.stringValue.hasPrefix("Page \(page) of"))
                 XCTAssertTrue(owner.reviewSidebar.detail.stringValue.contains("Note: Empty paragraph formatting"))
                 XCTAssertEqual(document.snapshot(), before)
+                if preceding == 90, let content = owner.window?.contentView {
+                    content.layoutSubtreeIfNeeded(); NativeDialogCapture.save(content, name: "EmptyNoteReview-" + kind.rawValue)
+                }
                 editor.select(NSRange(location: 0, length: 0))
                 XCTAssertNil(owner.reviewNavigation.selectedNotePage)
             }
