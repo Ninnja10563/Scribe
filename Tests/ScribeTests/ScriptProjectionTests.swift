@@ -66,6 +66,34 @@ import DocumentCore
         XCTAssertGreaterThan(sup.midY, base.midY); XCTAssertLessThan(sub.midY, base.midY)
         XCTAssertTrue(page.bounds(for: .mediaBox).contains(sup)); XCTAssertTrue(page.bounds(for: .mediaBox).contains(sub))
     }
+    func testScriptRunsFlowAcrossPagesWithoutClippingOrLosingReferences() throws {
+        let document = ScribeFileDocument()
+        document.model.sections[0].paragraphs = (0..<90).map { index in
+            let suffix = String(format: "%03d", index)
+            var paragraph = Paragraph()
+            var up = TextRun("UP" + suffix); up.format.baseline = 1
+            var down = TextRun("DOWN" + suffix); down.format.baseline = -1
+            paragraph.runs = [TextRun("Paragraph " + suffix + ": " + String(repeating: "Flowing text with references. ", count: 4)), up, TextRun(" and "), down, TextRun(" continue in the same paragraph.")]
+            return paragraph
+        }
+        document.makeWindowControllers(); defer { document.close() }
+        let editor = document.editorController!.editor
+        editor.paginate(); XCTAssertNil(editor.layoutWarning); XCTAssertGreaterThan(editor.canvas.pageCount, 2)
+        let directory = ProcessInfo.processInfo.environment["SCRIBE_SCHEMA_OUTPUT"].map { URL(fileURLWithPath: $0, isDirectory: true) } ?? FileManager.default.temporaryDirectory
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let url = directory.appendingPathComponent("ScriptTypography-Pages.pdf")
+        try PrintRenderer(editor: editor).exportPDF(to: url, title: "Script pagination", author: "")
+        let pdf = try XCTUnwrap(PDFDocument(url: url))
+        XCTAssertEqual(pdf.pageCount, editor.canvas.pageCount)
+        let p = document.model.sections[0].page
+        let writingArea = NSRect(x: p.left, y: p.bottom, width: p.contentWidth, height: p.contentHeight).insetBy(dx: -2, dy: -2)
+        for index in 0..<90 { for prefix in ["UP", "DOWN"] {
+            let matches = pdf.findString(prefix + String(format: "%03d", index), withOptions: [])
+            XCTAssertEqual(matches.count, 1)
+            let match = try XCTUnwrap(matches.first), page = try XCTUnwrap(matches.first?.pages.first)
+            XCTAssertTrue(writingArea.contains(match.bounds(for: page)), "Script reference escaped its page writing area")
+        } }
+    }
     func testRepeatedScriptFontChangesUndoAndRichClipboardKeepLogicalSize() throws {
         let document = ScribeFileDocument()
         document.model.sections[0].paragraphs[0].runs = [TextRun("Selected")]
