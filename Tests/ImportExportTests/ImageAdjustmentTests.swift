@@ -3,6 +3,17 @@ import DocumentCore
 @testable import ImportExport
 
 final class ImageAdjustmentTests: XCTestCase {
+    func testIndependentDrawingMLImageFixture() throws {
+        let url = try XCTUnwrap(Bundle.module.url(forResource: "ImageAdjustments", withExtension: "docx", subdirectory: "Fixtures"))
+        let imported = try DOCX.decode(Data(contentsOf: url))
+        let image = try XCTUnwrap(imported.document.paragraphs.flatMap(\.runs).compactMap(\.image).first)
+        XCTAssertEqual(image.adjustments?.crop.left, 0.25)
+        XCTAssertEqual(image.adjustments?.rotation, 90)
+        XCTAssertEqual(image.adjustments?.opacity, 0.5)
+        XCTAssertEqual(image.width, 100, accuracy: 0.001)
+        XCTAssertEqual(image.height, 150, accuracy: 0.001)
+        XCTAssertEqual(image.sourceDisplayWidth, 200, accuracy: 0.001)
+    }
     func testDrawingMLAdjustmentsPreserveSourceAndGeometry() throws {
         let data = Data(base64Encoded: "iVBORw0KGgoAAAANSUhEUgAAACAAAAAQCAIAAAD4YuoOAAAAKElEQVR4nGP4z8BAEiJNNRlo1IJRCwbAAlJ1/P/PQBIatWDUgiFgAQAk0H2fCntH2wAAAABJRU5ErkJggg==")!
         let source = InlineImage(data: data, fileExtension: "png", width: 200, height: 100, altText: "Four colored quadrants")

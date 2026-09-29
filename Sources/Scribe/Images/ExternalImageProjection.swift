@@ -22,7 +22,7 @@ import DocumentCore
         guard let attachment = ImageProjection.attachment(image), let cell = attachment.attachmentCell as? NSTextAttachmentCell, let bitmap = cell.image else { throw DocumentError.invalid("could not prepare the image for rich-text copying") }
         // External copies use 144 dpi, limited to 16 million pixels. Native/PDF/DOCX retain source resolution.
         let scale = min(2, sqrt(16_000_000 / (image.width * image.height)))
-        let width = max(1, Int(ceil(image.width * scale))), height = max(1, Int(ceil(image.height * scale)))
+        let width = max(1, Int((image.width * scale).rounded())), height = max(1, Int((image.height * scale).rounded()))
         guard let rep = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: width, pixelsHigh: height, bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true, isPlanar: false, colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0), let context = NSGraphicsContext(bitmapImageRep: rep) else { throw DocumentError.invalid("could not allocate the rich-text image") }
         NSGraphicsContext.saveGraphicsState()
         NSGraphicsContext.current = context
