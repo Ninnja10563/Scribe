@@ -62,6 +62,7 @@ import DocumentCore
     private var firstDirtyPage = 0
     private var pageCharacterRanges: [NSRange] = []
     private var overflowingPages = Set<Int>()
+    private let tableValidation = TableLayoutValidation()
     var drawingPrintLinks = false
     private(set) var revision = 0
     private var semanticCache: (revision: Int, snapshot: SemanticTextSnapshot)?
@@ -173,7 +174,8 @@ import DocumentCore
                 } > canvas.pageSettings.contentHeight
             }
         } ?? false
-        if layoutWarning == nil, !overflowingPages.isEmpty || tallMerge {
+        let tallCell = owner.map { tableValidation.hasOversizedCell(storage: storage, document: $0.model, pageHeight: canvas.pageSettings.contentHeight) } ?? false
+        if layoutWarning == nil, !overflowingPages.isEmpty || tallMerge || tallCell {
             layoutWarning = "Content extends beyond a page. A cell taller than one page must be split or shortened before PDF export or printing."
         }
         if lastEnd < layout.numberOfGlyphs && layoutWarning == nil { layoutWarning = "This document exceeds the current 2,000-page layout limit." }
