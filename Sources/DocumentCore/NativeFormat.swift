@@ -36,6 +36,7 @@ public enum NativeFormat {
             // v4 → v5: absent fontFace retains family/trait-based font selection.
             if version < 6 { json["tablesOfContents"] = [] }
             // v6 → v7: absent cellStyles and minimumRowHeights inherit table defaults.
+            // v7 → v8: absent mergedCells retains the original rectangular grid.
             json["formatVersion"] = ScribeDocument.currentVersion
             migrated = try JSONSerialization.data(withJSONObject: json)
         }
@@ -69,6 +70,16 @@ public enum NativeFormat {
                   table.columnWidths.allSatisfy({ $0.isFinite && (12...4000).contains($0) }),
                   table.padding.isFinite, (0...50).contains(table.padding),
                   table.borderWidth.isFinite, (0...10).contains(table.borderWidth) else { throw DocumentError.invalid("invalid table geometry") }
+            var occupied = Set<Int>()
+            for merge in table.mergedCells ?? [] {
+                guard merge.row >= 0, merge.column >= 0, merge.rowSpan > 0, merge.columnSpan > 0,
+                      merge.rowSpan <= table.rows, merge.columnSpan <= table.columnWidths.count,
+                      merge.row <= table.rows - merge.rowSpan, merge.column <= table.columnWidths.count - merge.columnSpan,
+                      merge.rowSpan > 1 || merge.columnSpan > 1 else { throw DocumentError.invalid("invalid merged cell") }
+                for row in merge.row..<(merge.row + merge.rowSpan) { for column in merge.column..<(merge.column + merge.columnSpan) {
+                    guard occupied.insert(row * table.columnWidths.count + column).inserted else { throw DocumentError.invalid("overlapping merged cells") }
+                } }
+            }
             if let heights = table.minimumRowHeights {
                 guard heights.count == table.rows, heights.compactMap({ $0 }).allSatisfy({ $0.isFinite && (1...4000).contains($0) }) else { throw DocumentError.invalid("invalid table row heights") }
             }
@@ -113,7 +124,8 @@ public enum NativeFormat {
             if let formatting = p.formatting { try validateParagraph(formatting) }
             if let cell = p.tableCell {
                 guard let table = document.tables.first(where: { $0.id == cell.tableID }),
-                      (0..<table.rows).contains(cell.row), table.columnWidths.indices.contains(cell.column) else { throw DocumentError.invalid("invalid table cell reference") }
+                      (0..<table.rows).contains(cell.row), table.columnWidths.indices.contains(cell.column),
+                      table.anchor(row: cell.row, column: cell.column) == cell else { throw DocumentError.invalid("invalid table cell reference") }
             }
             for run in p.runs {
                 try validateText(run.format)

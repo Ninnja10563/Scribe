@@ -20,6 +20,7 @@ word = Document(root / 'Smoke.docx')
 assert len(word.tables) == 1 and len(word.inline_shapes) == 1, 'Missing structured objects'
 assert word.tables[0].cell(0, 0).text == 'Section'
 assert word.tables[0].cell(2, 2).text == 'Ready'
+assert word.tables[0].cell(1, 0).text == 'Structure\nStyles and outline'
 
 namespace = {'w': 'http://schemas.openxmlformats.org/wordprocessingml/2006/main'}
 value_key = '{' + namespace['w'] + '}val'

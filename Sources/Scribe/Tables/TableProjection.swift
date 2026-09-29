@@ -21,10 +21,13 @@ import DocumentCore
         let block: NSTextTableBlock
         if let cached = blocks[key] { block = cached }
         else {
-            block = NSTextTableBlock(table: table, startingRow: reference.row, rowSpan: 1, startingColumn: reference.column, columnSpan: 1)
+            let merge = definition.merge(atRow: reference.row, column: reference.column)
+            let rows = merge?.rowSpan ?? 1, columns = merge?.columnSpan ?? 1
+            block = NSTextTableBlock(table: table, startingRow: reference.row, rowSpan: rows, startingColumn: reference.column, columnSpan: columns)
             let style = definition.cellStyle(row: reference.row, column: reference.column)
             let padding = style?.padding ?? definition.padding, border = style?.borderWidth ?? definition.borderWidth
-            block.setContentWidth(max(1, definition.columnWidths[reference.column] - padding * 2 - border * 2), type: .absoluteValueType)
+            let width = definition.columnWidths[reference.column..<(reference.column + columns)].reduce(0, +)
+            block.setContentWidth(max(1, width - padding * 2 - border * 2), type: .absoluteValueType)
             block.setWidth(padding, type: .absoluteValueType, for: .padding)
             block.setWidth(border, type: .absoluteValueType, for: .border)
             block.setBorderColor(NSColor(hex: style?.borderColor ?? definition.borderColor))
@@ -36,7 +39,11 @@ import DocumentCore
             if let background = style?.background ?? (definition.firstRowIsHeader && reference.row == 0 ? definition.headerBackground : nil) {
                 block.backgroundColor = NSColor(hex: background)
             }
-            if let heights = definition.minimumRowHeights, heights.indices.contains(reference.row), let height = heights[reference.row] {
+            let requestedHeights = definition.minimumRowHeights.map { heights in
+                (reference.row..<(reference.row + rows)).compactMap { heights.indices.contains($0) ? heights[$0] : nil }
+            } ?? []
+            if !requestedHeights.isEmpty {
+                let height = requestedHeights.reduce(0, +)
                 // AppKit's table typesetter ignores minimumHeight alone. An explicit
                 // table-cell height supplies the floor; content still grows beyond it.
                 // Native PDF regressions cover both bottom alignment and long-cell growth.

@@ -90,6 +90,10 @@ public enum DOCX {
             if isHeader { delegate.document.sections[0].header = text } else { delegate.document.sections[0].footer = text }
             if String(data: data, encoding: .utf8)?.contains("fld") == true { delegate.warnings.insert("Running-content fields are imported as their cached text; update page numbering in Scribe if needed.") }
         }
+        // Validate bounds and merge references before constructing the full grid.
+        try NativeFormat.validate(delegate.document)
+        for table in delegate.document.tables { delegate.document.normalizeTableFlow(tableID: table.id) }
+        delegate.document.reconcileCommentAnchors()
         try NativeFormat.validate(delegate.document)
         return ImportResult(document: delegate.document, warnings: delegate.warnings.sorted())
     }
@@ -223,6 +227,7 @@ private class WordReader: NSObject, XMLParserDelegate {
     var headerID: String?, footerID: String?
     var tableDepth = 0, tableIndex: Int?, row = -1, column = -1
     private let tableFormatting = DOCXTableFormattingReader()
+    private let tableMerging = DOCXTableMergingReader()
     var inDrawing = false, drawingTarget: String?, drawingWidth = 100.0, drawingHeight = 100.0, drawingAlt = ""
     func parser(_ parser: XMLParser, didStartElement name: String, namespaceURI: String?, qualifiedName: String?, attributes a: [String: String]) {
         if inDrawing {
@@ -296,17 +301,24 @@ private class WordReader: NSObject, XMLParserDelegate {
                 var table = DocumentTable(rows: 1, columns: 1, width: document.sections[0].page.contentWidth)
                 table.columnWidths = []; table.firstRowIsHeader = false
                 document.tables.append(table); tableIndex = document.tables.count - 1; row = -1; column = -1
+                tableMerging.startTable()
             } else { warnings.insert("Nested tables are flattened into the enclosing cell.") }
         case "gridCol":
             if tableDepth == 1, let t = tableIndex, let width = wordAttribute(a, "w").flatMap(Double.init) { document.tables[t].columnWidths.append(max(12, width / 20)) }
-        case "tr": if tableDepth == 1 { row += 1; column = -1 }
+        case "tr": if tableDepth == 1 { row += 1; column = -1; tableMerging.span = 1 }
         case "tc":
             if tableDepth == 1, let t = tableIndex {
-                column += 1
+                column += tableMerging.span
+                tableMerging.startCell(paragraphCount: paragraphs.count)
                 if column >= document.tables[t].columnWidths.count { document.tables[t].columnWidths.append(100) }
             }
         case "tblHeader": if let t = tableIndex { document.tables[t].firstRowIsHeader = true }
-        case "gridSpan", "vMerge": warnings.insert("Merged cells are imported as individual cells; merged geometry is not retained.")
+        case "gridSpan":
+            if tableDepth == 1 {
+                guard let span = wordAttribute(a, "val").flatMap(Int.init), (1...20).contains(span) else { parser.abortParsing(); return }
+                tableMerging.span = span
+            }
+        case "vMerge": if tableDepth == 1 { tableMerging.vertical = wordAttribute(a, "val") ?? "continue" }
         case "drawing":
             if !run.text.isEmpty { paragraph?.runs.append(run); run = TextRun("", link: link) }
             inDrawing = true; drawingTarget = nil; drawingWidth = 100; drawingHeight = 100; drawingAlt = ""
@@ -353,10 +365,16 @@ private class WordReader: NSObject, XMLParserDelegate {
         case "tbl":
             if tableDepth == 1, let t = tableIndex {
                 document.tables[t].rows = max(1, row + 1)
+                tableMerging.finishTable(&document.tables[t])
                 if document.tables[t].columnWidths.isEmpty { document.tables[t].columnWidths = [100] }
                 tableIndex = nil; row = -1; column = -1
             }
             tableDepth = max(0, tableDepth - 1)
+        case "tc":
+            if tableDepth == 1, let t = tableIndex {
+                let protected = Set(bookmarkParagraphs.values).union(commentStarts.values.map(\.paragraphID)).union(commentEnds.values.map(\.paragraphID)).union(commentReferences.values.map(\.paragraphID))
+                tableMerging.finishCell(table: &document.tables[t], row: row, column: column, paragraphs: &paragraphs, protectedIDs: protected, warnings: &warnings)
+            }
         case "p":
             let inherited = paragraph.flatMap { styleLists[$0.styleID] }
             if let id = listID ?? inherited?.id { paragraph?.list = numbering.descriptor(id: id, level: listLevel ?? inherited?.level ?? 0) }

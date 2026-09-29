@@ -85,6 +85,8 @@ import AppKit
         item(table, "Table Properties…", #selector(EditorWindowController.tableProperties))
         item(table, "Cell Properties…", #selector(EditorWindowController.cellProperties))
         item(table, "Row Height…", #selector(EditorWindowController.rowProperties))
+        item(table, "Merge Cells…", #selector(EditorWindowController.mergeCells))
+        item(table, "Split Merged Cell", #selector(EditorWindowController.splitMergedCell))
         table.addItem(.separator()); item(table, "Delete Table", #selector(EditorWindowController.deleteTable))
         item(format, "Image Size and Description…", #selector(EditorWindowController.imageProperties))
         let review = menu("Review")

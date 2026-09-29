@@ -43,7 +43,7 @@ final class TableFormattingTests: XCTestCase {
         var json = try JSONSerialization.jsonObject(with: NativeFormat.encode(document)) as! [String: Any]
         json["formatVersion"] = 6
         let migrated = try NativeFormat.decode(JSONSerialization.data(withJSONObject: json))
-        XCTAssertEqual(migrated.formatVersion, 7)
+        XCTAssertEqual(migrated.formatVersion, ScribeDocument.currentVersion)
         XCTAssertNil(migrated.tables[0].cellStyles); XCTAssertNil(migrated.tables[0].minimumRowHeights)
         document.tables[0].rows = -1; document.tables[0].cellStyles = [cell]
         XCTAssertThrowsError(try NativeFormat.validate(document))

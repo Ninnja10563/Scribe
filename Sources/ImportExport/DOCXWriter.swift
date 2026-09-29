@@ -143,9 +143,16 @@ final class DOCXWriter {
         for row in 0..<table.rows {
             var cells = ""
             for column in table.columnWidths.indices {
-                let content = (cellsByPosition[row * table.columnWidths.count + column] ?? []).map(paragraph).joined()
+                let merge = table.merge(atRow: row, column: column)
+                if let merge, column != merge.column { continue }
+                let continuation = merge.map { row != $0.row } ?? false
+                let content = continuation ? "" : (cellsByPosition[row * table.columnWidths.count + column] ?? []).map(paragraph).joined()
+                let span = merge?.columnSpan ?? 1
+                let width = table.columnWidths[column..<(column + span)].reduce(0, +)
+                let gridSpan = span > 1 ? "<w:gridSpan w:val=\"\(span)\"/>" : ""
+                let vertical = (merge?.rowSpan ?? 1) > 1 ? "<w:vMerge w:val=\"\(continuation ? "continue" : "restart")\"/>" : ""
                 let shade = DOCX.cellProperties(table, row: row, column: column)
-                cells += "<w:tc><w:tcPr><w:tcW w:w=\"\(Int(table.columnWidths[column] * 20))\" w:type=\"dxa\"/>\(shade)</w:tcPr>\(content.isEmpty ? "<w:p/>" : content)</w:tc>"
+                cells += "<w:tc><w:tcPr><w:tcW w:w=\"\(Int(width * 20))\" w:type=\"dxa\"/>\(gridSpan)\(vertical)\(shade)</w:tcPr>\(content.isEmpty ? "<w:p/>" : content)</w:tc>"
             }
             rows += "<w:tr>\(DOCX.rowProperties(table, row: row))\(cells)</w:tr>"
         }

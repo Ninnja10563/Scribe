@@ -127,12 +127,15 @@ import DocumentCore
         let attributes = storage.attributes(at: min(selectedRange().location, storage.length - 1), effectiveRange: nil)
         guard let data = attributes[.scribeCell] as? Data, let cell = try? JSONDecoder().decode(TableCellReference.self, from: data),
               let table = editor.owner?.model.tables.first(where: { $0.id == cell.tableID }) else { return false }
-        let target = cell.row * table.columnWidths.count + cell.column + delta
-        if target >= table.rows * table.columnWidths.count {
+        let cells = table.cellAnchors
+        guard let current = cells.firstIndex(of: cell) else { return false }
+        let target = current + delta
+        if target >= cells.count {
             editor.owner?.performEdit("Add Table Row") { $0.addTableRow(tableID: table.id, after: table.rows - 1) }
         }
         guard target >= 0 else { return true }
-        let reference = TableCellReference(tableID: cell.tableID, row: target / table.columnWidths.count, column: target % table.columnWidths.count)
+        guard let updated = editor.owner?.model.tables.first(where: { $0.id == table.id }), target < updated.cellAnchors.count else { return true }
+        let reference = updated.cellAnchors[target]
         storage.enumerateAttribute(.scribeCell, in: NSRange(location: 0, length: storage.length)) { value, range, stop in
             if let data = value as? Data, let current = try? JSONDecoder().decode(TableCellReference.self, from: data), current == reference {
                 editor.select(NSRange(location: range.location, length: 0)); stop.pointee = true

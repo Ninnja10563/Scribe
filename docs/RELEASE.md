@@ -1,12 +1,11 @@
-Scribe 0.8.0 adds cell and row formatting.
+Scribe 0.9.0 adds merged table cells.
 
-- Table → Cell Properties controls backgrounds, borders, padding, vertical alignment and paragraph alignment. Apply settings to one cell, a row, a column or the whole table.
-- Table → Row Height sets a minimum height while allowing text to grow. Clear the value to return to automatic height.
-- Formatting follows cells when rows or columns are inserted or deleted, and changes support Undo/Redo.
-- DOCX imports/exports cell shading, uniform borders/padding, vertical alignment and minimum row heights. Exact heights and different edge insets/borders are explicitly approximated. PDF uses the same native table layout as the editor.
-- Recovery preserves short documents, comments and bookmarks, creates a separate copy identity, and writes that copy’s recovery snapshot before retiring the previous one. Closing also cancels pending recovery writes.
-- Native format v7 preserves cell/row properties; v1–v6 documents migrate in memory.
+- Merge a rectangle starting at the current cell, preserving all text, paragraph identities, comments and bookmarks.
+- Split a merged cell back into its grid; existing text stays in the first cell.
+- Row/column edits resize intersected spans and preserve content when a merged anchor survives deletion.
+- Native table layout and Tab navigation understand merged cells. DOCX uses actual gridSpan and vMerge properties, with an independent import fixture.
+- Native format v8 migrates v1–v7 documents in memory.
 
-This remains a development release. Merge/split, cell-range selection and drag sizing remain unfinished, along with independent sections, track changes, footnotes/endnotes, equations, shapes and floating objects. See docs/FEATURES.md and docs/VALIDATION.md.
+This remains a development release. Cell-range selection, drag sizing and nested tables remain unfinished, along with independent sections, track changes, footnotes/endnotes, equations, shapes and floating objects. See docs/FEATURES.md and docs/VALIDATION.md.
 
 For Apple Silicon, macOS 14+. Development builds are ad-hoc signed, not notarized. Physical-Mac input/accessibility and manual Word/Pages/LibreOffice validation remain pending.

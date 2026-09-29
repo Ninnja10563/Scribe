@@ -75,7 +75,11 @@ extension EditorWindowController {
         var styles: [TableCellStyle] = []
         for row in 0..<table.rows { for column in table.columnWidths.indices {
             let matches = scope == .table || (scope == .row && row == target.row) || (scope == .column && column == target.column) || (row == target.row && column == target.column)
-            if matches { var value = style; value.row = row; value.column = column; styles.append(value) }
+            if matches {
+                let anchor = table.anchor(row: row, column: column)
+                var value = style; value.row = anchor.row; value.column = anchor.column
+                if !styles.contains(where: { $0.row == value.row && $0.column == value.column }) { styles.append(value) }
+            }
         } }
         try updated.setCellStyles(styles, tableID: table.id)
         if let alignment {

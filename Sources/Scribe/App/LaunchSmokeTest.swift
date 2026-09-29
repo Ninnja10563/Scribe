@@ -20,6 +20,7 @@ extension AppDelegate {
                 cell.background = "#E7EFF8"; cell.padding = 10; cell.borderWidth = 1; cell.borderColor = "#456789"; cell.verticalAlignment = .center
                 try document.model.setCellStyles([cell], tableID: tableID)
                 try document.model.setMinimumRowHeight(42, row: 2, tableID: tableID)
+                try document.model.mergeTableCells(tableID: tableID, region: TableMerge(row: 1, column: 0, rowSpan: 1, columnSpan: 2))
             }
             let chart = NSImage(size: NSSize(width: 240, height: 80), flipped: false) { rect in
                 NSColor(white: 0.96, alpha: 1).setFill(); rect.fill()

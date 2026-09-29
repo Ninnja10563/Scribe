@@ -32,6 +32,7 @@ public struct DocumentTable: Codable, Equatable, Sendable, Identifiable {
     public var firstRowIsHeader = true
     public var cellStyles: [TableCellStyle]?
     public var minimumRowHeights: [Double?]?
+    public var mergedCells: [TableMerge]?
     public init(rows: Int, columns: Int, width: Double) {
         self.rows = rows; columnWidths = Array(repeating: width / Double(max(1, columns)), count: max(1, columns))
     }
@@ -58,82 +59,18 @@ public extension ScribeDocument {
         sections[section].paragraphs.insert(contentsOf: cells, at: index + 1)
     }
     mutating func addTableRow(tableID: UUID, after row: Int) {
-        guard let t = tables.firstIndex(where: { $0.id == tableID }), tables[t].rows < 100 else { return }
-        let insertionRow = max(0, min(tables[t].rows, row + 1))
-        for s in sections.indices {
-            let insertionIndex: Int?
-            if insertionRow == 0 { insertionIndex = sections[s].paragraphs.firstIndex(where: { $0.tableCell?.tableID == tableID }) }
-            else { insertionIndex = sections[s].paragraphs.lastIndex(where: { $0.tableCell?.tableID == tableID && $0.tableCell!.row < insertionRow }).map { $0 + 1 } }
-            guard let insertionIndex else { continue }
-            for p in sections[s].paragraphs.indices {
-                if let cell = sections[s].paragraphs[p].tableCell, cell.tableID == tableID, cell.row >= insertionRow { sections[s].paragraphs[p].tableCell?.row += 1 }
-            }
-            var newRow: [Paragraph] = []
-            for column in tables[t].columnWidths.indices {
-                var p = Paragraph(); p.tableCell = TableCellReference(tableID: tableID, row: insertionRow, column: column); newRow.append(p)
-            }
-            sections[s].paragraphs.insert(contentsOf: newRow, at: insertionIndex)
-        }
-        tables[t].cellStyles = tables[t].cellStyles?.map { value in
-            var style = value; if style.row >= insertionRow { style.row += 1 }; return style
-        }
-        tables[t].minimumRowHeights?.insert(nil, at: insertionRow)
-        tables[t].rows += 1
+        guard let table = tables.first(where: { $0.id == tableID }) else { return }
+        editTableGrid(tableID: tableID, rowAxis: true, position: max(0, min(table.rows, row + 1)), inserting: true)
     }
     mutating func deleteTableRow(tableID: UUID, row: Int) {
-        defer { reconcileCommentAnchors() }
-        guard let t = tables.firstIndex(where: { $0.id == tableID }) else { return }
-        if tables[t].rows == 1 { deleteTable(id: tableID); return }
-        guard (0..<tables[t].rows).contains(row) else { return }
-        for s in sections.indices {
-            sections[s].paragraphs.removeAll { $0.tableCell?.tableID == tableID && $0.tableCell?.row == row }
-            for p in sections[s].paragraphs.indices {
-                if let cell = sections[s].paragraphs[p].tableCell, cell.tableID == tableID, cell.row > row { sections[s].paragraphs[p].tableCell?.row -= 1 }
-            }
-        }
-        tables[t].cellStyles = tables[t].cellStyles?.filter { $0.row != row }.map { value in
-            var style = value; if style.row > row { style.row -= 1 }; return style
-        }
-        tables[t].minimumRowHeights?.remove(at: row)
-        tables[t].rows -= 1
+        editTableGrid(tableID: tableID, rowAxis: true, position: row, inserting: false)
     }
     mutating func addTableColumn(tableID: UUID, after column: Int) {
-        guard let t = tables.firstIndex(where: { $0.id == tableID }), tables[t].columnWidths.count < 20 else { return }
-        let insertion = max(0, min(tables[t].columnWidths.count, column + 1))
-        let total = tables[t].columnWidths.reduce(0, +)
-        guard total / Double(tables[t].columnWidths.count + 1) >= 12 else { return }
-        for s in sections.indices {
-            for p in sections[s].paragraphs.indices {
-                if let cell = sections[s].paragraphs[p].tableCell, cell.tableID == tableID, cell.column >= insertion { sections[s].paragraphs[p].tableCell?.column += 1 }
-            }
-            for row in (0..<tables[t].rows).reversed() {
-                let rowIndices = sections[s].paragraphs.indices.filter { sections[s].paragraphs[$0].tableCell?.tableID == tableID && sections[s].paragraphs[$0].tableCell?.row == row }
-                guard let last = rowIndices.last else { continue }
-                let index = rowIndices.first { sections[s].paragraphs[$0].tableCell!.column > insertion } ?? (last + 1)
-                var p = Paragraph(); p.tableCell = TableCellReference(tableID: tableID, row: row, column: insertion)
-                sections[s].paragraphs.insert(p, at: index)
-            }
-        }
-        tables[t].cellStyles = tables[t].cellStyles?.map { value in
-            var style = value; if style.column >= insertion { style.column += 1 }; return style
-        }
-        tables[t].columnWidths = Array(repeating: total / Double(tables[t].columnWidths.count + 1), count: tables[t].columnWidths.count + 1)
+        guard let table = tables.first(where: { $0.id == tableID }) else { return }
+        editTableGrid(tableID: tableID, rowAxis: false, position: max(0, min(table.columnWidths.count, column + 1)), inserting: true)
     }
     mutating func deleteTableColumn(tableID: UUID, column: Int) {
-        defer { reconcileCommentAnchors() }
-        guard let t = tables.firstIndex(where: { $0.id == tableID }), tables[t].columnWidths.indices.contains(column) else { return }
-        if tables[t].columnWidths.count == 1 { deleteTable(id: tableID); return }
-        for s in sections.indices {
-            sections[s].paragraphs.removeAll { $0.tableCell?.tableID == tableID && $0.tableCell?.column == column }
-            for p in sections[s].paragraphs.indices {
-                if let cell = sections[s].paragraphs[p].tableCell, cell.tableID == tableID, cell.column > column { sections[s].paragraphs[p].tableCell?.column -= 1 }
-            }
-        }
-        let total = tables[t].columnWidths.reduce(0, +)
-        tables[t].cellStyles = tables[t].cellStyles?.filter { $0.column != column }.map { value in
-            var style = value; if style.column > column { style.column -= 1 }; return style
-        }
-        tables[t].columnWidths = Array(repeating: total / Double(tables[t].columnWidths.count - 1), count: tables[t].columnWidths.count - 1)
+        editTableGrid(tableID: tableID, rowAxis: false, position: column, inserting: false)
     }
     mutating func deleteTable(id: UUID) {
         defer { reconcileCommentAnchors() }
