@@ -146,8 +146,10 @@ import DocumentCore
     func transformSelection(action: String, _ transform: (NSMutableAttributedString) -> Void) {
         let range = selectedRange()
         guard range.length > 0, let storage = textStorage else { return }
-        let value = NSMutableAttributedString(attributedString: storage.attributedSubstring(from: range))
+        let original = storage.attributedSubstring(from: range)
+        let value = NSMutableAttributedString(attributedString: original)
         transform(value)
+        guard !value.isEqual(to: original) else { return }
         replaceSelection(value, action: action); setSelectedRange(range)
     }
     @objc func insertPageBreak(_ sender: Any?) { insertText("\u{c}", replacementRange: selectedRange()) }
