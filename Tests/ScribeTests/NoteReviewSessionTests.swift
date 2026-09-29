@@ -25,6 +25,25 @@ import DocumentCore
             XCTAssertEqual(try session.note(), edited)
         }
     }
+    func testTrackingOffRetainsExistingNoteRevisionAndLeavesNewTypingUntracked() throws {
+        var original = DocumentNote(kind: .footnote, text: "Draft")
+        var review = RunReview(); review.insertion = RevisionIdentity(author: .init(name: "Earlier writer"))
+        original.paragraphs[0].runs[0].review = review
+        let options = NoteOptions(note: original, styles: ParagraphStyle.defaults, author: nil)
+        defer { options.close() }
+        XCTAssertNotNil(options.text.editor, "Pending reviews must retain their native drawing and editing engine")
+        options.text.setSelectedRange(NSRange(location: 5, length: 0))
+        options.text.insertText(" kept", replacementRange: NSRange(location: NSNotFound, length: 0))
+        let changed = try options.note()
+        XCTAssertEqual(changed.plainText, "Draft kept")
+        XCTAssertEqual(changed.paragraphs[0].runs.first?.review, review)
+        XCTAssertNil(changed.paragraphs[0].runs.last?.review)
+        var isolated = ScribeDocument(); isolated.sections[0].paragraphs = changed.paragraphs
+        try isolated.resolveAllRevisions(accepting: false)
+        XCTAssertEqual(isolated.paragraphs[0].text, " kept")
+        options.text.undoManager?.undo()
+        XCTAssertEqual(try options.note(), original)
+    }
     func testLongDraftFlowsAndRetainsCharacterFormattingReview() throws {
         var original = DocumentNote(kind: .endnote)
         original.paragraphs = (1...90).map { Paragraph("Citation \($0). " + String(repeating: "Source details. ", count: 8)) }

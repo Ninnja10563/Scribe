@@ -8,7 +8,7 @@ import DocumentCore
     let document: ScribeFileDocument
     let editor: PaginatedEditor
     private let original: DocumentNote
-    init(note: DocumentNote, styles: [ParagraphStyle], author: RevisionAuthor) {
+    init(note: DocumentNote, styles: [ParagraphStyle], author: RevisionAuthor?) {
         original = note
         document = ScribeFileDocument(); document.isTransientEditingSession = true
         document.model.styles = styles

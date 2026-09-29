@@ -14,7 +14,7 @@ import DocumentCore
         original = note
         var isolated = ScribeDocument(); isolated.styles = styles; isolated.sections[0].paragraphs = note.paragraphs
         model = isolated
-        if let author {
+        if author != nil || isolated.hasPendingRevisions {
             let session = NoteReviewSession(note: note, styles: styles, author: author)
             reviewSession = session
             view.setFrameSize(NSSize(width: 520, height: 360))
