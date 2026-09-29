@@ -13,7 +13,7 @@ public extension ScribeDocument {
         return result
     }
     mutating func resolveRevision(_ id: UUID, accepting: Bool) throws {
-        try resolveRevisions([id], accepting: accepting)
+        try resolveRevisions(revisionGroup(containing: id), accepting: accepting)
     }
     mutating func resolveAllRevisions(accepting: Bool) throws {
         try resolveRevisions(Set(pendingRevisionIDs), accepting: accepting)

@@ -10,8 +10,10 @@ public struct RevisionIdentity: Codable, Equatable, Sendable, Identifiable {
     public var id: UUID
     public var author: RevisionAuthor
     public var date: Date
-    public init(id: UUID = UUID(), author: RevisionAuthor, date: Date = Date()) {
-        self.id = id; self.author = author; self.date = date
+    /// Components of one compound edit are accepted/rejected together.
+    public var groupID: UUID?
+    public init(id: UUID = UUID(), author: RevisionAuthor, date: Date = Date(), groupID: UUID? = nil) {
+        self.id = id; self.author = author; self.date = date; self.groupID = groupID
     }
 }
 

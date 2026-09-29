@@ -6,11 +6,12 @@ extension ScribeTextView {
     func replaceTrackedParagraphRange(_ value: NSAttributedString, range: NSRange, action: String) -> Bool {
         if value.string == "\n", action != "Typing", action != "Paste" { return false }
         let multilineTyping = action == "Typing" && value.string.contains("\n") && value.string != "\n"
-        guard !hasMarkedText(), (!value.string.contains("\n") || value.string == "\n" || multilineTyping),
+        let multilinePaste = action == "Paste" && value.string.contains("\n")
+        guard !hasMarkedText(), (!value.string.contains("\n") || value.string == "\n" || multilineTyping || multilinePaste),
               let editor, let owner = editor.owner, let author = editor.reviewEditing.author,
               range.location >= 0, range.length >= 0,
               range.location <= editor.storage.length, range.length <= editor.storage.length - range.location,
-              multilineTyping || (editor.storage.string as NSString).substring(with: range).contains("\n"),
+              multilineTyping || multilinePaste || (editor.storage.string as NSString).substring(with: range).contains("\n"),
               let first = listContext(for: NSRange(location: range.location, length: 0)),
               let last = listContext(for: NSRange(location: NSMaxRange(range), length: 0)) else { return false }
         do {
@@ -28,17 +29,30 @@ extension ScribeTextView {
             anchor.endOffset = max(0, NSMaxRange(range) - contentStart(last))
             let inline = NSMutableAttributedString(attributedString: value)
             let full = NSRange(location: 0, length: inline.length)
+            if multilinePaste {
+                var hasCells = false
+                inline.enumerateAttributes(in: full) { attributes, _, stop in
+                    if attributes[.scribeCell] != nil || ((attributes[.paragraphStyle] as? NSParagraphStyle)?.textBlocks.isEmpty == false) {
+                        hasCells = true; stop.pointee = true
+                    }
+                }
+                guard !hasCells else { throw DocumentError.invalid("tracked table paste requires a table transaction") }
+            }
             for key in [NSAttributedString.Key.scribeParagraphID, .scribeParagraphReview, .scribeBreakReview,
-                        .scribeReview, .scribeList, .scribeCell, .scribeTOC, .scribePageBreakMarker, .scribeComments] {
+                        .scribeReview, .scribeCell, .scribeTOC, .scribeComments] {
                 inline.removeAttribute(key, range: full)
             }
-            // Preserve the incoming character appearance while interpreting its
-            // overrides relative to the destination paragraph's style.
-            inline.addAttribute(.scribeStyle, value: paragraphs[last.index].styleID, range: full)
+            if !multilinePaste {
+                for key in [NSAttributedString.Key.scribeList, .scribePageBreakMarker] { inline.removeAttribute(key, range: full) }
+                // Inline/typed content contributes character appearance, while
+                // multiline rich paste also contributes paragraph properties.
+                inline.addAttribute(.scribeStyle, value: paragraphs[last.index].styleID, range: full)
+            }
             var isolated = ScribeDocument(); isolated.styles = before.styles
             let fragment = AttributedDocument.capture(inline, preserving: isolated)
             var updated = before
             let caret = try updated.replaceTrackedRange(anchor, withLines: fragment.paragraphs.map(\.runs),
+                                                       paragraphProperties: multilinePaste ? fragment.paragraphs.map(ParagraphRevisionState.init) : nil,
                                                        author: author, insertedNotes: fragment.notes)
             owner.applyReviewedStructure(updated, replacing: before, name: action)
             editor.reviewEditing.resetGrouping()

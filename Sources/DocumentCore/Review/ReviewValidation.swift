@@ -3,11 +3,19 @@ import Foundation
 extension NativeFormat {
     static func validateReviews(_ document: ScribeDocument) throws {
         var identities: [UUID: (RevisionIdentity, Int)] = [:]
+        var groups: [UUID: RevisionIdentity] = [:]
         func record(_ identity: RevisionIdentity, kind: Int) throws {
             guard identity.author.name.utf8.count <= 1024, identity.date.timeIntervalSince1970.isFinite else { throw DocumentError.invalid("invalid revision author or date") }
             if let existing = identities[identity.id] {
                 guard existing.0 == identity, existing.1 == kind else { throw DocumentError.invalid("conflicting revision identity") }
             } else { identities[identity.id] = (identity, kind) }
+            if let group = identity.groupID {
+                if let existing = groups[group] {
+                    guard existing.author == identity.author, existing.date == identity.date else {
+                        throw DocumentError.invalid("conflicting revision group author or date")
+                    }
+                } else { groups[group] = identity }
+            }
             guard identities.count <= 100_000 else { throw DocumentError.invalid("too many tracked changes") }
         }
         for flow in document.sections.map(\.paragraphs) + document.notes.map(\.paragraphs) {
