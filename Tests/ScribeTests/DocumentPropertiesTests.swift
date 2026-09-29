@@ -14,8 +14,25 @@ import DocumentCore
         let editor = document.editorController!.editor
         editor.select(NSRange(location: 0, length: 0))
         editor.activeTextView.checkSpelling(nil)
-        await editor.activeTextView.spellingTask?.value
+        let request = editor.activeTextView.spellingTask, done = expectation(description: "Native spelling request completes")
+        Task { await request?.value; done.fulfill() }
+        await fulfillment(of: [done], timeout: 15)
         XCTAssertEqual((editor.storage.string as NSString).substring(with: editor.activeTextView.selectedRange()), "qzxqzxqzxy")
+    }
+    func testClosingCancelsBackgroundSpellingBeforeDocumentDetaches() async {
+        let document = ScribeFileDocument()
+        document.model.sections[0].paragraphs = [Paragraph(String(repeating: "Words qzxqzxqzxy. ", count: 100))]
+        document.makeWindowControllers()
+        let controller = document.editorController!, view = controller.editor.activeTextView
+        view.checkSpelling(nil)
+        let request = view.spellingTask
+        await Task.yield()
+        document.close(); controller.document = nil
+        XCTAssertNil(view.spellingTask); XCTAssertNil(view.editor)
+        let done = expectation(description: "Closed spelling request returns safely")
+        Task { await request?.value; done.fulfill() }
+        await fulfillment(of: [done], timeout: 15)
+        XCTAssertTrue(controller.isClosing)
     }
     func testSpellingOptionsArePerDocumentAndAutomaticClearsOldOrthography() throws {
         let global = NSSpellChecker.shared.language()

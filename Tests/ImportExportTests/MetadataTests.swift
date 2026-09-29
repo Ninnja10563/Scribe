@@ -3,6 +3,14 @@ import DocumentCore
 @testable import ImportExport
 
 final class MetadataTests: XCTestCase {
+    func testIndependentMetadataFixture() throws {
+        let url = try XCTUnwrap(Bundle.module.url(forResource: "DocumentProperties", withExtension: "docx", subdirectory: "Fixtures"))
+        let imported = try DOCX.decode(Data(contentsOf: url))
+        XCTAssertEqual(imported.document.title, "Independent résumé & 東京")
+        XCTAssertEqual(imported.document.author, "Zoë Example")
+        XCTAssertEqual(imported.document.language, "en-GB")
+        XCTAssertTrue(imported.document.plainText.contains("Colour is checked using British English."))
+    }
     func testCorePropertiesAndSpellingDefaultRoundTrip() throws {
         var document = ScribeDocument()
         try document.setMetadata(title: "Résumé 東京 & <research>", author: "Zoë \"Writer\"", language: "fr_CA")
