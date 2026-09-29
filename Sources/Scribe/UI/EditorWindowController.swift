@@ -79,7 +79,7 @@ import DocumentCore
         status.font = .systemFont(ofSize: 11); status.textColor = .secondaryLabelColor
         status.setAccessibilityLabel("Document statistics"); footer.addArrangedSubview(status)
         let flex = NSView(); flex.setContentHuggingPriority(.defaultLow, for: .horizontal); footer.addArrangedSubview(flex)
-        zoomPicker.addItems(withTitles: ["50%", "75%", "100%", "125%", "150%", "200%", "Fit Width", "Fit Page"])
+        zoomPicker.addItems(withTitles: ["50%", "75%", "100%", "125%", "150%", "200%", "Actual Size", "Fit Width", "Fit Page"])
         zoomPicker.selectItem(withTitle: "100%"); zoomPicker.target = self; zoomPicker.action = #selector(changeZoom)
         zoomPicker.setAccessibilityLabel("Document zoom"); footer.addArrangedSubview(zoomPicker)
         stack.addArrangedSubview(footer)
@@ -134,7 +134,7 @@ import DocumentCore
         let selection = view.selectedRange()
         let page = editor.textViews.firstIndex(where: { $0 === view }).map { $0 + 1 } ?? 1
         let selectedWords = selection.length > 0 && NSMaxRange(selection) <= editor.storage.length ? DocumentStatistics(text: editor.semanticText.text(inSourceRange: selection)).words : nil
-        status.stringValue = "Page \(page) of \(editor.textViews.count)    ·    \(cachedWords.formatted()) words\(selectedWords.map { " (\($0) selected)" } ?? "")    ·    English (Australia)"
+        status.stringValue = "Page \(page) of \(editor.textViews.count)    ·    \(cachedWords.formatted()) words\(selectedWords.map { " (\($0) selected)" } ?? "")    ·    English (Australia)    ·    \(Int((editor.zoom * 100).rounded()))%"
         if let id = view.typingAttributes[.scribeStyle] as? String, let style = fileDocument.model.styles.first(where: { $0.id == id }) { stylePicker.selectItem(withTitle: style.name) }
     }
     func showStatus(_ message: String) { status.stringValue = message }
@@ -160,8 +160,8 @@ import DocumentCore
     @objc func showFind() { searchBar.isHidden = false; window?.makeFirstResponder(searchBar.query) }
     @objc func changeZoom() {
         let title = zoomPicker.titleOfSelectedItem ?? "100%"
-        if title == "Fit Width" { editor.zoom = max(0.5, min(2, editor.scrollView.contentSize.width / (editor.canvas.pageSettings.width + 48))) }
-        else if title == "Fit Page" { editor.zoom = max(0.5, min(2, editor.scrollView.contentSize.height / (editor.canvas.pageSettings.height + 48))) }
+        if title == "Fit Width" { editor.selectZoom(.fitWidth) }
+        else if title == "Fit Page" { editor.selectZoom(.fitPage) }
         else { editor.zoom = CGFloat(Double(title.replacingOccurrences(of: "%", with: "")) ?? 100) / 100 }
     }
 }

@@ -70,7 +70,8 @@ import DocumentCore
         semanticCache = (revision, snapshot)
         return snapshot
     }
-    var zoom: CGFloat = 1 { didSet { scrollView.setMagnification(zoom, centeredAt: scrollView.documentVisibleRect.origin); resizeCanvas() } }
+    var zoomMode: DocumentZoomMode = .factor(1)
+    var isUpdatingZoom = false
     var activeTextView: ScribeTextView {
         if let focused = canvas.window?.firstResponder as? ScribeTextView, focused.editor === self { return focused }
         if let selected = selectionView, selected.superview === canvas { return selected }
@@ -89,11 +90,12 @@ import DocumentCore
         scrollView.documentView = canvas
         scrollView.hasVerticalScroller = true; scrollView.hasHorizontalScroller = true
         scrollView.autohidesScrollers = true; scrollView.allowsMagnification = true
-        scrollView.minMagnification = 0.5; scrollView.maxMagnification = 2
+        scrollView.minMagnification = 0.1; scrollView.maxMagnification = 2
         scrollView.drawsBackground = true; scrollView.backgroundColor = .windowBackgroundColor
         addPage(); paginate()
         NotificationCenter.default.addObserver(self, selector: #selector(viewportChanged), name: NSView.frameDidChangeNotification, object: scrollView.contentView)
         scrollView.contentView.postsFrameChangedNotifications = true
+        NotificationCenter.default.addObserver(self, selector: #selector(userMagnificationChanged), name: NSScrollView.didEndLiveMagnifyNotification, object: scrollView)
     }
     deinit { NotificationCenter.default.removeObserver(self) }
     private func addPage() {
@@ -158,10 +160,10 @@ import DocumentCore
         canvas.pageCount = textViews.count; resizeCanvas()
         onSelection?()
     }
-    @objc func viewportChanged() { resizeCanvas() }
+    @objc func viewportChanged() { refreshZoom(); resizeCanvas() }
     func resizeCanvas() {
         let p = canvas.pageSettings
-        let width = max(p.width + 48, scrollView.contentSize.width / scrollView.magnification)
+        let width = max(p.width + 48, scrollView.contentView.frame.width / scrollView.magnification)
         let size = NSSize(width: width, height: CGFloat(textViews.count) * (p.height + canvas.gap) + canvas.gap)
         if canvas.frame.size != size { canvas.setFrameSize(size) }
         for (index, view) in textViews.enumerated() {
@@ -175,7 +177,7 @@ import DocumentCore
         canvas.pageSettings = settings
         firstDirtyPage = 0
         for container in layout.textContainers { container.containerSize = NSSize(width: settings.contentWidth, height: settings.contentHeight) }
-        paginate()
+        paginate(); refreshZoom()
     }
     nonisolated func textStorage(_ textStorage: NSTextStorage, didProcessEditing editedMask: NSTextStorageEditActions, range editedRange: NSRange, changeInLength delta: Int) {
         MainActor.assumeIsolated {
