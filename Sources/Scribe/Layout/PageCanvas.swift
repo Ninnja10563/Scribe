@@ -89,6 +89,10 @@ import DocumentCore
     private var pageCharacterRanges: [NSRange] = []
     private var paginationStability = PaginationStability()
     private(set) var lastPaginationVisitedPages = 0
+    private(set) var lastPaginationYielded = false
+    private(set) var lastPaginationSeconds = 0.0
+    private(set) var paginationPassCount = 0
+    var hasPendingPagination: Bool { firstDirtyPage != Int.max }
     private var overflowingPages = Set<Int>()
     private let tableValidation = TableLayoutValidation()
     var drawingPrintLinks = false
@@ -180,9 +184,17 @@ import DocumentCore
         view.setAccessibilityLabel("Document page \(textViews.count + 1)")
         textViews.append(view); canvas.addSubview(view)
     }
-    func paginate() {
+    func paginateForEditing() { paginate(pageBudget: 8) }
+    func paginate(pageBudget: Int? = nil) {
         guard !isLayingOut, firstDirtyPage != Int.max else { return }
-        isLayingOut = true; defer { isLayingOut = false; paginationStability.invalidate() }
+        relayout?.cancel(); relayout = nil
+        let began = ProcessInfo.processInfo.systemUptime
+        lastPaginationYielded = false; paginationPassCount += 1
+        isLayingOut = true
+        defer {
+            isLayingOut = false; paginationStability.invalidate()
+            lastPaginationSeconds = ProcessInfo.processInfo.systemUptime - began
+        }
         let focusedView = canvas.window?.firstResponder as? ScribeTextView
         let focusedSelection = focusedView?.editor === self ? focusedView?.selectedRange() : nil
         let focusedTypingAttributes = focusedView?.typingAttributes
@@ -201,6 +213,9 @@ import DocumentCore
             catch { layoutWarning = error.localizedDescription }
         }
         let hadNotes = !canvas.footnotes.isEmpty
+        // Note reservation and table overflow currently require a complete
+        // pass. Ordinary body reflow can resume at a completed page boundary.
+        let mayYield = pageBudget != nil && !hasNotes && !hadNotes && canvas.endnotes == nil && owner?.model.tables.isEmpty == true
         if hasNotes || hadNotes {
             for container in layout.textContainers {
                 container.containerSize.height = canvas.pageSettings.contentHeight
@@ -208,9 +223,9 @@ import DocumentCore
             }
         }
         canvas.footnotes.removeAll()
-        let start = hasNotes || hadNotes ? 0 : max(0, min(firstDirtyPage, textViews.count - 1))
+        let start = hasNotes || hadNotes ? 0 : max(0, min(firstDirtyPage, textViews.count))
         var required = start + 1
-        var lastEnd = -1
+        var lastEnd = start > 0 ? NSMaxRange(layout.glyphRange(for: layout.textContainers[start - 1])) : -1
         for index in start..<2000 {
             lastPaginationVisitedPages += 1
             if index >= textViews.count { addPage() }
@@ -258,12 +273,24 @@ import DocumentCore
                 break
             }
             if NSMaxRange(range) >= layout.numberOfGlyphs {
-                if noteLayout?.hasPendingNotes == true { continue }
-                // A trailing newline may need a final empty page for its insertion point.
-                if storage.string.hasSuffix("\n"), layout.extraLineFragmentTextContainer == nil, range.length > 0 {
-                    continue
+                // A trailing newline may need a final empty page for its caret.
+                let needsExtraPage = storage.string.hasSuffix("\n") && layout.extraLineFragmentTextContainer == nil && range.length > 0
+                if noteLayout?.hasPendingNotes != true && !needsExtraPage { break }
+            }
+            if mayYield, index < 1999,
+               (lastPaginationVisitedPages >= max(1, pageBudget ?? 8) || ProcessInfo.processInfo.systemUptime - began >= 0.008) {
+                firstDirtyPage = index + 1; lastPaginationYielded = true
+                // Keep unvisited containers until finalization. Their old page
+                // count is provisional; explicit navigation/output drains work.
+                if textViews.count > canvas.bodyPageCount {
+                    canvas.bodyPageCount = textViews.count; canvas.pageCount = textViews.count; resizeCanvas()
+                } else { canvas.needsDisplay = true }
+                if let selection = focusedSelection, selection.location < NSMaxRange(characters), let attributes = focusedTypingAttributes {
+                    restoreCaretAfterPagination(selection, typingAttributes: attributes)
                 }
-                break
+                onSelection?()
+                schedulePagination(after: 0.001)
+                return
             }
         }
         if noteLayout?.hasPendingNotes == true, layoutWarning == nil { layoutWarning = "Footnotes exceed the current 2,000-page layout limit." }
@@ -348,10 +375,16 @@ import DocumentCore
             revision += 1
         }
     }
-    func textDidChange(_ notification: Notification) {
+    private func schedulePagination(after delay: TimeInterval) {
         relayout?.cancel()
-        let job = DispatchWorkItem { [weak self] in self?.paginate() }
-        relayout = job; DispatchQueue.main.asyncAfter(deadline: .now() + 0.04, execute: job)
+        let job = DispatchWorkItem { [weak self] in
+            guard let self, self.owner != nil else { return }
+            self.paginateForEditing()
+        }
+        relayout = job; DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: job)
+    }
+    func textDidChange(_ notification: Notification) {
+        schedulePagination(after: 0.04)
         if !textViews.contains(where: { $0.reviewComposition != nil }) { onChange?() }
     }
     func rememberSelection(_ view: ScribeTextView) { selectionView = view }

@@ -106,6 +106,9 @@ import DocumentCore
         return result
     }
     func exportPDF(to url: URL, title: String, author: String, pages: [Int]? = nil, subject: String = "", keywords: [String] = []) throws {
+        editor.paginate()
+        let page = editor.canvas.pageSettings
+        frame.size = NSSize(width: page.width, height: page.height * Double(editor.canvas.pageCount))
         let selected = pages ?? Array(0..<editor.canvas.pageCount)
         guard !selected.isEmpty, selected.allSatisfy({ (0..<editor.canvas.pageCount).contains($0) }), selected == Array(Set(selected)).sorted() else {
             throw DocumentError.invalid("invalid PDF page selection")
