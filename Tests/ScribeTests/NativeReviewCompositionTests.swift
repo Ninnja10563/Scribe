@@ -59,6 +59,35 @@ import DocumentCore
         XCTAssertEqual(document.snapshot().paragraphs.first?.text, "Title")
         view.cancelOperation(nil)
     }
+    func testPartialMarkedReplacementKeepsUntouchedCompositionText() throws {
+        let document = document(); defer { document.close() }
+        let editor = document.editorController!.editor, view = editor.activeTextView
+        editor.select(NSRange(location: 0, length: 3))
+        view.setMarkedText("abcdef", selectedRange: NSRange(location: 6, length: 0), replacementRange: NSRange(location: NSNotFound, length: 0))
+        view.insertText("漢", replacementRange: NSRange(location: 2, length: 2))
+        XCTAssertEqual(RevisionText(runs: document.snapshot().paragraphs[0].runs).finalText, "ab漢ef text")
+        XCTAssertFalse(view.hasMarkedText())
+    }
+    func testExplicitReplacementOutsideCompositionCommitsBothAsOneUndo() throws {
+        let document = document(); defer { document.close() }
+        let editor = document.editorController!.editor, view = editor.activeTextView
+        editor.select(NSRange(location: 8, length: 0)); document.undoManager?.removeAllActions()
+        view.setMarkedText("仮", selectedRange: NSRange(location: 1, length: 0), replacementRange: NSRange(location: NSNotFound, length: 0))
+        view.insertText("New", replacementRange: NSRange(location: 0, length: 3))
+        XCTAssertEqual(RevisionText(runs: document.snapshot().paragraphs[0].runs).finalText, "New text仮")
+        document.undoManager?.undo(); XCTAssertEqual(document.snapshot().paragraphs[0].text, "Old text")
+        XCTAssertFalse(document.snapshot().hasPendingRevisions)
+    }
+    func testDocumentCommandCommitsCompositionBeforeChangingModel() throws {
+        let document = document(); defer { document.close() }
+        let editor = document.editorController!.editor, view = editor.activeTextView
+        editor.select(NSRange(location: 8, length: 0))
+        view.setMarkedText("é", selectedRange: NSRange(location: 1, length: 0), replacementRange: NSRange(location: NSNotFound, length: 0))
+        document.performEdit("Title") { $0.title = "Updated" }
+        XCTAssertNil(view.reviewComposition)
+        XCTAssertEqual(document.snapshot().paragraphs[0].text, "Old texté")
+        XCTAssertEqual(document.snapshot().title, "Updated")
+    }
     func testUnmarkCommitsCurrentCompositionOnce() throws {
         let document = document(); defer { document.close() }
         let editor = document.editorController!.editor, view = editor.activeTextView

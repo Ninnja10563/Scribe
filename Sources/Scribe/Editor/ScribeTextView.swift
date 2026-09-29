@@ -93,6 +93,7 @@ import DocumentCore
         guard let range = restoreReviewComposition() else { return }
         insertText(committed, replacementRange: range)
     }
+    func cancelReviewComposition() { _ = restoreReviewComposition() }
     override func cancelOperation(_ sender: Any?) {
         if reviewComposition != nil { _ = restoreReviewComposition(); editor?.paginate() }
         else { super.cancelOperation(sender) }
@@ -111,9 +112,31 @@ import DocumentCore
         return composition.originalRange
     }
     override func insertText(_ insertString: Any, replacementRange: NSRange) {
-        if reviewComposition != nil, !applyingReviewReplacement {
+        if let composition = reviewComposition, !applyingReviewReplacement, let storage = textStorage {
+            let marked = composition.markedRange, lengthBefore = storage.length
+            guard NSMaxRange(marked) <= lengthBefore else { return }
+            if replacementRange.location == NSNotFound || replacementRange == marked {
+                guard let range = restoreReviewComposition() else { return }
+                insertText(insertString, replacementRange: range); return
+            }
+            guard replacementRange.location >= 0, replacementRange.length >= 0,
+                  replacementRange.location <= lengthBefore, replacementRange.length <= lengthBefore - replacementRange.location else { return }
+            let current = (storage.string as NSString).substring(with: marked)
+            if replacementRange.location >= marked.location, NSMaxRange(replacementRange) <= NSMaxRange(marked) {
+                let value = NSMutableAttributedString(string: current, attributes: composition.typingAttributes)
+                let inserted = (insertString as? NSAttributedString) ?? NSAttributedString(string: insertString as? String ?? "", attributes: composition.typingAttributes)
+                value.replaceCharacters(in: NSRange(location: replacementRange.location - marked.location, length: replacementRange.length), with: inserted)
+                guard let range = restoreReviewComposition() else { return }
+                insertText(value, replacementRange: range); return
+            }
             guard let range = restoreReviewComposition() else { return }
-            insertText(insertString, replacementRange: range); return
+            undoManager?.beginUndoGrouping()
+            defer { undoManager?.endUndoGrouping() }
+            insertText(current, replacementRange: range)
+            let delta = storage.length - lengthBefore
+            let start = replacementRange.location + (replacementRange.location >= marked.location ? delta : 0)
+            let end = NSMaxRange(replacementRange) + (NSMaxRange(replacementRange) >= marked.location ? delta : 0)
+            insertText(insertString, replacementRange: NSRange(location: start, length: end - start)); return
         }
         for key in [NSAttributedString.Key.attachment, .scribeEquation, .scribeImage, .scribeNote, .scribeNoteNumber, .scribeReview, .scribeBreakReview] { typingAttributes.removeValue(forKey: key) }
         let range = replacementRange.location == NSNotFound ? selectedRange() : replacementRange

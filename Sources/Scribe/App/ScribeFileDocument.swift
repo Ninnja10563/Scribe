@@ -87,6 +87,7 @@ import ImportExport
         recoveryWork = work; DispatchQueue.main.asyncAfter(deadline: .now() + 1.5, execute: work)
     }
     func performEdit(_ name: String, change: (inout ScribeDocument) -> Void) {
+        for view in editorController?.editor.textViews ?? [] where view.reviewComposition != nil { view.unmarkText() }
         let before = snapshot(); var after = before; change(&after); after.reconcileCommentAnchors(); after.reconcileNotes()
         guard before != after else { return }
         restore(after, undo: before, name: name)

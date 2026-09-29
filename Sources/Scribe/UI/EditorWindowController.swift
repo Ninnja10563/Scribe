@@ -166,6 +166,7 @@ import DocumentCore
         searchBar.cancelPendingWork()
         outline.navigate = nil; outline.returnToDocument = nil
         outline.delegate = nil; outline.dataSource = nil
+        for view in editor.textViews where view.reviewComposition != nil { view.cancelReviewComposition() }
         window?.makeFirstResponder(nil)
         editor.prepareForClose()
     }
