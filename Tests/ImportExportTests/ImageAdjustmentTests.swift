@@ -41,6 +41,8 @@ final class ImageAdjustmentTests: XCTestCase {
             let folder = URL(fileURLWithPath: directory, isDirectory: true)
             try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
             try bytes.write(to: folder.appendingPathComponent("ImageAdjustments.docx"))
+            document.sections[0].paragraphs[1].runs[0].image = try source.adjusted(crop: ImageCrop(left: 0.25), rotation: 30, opacity: 0.5, sourceWidth: 200, maximumWidth: 500, maximumHeight: 700)
+            try DOCX.encode(document).write(to: folder.appendingPathComponent("ImageRotation.docx"))
         }
     }
     func testDuplicateImageIdentifiersDoNotOverwriteDistinctSourceData() throws {

@@ -54,6 +54,11 @@ import DocumentCore
         let color = try XCTUnwrap(copiedBitmap.colorAt(x: 50, y: 50)?.usingColorSpace(.deviceRGB))
         XCTAssertGreaterThan(color.blueComponent, 0.9); XCTAssertLessThan(color.redComponent, 0.1)
         XCTAssertEqual(color.alphaComponent, 0.5, accuracy: 0.05)
+        let pasted = AttributedDocument.capture(rich, preserving: ScribeDocument())
+        let pastedImage = try XCTUnwrap(pasted.paragraphs.flatMap(\.runs).compactMap(\.image).first)
+        XCTAssertEqual(pastedImage.width, changed.width, accuracy: 0.1)
+        XCTAssertEqual(pastedImage.height, changed.height, accuracy: 0.1)
+        XCTAssertNil(pastedImage.adjustments, "External RTFD images are already flattened")
         XCTAssertEqual(try current().data, data, "Copy must not alter native source bytes")
         editor.paginate(); XCTAssertNil(editor.layoutWarning)
         let directory = ProcessInfo.processInfo.environment["SCRIBE_SCHEMA_OUTPUT"].map { URL(fileURLWithPath: $0, isDirectory: true) } ?? FileManager.default.temporaryDirectory
@@ -62,6 +67,10 @@ import DocumentCore
         try PrintRenderer(editor: editor).exportPDF(to: url, title: "Adjusted image", author: "")
         let pdf = try XCTUnwrap(PDFDocument(url: url))
         XCTAssertEqual(pdf.pageCount, 1); XCTAssertTrue(pdf.string?.contains("After adjusted image.") == true)
+        let rotated = try source.adjusted(crop: ImageCrop(left: 0.25), rotation: 30, opacity: 0.5, sourceWidth: 200, maximumWidth: 500, maximumHeight: 700)
+        try controller.applyImageProperties(rotated, at: location)
+        editor.paginate(); XCTAssertNil(editor.layoutWarning)
+        try PrintRenderer(editor: editor).exportPDF(to: directory.appendingPathComponent("ImageRotation.pdf"), title: "Adjusted image", author: "")
     }
 }
 #endif
