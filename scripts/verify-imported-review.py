@@ -29,3 +29,16 @@ for mode, expected, absent in [('Marked', ('Old', 'New', 'stable'), ()),
     for word in page.get_text('words'):
         assert page.rect.contains(pymupdf.Rect(word[:4])), (mode, word)
 print('Imported Office review: native vector text, decisions and historical formatting verified')
+
+for mode in ('Accepted', 'Rejected'):
+    pdf = pymupdf.open(folder / ('ImportedObjectReview' + mode + '.pdf'))
+    assert len(pdf) == 1
+    page = pdf[0]
+    assert 'Objects' in page.get_text()
+    assert len(page.get_images()) == (1 if mode == 'Accepted' else 0)
+    assert ('Reviewed note payload' in page.get_text()) == (mode == 'Rejected')
+    if mode == 'Accepted':
+        image = page.get_images()[0]
+        bounds = page.get_image_rects(image[0])[0]
+        assert abs(bounds.width - 64) < 0.1 and abs(bounds.height - 32) < 0.1
+print('Imported Office object review: accepted image geometry and rejected note payload verified')

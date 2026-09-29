@@ -103,6 +103,11 @@ final class RevisionExportTests: XCTestCase {
         XCTAssertThrowsError(try DOCXWriter(document, revisions: .runChanges).encode())
         var equation = changed("\u{fffc}")
         equation.equation = try Equation(source: "x+1")
+        var objectText = RevisionText(runs: [equation])
+        try objectText.format(NSRange(location: 0, length: 1), identity: .init(author: identity.author)) { original in
+            var result = original; result.bold = true; return result
+        }
+        equation = objectText.runs[0]
         document.sections[0].paragraphs = [Paragraph("")]
         document.sections[0].paragraphs[0].runs = [equation]
         try NativeFormat.validate(document)

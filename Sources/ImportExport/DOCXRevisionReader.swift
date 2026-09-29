@@ -61,9 +61,12 @@ final class DOCXRevisionReader {
                 applyRun(name, attributes, &previous)
                 return true
             }
-            let reviewed = insertion != nil || deletion != nil || (inRun && !(run.review?.pendingIDs.isEmpty ?? true))
-            if reviewed && ((namespace == DOCX.wordNS && ["drawing", "pict", "footnoteReference", "endnoteReference"].contains(name)) || (namespace == DOCXEquations.namespace && name == "oMath")) {
-                throw DocumentError.invalid("Preserving DOCX object revisions is not yet supported.")
+            let formatting = inRun && !(run.review?.formatting.isEmpty ?? true)
+            if formatting && ((namespace == DOCX.wordNS && ["drawing", "pict", "footnoteReference", "endnoteReference"].contains(name)) || (namespace == DOCXEquations.namespace && name == "oMath")) {
+                throw DocumentError.invalid("Preserving DOCX object formatting revisions is not yet supported.")
+            }
+            if hasActiveRevision && namespace == DOCX.wordNS && name == "pict" {
+                throw DocumentError.invalid("Preserving legacy drawing revisions is not yet supported.")
             }
             guard namespace == DOCX.wordNS else { return false }
             if ["pPrChange", "tblPrChange", "trPrChange", "tcPrChange", "tblGridChange", "sectPrChange", "moveFrom", "moveTo", "cellIns", "cellDel", "cellMerge", "numberingChange"].contains(name) || name.hasPrefix("customXmlIns") || name.hasPrefix("customXmlDel") || name.hasPrefix("customXmlMove") {
@@ -113,6 +116,11 @@ final class DOCXRevisionReader {
         return false
     }
 
+    var hasActiveRevision: Bool { insertion != nil || deletion != nil }
+    func failObject(_ parser: XMLParser) {
+        context.failure = "A revised DOCX object could not be imported without losing its content."
+        parser.abortParsing()
+    }
     var collectingHistory: Bool { previousDepth > 0 }
     func apply(to run: inout TextRun) {
         guard insertion != nil || deletion != nil else { return }

@@ -140,10 +140,10 @@ final class DOCXWriter {
     }
     private func runXML(_ run: TextRun) -> String {
             if let id = run.noteID, let note = noteIDs[id] {
-                return "<w:r><w:rPr><w:vertAlign w:val=\"superscript\"/></w:rPr><w:\(note.kind)Reference w:id=\"\(note.id)\"/></w:r>"
+                return revisions.wrap("<w:r><w:rPr><w:vertAlign w:val=\"superscript\"/></w:rPr><w:\(note.kind)Reference w:id=\"\(note.id)\"/></w:r>", review: run.review)
             }
-            if let equation = run.equation { return DOCXEquations.xml(equation) }
-            if let image = run.image { return imageRun(image) }
+            if let equation = run.equation { return revisions.wrap(DOCXEquations.xml(equation), review: run.review) }
+            if let image = run.image { return revisions.wrap(imageRun(image), review: run.review) }
             let textTag = run.review?.deletion == nil ? "t" : "delText"
             let close = "</w:\(textTag)>"
             let open = "<w:\(textTag) xml:space=\"preserve\">"

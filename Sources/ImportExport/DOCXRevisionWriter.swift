@@ -33,8 +33,8 @@ final class DOCXRevisionWriter {
                 guard review.formatting.count <= 1 else {
                     throw DocumentError.invalid("DOCX layered formatting revision export is not yet supported")
                 }
-                guard run.image == nil, run.equation == nil, run.noteID == nil else {
-                    throw DocumentError.invalid("DOCX object revision export is not yet supported")
+                guard review.formatting.isEmpty || (run.image == nil && run.equation == nil && run.noteID == nil) else {
+                    throw DocumentError.invalid("DOCX object formatting revision export is not yet supported")
                 }
             }
         }

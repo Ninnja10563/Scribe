@@ -69,6 +69,14 @@ with ZipFile(folder / 'OverlappingTextRevisions.docx') as package:
     assert projected(root, True) == 'BeforetemporaryAfter'
     assert projected(root, False) == 'BeforeAfter'
 
+with ZipFile(folder / 'ObjectRevisions.docx') as package:
+    root = etree.fromstring(package.read('word/document.xml'))
+    assert root.xpath('//w:ins/w:r/w:drawing', namespaces=NS)
+    assert root.xpath('//w:del/m:oMath', namespaces={**NS, 'm': 'http://schemas.openxmlformats.org/officeDocument/2006/math'})
+    assert root.xpath('//w:del/w:r/w:footnoteReference', namespaces=NS)
+    assert len([x for x in package.namelist() if x.startswith('word/media/')]) == 1
+    assert 'Retained note payload' in package.read('word/footnotes.xml').decode()
+
 with ZipFile(folder / 'FormattingRevisions.docx') as package:
     root = etree.fromstring(package.read('word/document.xml'))
     current = root.find('.//' + W + 'rPr')

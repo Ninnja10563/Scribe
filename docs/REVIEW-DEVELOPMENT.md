@@ -103,3 +103,7 @@ An internal `decodePreservingRevisions` path now reads supported run insertions/
 The internal path rejects missing author/date/identifiers, conflicting metadata, unsupported old run properties, structural/move revisions, reviewed objects and revisions in running content. It does not claim full Office review preservation or expose partially supported imported histories in the public editor. Native selection/Undo and marked/accepted/rejected PDF tests are added for this path and await macOS validation.
 
 Note import now distinguishes the conventional separator following an actual automatic label from authored whitespace in an unlabeled note. This also preserves an imported revision consisting of one space, which must not become an invalid empty revision.
+
+## Inline object revision interchange
+
+The internal run-revision path now wraps whole inline images, equations and note references in Office insertion/deletion containers. Import attaches both authors' run metadata to the reconstructed semantic objects. Accepting/rejecting revised note references reconciles their note payloads, and image bytes/geometry and equation structure are checked after round-trip. Object-property formatting history remains unsupported. A revised image that cannot be decoded, unsupported revised equation, or revised legacy drawing fails explicitly rather than disappearing from preserved review history. Text before and after a drawing inside one Word run keeps its character properties.

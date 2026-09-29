@@ -412,8 +412,8 @@ class WordReader: NSObject, XMLParserDelegate {
             let kind = name == "footnoteReference" ? "footnote" : "endnote"
             guard let rawID = wordAttribute(a, "id"), let number = Int(rawID), let id = noteIDs[kind + ":" + String(number)] else { parser.abortParsing(); return }
             if !run.text.isEmpty { paragraph?.runs.append(run) }
-            var reference = TextRun("\u{fffc}", format: run.format); reference.noteID = id; reference.format.baseline = nil
-            paragraph?.runs.append(reference); run = TextRun("", format: run.format, link: link)
+            var reference = TextRun("\u{fffc}", format: run.format); reference.noteID = id; reference.format.baseline = nil; reference.review = run.review
+            paragraph?.runs.append(reference); run = TextRun("", format: run.format, link: link); revisionReader?.apply(to: &run)
             if ["1", "true", "on"].contains(wordAttribute(a, "customMarkFollows") ?? "") { warnings.insert("Custom note reference marks use automatic numbering in Scribe.") }
         case "tab": run.text += "\t"
         case "br":
@@ -484,7 +484,7 @@ class WordReader: NSObject, XMLParserDelegate {
         case "gridBefore", "gridAfter": warnings.insert("Omitted table grid cells are approximated with a rectangular table; leading offsets are retained.")
             if name == "gridBefore", tableDepth == 1, let count = wordAttribute(a, "val").flatMap(Int.init), (0...19).contains(count) { column = count - 1 }
         case "drawing":
-            if !run.text.isEmpty { paragraph?.runs.append(run); run = TextRun("", link: link) }
+            if !run.text.isEmpty { paragraph?.runs.append(run); run = TextRun("", format: run.format, link: link); revisionReader?.apply(to: &run) }
             inDrawing = true; imageReader.reset()
         case "pict": warnings.insert("Legacy drawings are not imported.")
         case "headerReference": headerIDs[wordAttribute(a, "type") ?? "default"] = a["r:id"] ?? a["id"]
@@ -513,7 +513,9 @@ class WordReader: NSObject, XMLParserDelegate {
         if skippedReviewDepth > 0 { skippedReviewDepth -= 1; return }
         if equationReader.active {
             if let result = equationReader.end() {
-                paragraph?.runs.append(result.run)
+                if result.warning != nil, revisionReader?.hasActiveRevision == true { revisionReader?.failObject(parser); return }
+                var equation = result.run; revisionReader?.apply(to: &equation)
+                paragraph?.runs.append(equation)
                 if let warning = result.warning { warnings.insert(warning) }
             }
             return
@@ -534,10 +536,10 @@ class WordReader: NSObject, XMLParserDelegate {
             inDrawing = false
             if let image = imageReader.image(files: files, page: document.sections[0].page, warnings: &warnings) {
                 var imageRun = TextRun("\u{FFFC}")
-                imageRun.image = image
+                imageRun.image = image; revisionReader?.apply(to: &imageRun)
                 paragraph?.runs.append(imageRun)
-            }
-            run = TextRun("", link: link)
+            } else if revisionReader?.hasActiveRevision == true { revisionReader?.failObject(parser); return }
+            run = TextRun("", format: run.format, link: link); revisionReader?.apply(to: &run)
         case "tbl":
             if tableDepth == 1, let t = tableIndex {
                 document.tables[t].rows = max(1, row + 1)
