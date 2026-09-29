@@ -88,6 +88,29 @@ import DocumentCore
         XCTAssertEqual(document.snapshot().paragraphs[0].text, "Old texté")
         XCTAssertEqual(document.snapshot().title, "Updated")
     }
+    func testUndoDuringCompositionCancelsPreviewBeforeUndoingPriorText() throws {
+        let document = document(); defer { document.close() }
+        let editor = document.editorController!.editor, view = editor.activeTextView
+        editor.select(NSRange(location: 8, length: 0)); document.undoManager?.removeAllActions()
+        view.insertText("x", replacementRange: view.selectedRange()); view.breakUndoCoalescing()
+        view.setMarkedText("draft", selectedRange: NSRange(location: 5, length: 0), replacementRange: NSRange(location: NSNotFound, length: 0))
+        document.undoManager?.undo()
+        XCTAssertNil(view.reviewComposition); XCTAssertFalse(view.hasMarkedText())
+        XCTAssertEqual(document.snapshot().paragraphs[0].text, "Old text")
+        XCTAssertFalse(document.snapshot().hasPendingRevisions)
+        document.undoManager?.redo()
+        XCTAssertEqual(document.snapshot().paragraphs[0].text, "Old textx")
+        XCTAssertEqual(document.snapshot().pendingRevisionIDs.count, 1)
+    }
+    func testClosingClearsProvisionalCompositionWithoutCommittingIt() {
+        let document = document()
+        let editor = document.editorController!.editor, view = editor.activeTextView
+        editor.select(NSRange(location: 8, length: 0))
+        view.setMarkedText("draft", selectedRange: NSRange(location: 5, length: 0), replacementRange: NSRange(location: NSNotFound, length: 0))
+        document.close()
+        XCTAssertNil(view.reviewComposition)
+        XCTAssertEqual(editor.storage.string, "Old text")
+    }
     func testUnmarkCommitsCurrentCompositionOnce() throws {
         let document = document(); defer { document.close() }
         let editor = document.editorController!.editor, view = editor.activeTextView

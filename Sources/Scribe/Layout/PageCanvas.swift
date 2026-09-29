@@ -110,6 +110,10 @@ import DocumentCore
     init(document: ScribeFileDocument, projectedContent: NSAttributedString? = nil) {
         owner = document
         super.init()
+        if let manager = document.undoManager {
+            NotificationCenter.default.addObserver(self, selector: #selector(prepareReviewUndo), name: .NSUndoManagerWillUndoChange, object: manager)
+            NotificationCenter.default.addObserver(self, selector: #selector(prepareReviewUndo), name: .NSUndoManagerWillRedoChange, object: manager)
+        }
         canvas.pageSettings = document.model.sections[0].page
         canvas.pageNumbering = document.model.sections[0].pageNumbering
         canvas.runningContent = document.model.sections[0].runningContent
@@ -133,6 +137,10 @@ import DocumentCore
         NotificationCenter.default.addObserver(self, selector: #selector(viewportChanged), name: NSView.frameDidChangeNotification, object: scrollView.contentView)
         scrollView.contentView.postsFrameChangedNotifications = true
         NotificationCenter.default.addObserver(self, selector: #selector(userMagnificationChanged), name: NSScrollView.didEndLiveMagnifyNotification, object: scrollView)
+    }
+    @objc private func prepareReviewUndo() {
+        for view in textViews where view.reviewComposition != nil { view.cancelReviewComposition() }
+        reviewEditing.resetGrouping()
     }
     deinit { NotificationCenter.default.removeObserver(self) }
     func prepareForClose() {

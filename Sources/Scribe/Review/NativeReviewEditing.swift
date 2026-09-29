@@ -5,7 +5,8 @@ import DocumentCore
 /// Internal integration stage: enabled by native regressions until the complete
 /// review interaction and input-method paths are ready for the public command.
 @MainActor final class NativeReviewEditing {
-    var author: RevisionAuthor?
+    var author: RevisionAuthor? { didSet { if author != oldValue { resetGrouping() } } }
+    func resetGrouping() { lastInsertion = nil }
     private var lastInsertion: (identity: RevisionIdentity, caret: Int, date: Date)?
     func replacement(in editor: PaginatedEditor, range: NSRange, with value: NSAttributedString) throws -> NSAttributedString? {
         guard let author else { return nil }
