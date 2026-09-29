@@ -42,7 +42,7 @@ final class EquationTests: XCTestCase {
         XCTAssertEqual((try JSONSerialization.jsonObject(with: oldBytes) as? [String: Any])?["formatVersion"] as? Int, 11)
     }
     func testInvalidIncompleteAndExcessivelyNestedInputIsRejected() {
-        for source in ["", "x^", "x_}", #"\frac{1}"#, #"\frac{}{2}"#, #"\sqrt{x"#, #"\unknown{x}"#, "x^2^3", "(x]", #"\left(x"#, "x)"] {
+        for source in ["", #"\text{ }"#, #"\quad"#, "x^", "x_}", #"\frac{1}"#, #"\frac{}{2}"#, #"\sqrt{x"#, #"\unknown{x}"#, "x^2^3", "(x]", #"\left(x"#, "x)"] {
             XCTAssertThrowsError(try Equation(source: source), source)
         }
         XCTAssertThrowsError(try Equation(source: String(repeating: "{", count: 40) + "x" + String(repeating: "}", count: 40)))

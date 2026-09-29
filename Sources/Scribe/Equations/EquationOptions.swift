@@ -41,6 +41,7 @@ import DocumentCore
         help.font = .systemFont(ofSize: 11); help.textColor = .secondaryLabelColor
         help.frame = NSRect(x: 164, y: 158, width: 356, height: 32)
         preview.frame = NSRect(x: 0, y: 35, width: 520, height: 120)
+        preview.setAccessibilityElement(true); preview.setAccessibilityRole(.image)
         errorLabel.frame = NSRect(x: 0, y: 0, width: 520, height: 30); errorLabel.font = .systemFont(ofSize: 11)
         errorLabel.textColor = .secondaryLabelColor
         for child in [label, sizeLabel, units, pointSize, scroll, templates, help, preview, errorLabel] { view.addSubview(child) }

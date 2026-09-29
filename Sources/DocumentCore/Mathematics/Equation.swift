@@ -34,6 +34,19 @@ public indirect enum MathExpression: Equatable, Sendable {
     case space(Double)
 }
 
+extension MathExpression {
+    var hasVisibleContent: Bool {
+        switch self {
+        case .row(let values): return values.contains { $0.hasVisibleContent }
+        case .token(let text, _): return text.contains { !$0.isWhitespace }
+        case .space: return false
+        case .largeOperator, .fraction, .radical: return true
+        case .scripts(let base, let lower, let upper): return base.hasVisibleContent || lower?.hasVisibleContent == true || upper?.hasVisibleContent == true
+        case .delimited(let left, let body, let right): return !left.isEmpty || !right.isEmpty || body.hasVisibleContent
+        }
+    }
+}
+
 public extension MathExpression {
     var accessibilityText: String {
         switch self {

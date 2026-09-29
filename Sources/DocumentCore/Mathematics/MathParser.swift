@@ -12,6 +12,7 @@ public struct MathParser {
         var parser = MathParser(input: Array(source))
         let value = try parser.row(until: nil, depth: 0)
         guard parser.offset == parser.input.count else { throw parser.error("unexpected closing delimiter") }
+        guard value.hasVisibleContent else { throw parser.error("equation needs mathematical content") }
         return value
     }
     private var next: Character? { offset < input.count ? input[offset] : nil }
