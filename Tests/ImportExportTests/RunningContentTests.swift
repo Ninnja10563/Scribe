@@ -3,6 +3,18 @@ import DocumentCore
 @testable import ImportExport
 
 final class RunningContentInterchangeTests: XCTestCase {
+    func testIndependentFirstEvenAndCustomStartFixture() throws {
+        let url = try XCTUnwrap(Bundle.module.url(forResource: "RunningContent", withExtension: "docx", subdirectory: "Fixtures"))
+        let section = try DOCX.decode(Data(contentsOf: url)).document.sections[0]
+        XCTAssertEqual(section.header, "Independent default header")
+        XCTAssertEqual(section.runningContent?.firstFooter, "Cover footer — résumé")
+        XCTAssertEqual(section.runningContent?.differentFirstPage, true)
+        XCTAssertEqual(section.runningContent?.differentOddEvenPages, true)
+        XCTAssertEqual(section.runningContent?.startingPageNumber, 2)
+        XCTAssertEqual(section.runningText(isHeader: true, pageIndex: 0), "")
+        XCTAssertEqual(section.runningText(isHeader: true, pageIndex: 1), "Independent default header")
+        XCTAssertEqual(section.runningText(isHeader: true, pageIndex: 2), "Independent even header")
+    }
     func testActualVariantPartsRoundTripWithoutReplacingDefaultText() throws {
         var document = ScribeDocument()
         document.sections[0].header = "Default header"; document.sections[0].footer = "Default footer"

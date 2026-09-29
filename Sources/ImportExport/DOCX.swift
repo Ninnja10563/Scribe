@@ -111,6 +111,10 @@ public enum DOCX {
             for (variant, id) in references {
                 guard ["default", "first", "even"].contains(variant), let target = delegate.targets[id], let data = files["word/" + target] else { continue }
                 let reader = WordReader(); try parse(data, delegate: reader)
+                delegate.warnings.formUnion(reader.warnings)
+                if !reader.paragraphs.isEmpty {
+                    delegate.warnings.insert("Headers and footers are imported as plain text; rich formatting and embedded objects are not retained.")
+                }
                 let text = reader.paragraphs.map(\.text).joined(separator: " ")
                 switch (variant, isHeader) {
                 case ("default", true): delegate.document.sections[0].header = text

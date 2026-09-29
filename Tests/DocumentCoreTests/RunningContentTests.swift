@@ -22,6 +22,13 @@ final class RunningContentTests: XCTestCase {
         XCTAssertEqual(section.runningText(isHeader: true, pageIndex: 0), "Default header")
         XCTAssertEqual(section.runningContent?.firstHeader, "Cover")
     }
+    func testImportedParityStartMustBeWithinTheNumberingBounds() throws {
+        var document = ScribeDocument(); document.sections[0].runningContent = RunningContentVariants()
+        for start in [-1, 0, 1_000_001] {
+            document.sections[0].runningContent?.startingPageNumber = start
+            XCTAssertThrowsError(try NativeFormat.encode(document))
+        }
+    }
     func testVersionTenMigrationAndNativeRoundTripPreserveRunningContent() throws {
         var document = ScribeDocument()
         document.sections[0].header = "Older header"; document.sections[0].footer = "Older footer"
