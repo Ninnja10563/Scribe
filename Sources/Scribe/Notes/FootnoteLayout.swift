@@ -5,7 +5,7 @@ import DocumentCore
 /// Resolves the live editing projection, including note content restored by native undo.
 /// Page fitting uses real line fragments and verifies the result after TextKit reflows.
 @MainActor final class FootnoteLayout {
-    struct Page {
+    @MainActor struct Page {
         let notes: [NoteTextLayout]
         let height: CGFloat
         func draw(at origin: NSPoint, width: CGFloat) {
