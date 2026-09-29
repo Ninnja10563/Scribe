@@ -95,7 +95,7 @@ import DocumentCore
         var replacement = replacementRange
         if !hasMarkedText(), !applyingReviewReplacement {
             let requested = replacementRange.location == NSNotFound ? self.selectedRange() : replacementRange
-            let adjusted = editableListRange(requested)
+            let adjusted = editableListCompositionRange(requested)
             if adjusted != requested { replacement = adjusted; setSelectedRange(adjusted) }
         }
         let requested = replacement.location == NSNotFound ? self.selectedRange() : replacement
@@ -104,8 +104,8 @@ import DocumentCore
             super.setMarkedText(string, selectedRange: selectedRange, replacementRange: replacement); return
         }
         if reviewComposition == nil {
-            let requested = replacementRange.location == NSNotFound ? self.selectedRange() : replacementRange
-            let range = editableListRange(requested)
+            let requested = replacement.location == NSNotFound ? self.selectedRange() : replacement
+            let range = editableListCompositionRange(requested)
             if range != requested { replacement = range; setSelectedRange(range) }
             reviewComposition = ReviewComposition(storage: storage, range: range, typingAttributes: typingAttributes)
         }

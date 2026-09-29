@@ -85,6 +85,21 @@ import ImportExport
             }
         }
     }
+    func testCompositionEndingInsideNextMarkerHasCleanPreviewAndCanCancel() throws {
+        let document = fixture(["First", "Second"]); defer { document.close() }
+        let editor = document.editorController!.editor, before = document.snapshot()
+        let source = editor.storage.string as NSString
+        let start = source.range(of: "First").location + 2
+        let end = source.range(of: "Second").location - 2
+        editor.select(NSRange(location: start, length: end - start))
+        let text = editor.activeTextView
+        text.setMarkedText("語", selectedRange: NSRange(location: 1, length: 0), replacementRange: NSRange(location: NSNotFound, length: 0))
+        XCTAssertEqual(editor.storage.string, "\t4.\tFi語Second")
+        XCTAssertEqual(document.snapshot(), before)
+        text.cancelOperation(nil)
+        XCTAssertEqual(document.snapshot(), before)
+        XCTAssertFalse(document.undoManager?.canUndo ?? true)
+    }
     func testTypingIntoMarkerPreservesNumberAndNativeUndo() throws {
         let document = fixture(); defer { document.close() }
         let editor = document.editorController!.editor, before = document.snapshot()

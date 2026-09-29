@@ -22,6 +22,12 @@ extension ScribeTextView {
         return (storage.string as NSString).substring(with: range).contains("\n") && selectionContainsList(range)
     }
 
+    func editableListCompositionRange(_ range: NSRange) -> NSRange {
+        guard needsListCompositionSnapshot(range) else { return editableListRange(range) }
+        let start = editableListRange(NSRange(location: range.location, length: 0)).location
+        let end = editableListRange(NSRange(location: NSMaxRange(range), length: 0)).location
+        return NSRange(location: start, length: max(0, end - start))
+    }
     /// Generated numbering belongs to paragraph layout. A native selection can
     /// include it, but inline editing starts at the semantic list-item content.
     func editableListRange(_ range: NSRange) -> NSRange {
