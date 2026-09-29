@@ -50,7 +50,7 @@ public struct RunReview: Codable, Equatable, Sendable {
 extension TextFormatting {
     /// Replay only fields changed by this revision. A later size edit must not
     /// accidentally reapply an earlier bold edit that a reviewer has rejected.
-    func applyingDifference(from before: TextFormatting, to after: TextFormatting) -> TextFormatting {
+    public func applyingDifference(from before: TextFormatting, to after: TextFormatting) -> TextFormatting {
         var result = self
         if before.fontFamily != after.fontFamily { result.fontFamily = after.fontFamily }
         if before.fontFace != after.fontFace { result.fontFace = after.fontFace }

@@ -56,6 +56,42 @@ import DocumentCore
         try model.resolveAllRevisions(accepting: false)
         XCTAssertEqual(model.paragraphs.map(\.text), ["AB"])
     }
+    func testNativeBoldTracksFormattingAndUndoPreservesReviewState() throws {
+        let document = document("Selected text"); defer { document.close() }
+        let editor = document.editorController!.editor
+        editor.select(NSRange(location: 0, length: 8)); document.undoManager?.removeAllActions()
+        editor.activeTextView.toggleBold(nil)
+        let changed = document.snapshot()
+        XCTAssertEqual(changed.pendingRevisionIDs.count, 1)
+        XCTAssertEqual(changed.paragraphs[0].runs[0].format.bold, true)
+        XCTAssertEqual(changed.paragraphs[0].runs[0].review?.formatting.count, 1)
+        var rejected = changed; try rejected.resolveAllRevisions(accepting: false)
+        XCTAssertNil(rejected.paragraphs[0].runs[0].format.bold)
+        document.undoManager?.undo()
+        XCTAssertFalse(document.snapshot().hasPendingRevisions)
+        XCTAssertNil(document.snapshot().paragraphs[0].runs[0].format.bold)
+        document.undoManager?.redo()
+        XCTAssertEqual(document.snapshot().pendingRevisionIDs, changed.pendingRevisionIDs)
+        try NativeFormat.validate(document.snapshot())
+    }
+    func testRichReplacementKeepsInsertionFormatting() throws {
+        let document = document("Old"); defer { document.close() }
+        let editor = document.editorController!.editor
+        editor.select(NSRange(location: 0, length: 3))
+        let rich = NSAttributedString(string: "New", attributes: [.font: NSFont.boldSystemFont(ofSize: 19), .foregroundColor: NSColor.red])
+        editor.activeTextView.replaceSelection(rich, action: "Paste")
+        let model = document.snapshot(), last = try XCTUnwrap(model.paragraphs[0].runs.last)
+        XCTAssertEqual(last.text, "New"); XCTAssertEqual(last.format.fontSize, 19)
+        XCTAssertEqual(last.format.bold, true); XCTAssertNotNil(last.review?.insertion)
+        XCTAssertEqual(RevisionText(runs: model.paragraphs[0].runs).finalText, "New")
+    }
+    func testInvalidUnicodeReplacementLeavesStorageUntouched() throws {
+        let document = document("A😀B"); defer { document.close() }
+        let editor = document.editorController!.editor
+        let original = NSAttributedString(attributedString: editor.storage)
+        XCTAssertThrowsError(try editor.reviewEditing.replacement(in: editor, range: NSRange(location: 2, length: 1), with: NSAttributedString(string: "x")))
+        XCTAssertTrue(editor.storage.isEqual(to: original))
+    }
     func testReplacementProjectionKeepsRichRunsAndReferenceData() throws {
         let author = RevisionAuthor(name: "Reviewer")
         var model = ScribeDocument(); let note = DocumentNote(kind: .footnote, text: "Source")

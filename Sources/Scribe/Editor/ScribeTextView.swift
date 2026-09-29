@@ -161,6 +161,9 @@ import DocumentCore
     }
     func replaceSelection(_ value: NSAttributedString, action: String) {
         let range = selectedRange()
+        if editor?.reviewEditing.author != nil, !applyingReviewReplacement, undoManager?.isUndoing != true, undoManager?.isRedoing != true {
+            applyTrackedReplacement(value, range: range, action: action); return
+        }
         guard shouldChangeText(in: range, replacementString: value.string) else { return }
         textStorage?.replaceCharacters(in: range, with: value)
         didChangeText(); setSelectedRange(NSRange(location: range.location + value.length, length: 0))
