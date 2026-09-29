@@ -84,10 +84,8 @@ import DocumentCore
         NativeDialogCapture.save(window.contentView!, name: "HierarchicalOutline")
         func descendants(_ view: NSView) -> [NSView] { [view] + view.subviews.flatMap(descendants) }
         let title = try XCTUnwrap(descendants(controller.sidebar).compactMap { $0 as? NSTextField }.first { $0.stringValue == "OUTLINE" })
-        print("OUTLINE TITLE FRAME \(title.frame), hidden \(title.isHiddenOrHasHiddenAncestor), bounds \(title.bounds)")
         XCTAssertGreaterThan(title.frame.height, 8)
         XCTAssertGreaterThan(title.frame.width, 20)
-        NativeDialogCapture.save(title, name: "OutlineTitle")
     }
 }
 #endif
