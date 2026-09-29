@@ -48,7 +48,7 @@ import DocumentCore
         XCTAssertEqual(try options.note().paragraphs.map(\.text), ["FirstSecond"])
         options.text.undoManager?.undo(); XCTAssertEqual(try options.note(), before)
     }
-    func testNoteListKeyboardIndentAndOutdentUseNativeUndo() throws {
+    func testNoteListKeyboardIndentAndOutdentUseNativeUndo() async throws {
         _ = NSApplication.shared
         let original = note(.endnote)
         let options = NoteOptions(note: original, styles: ParagraphStyle.defaults)
@@ -57,8 +57,11 @@ import DocumentCore
         options.text.setSelectedRange(NSRange(location: start, length: 0))
         options.text.insertTab(nil)
         XCTAssertEqual(try options.note().paragraphs[1].list?.level, 1)
+        // Distinct key events close AppKit's event-based Undo group.
+        try await Task.sleep(nanoseconds: 30_000_000)
         options.text.insertBacktab(nil)
         XCTAssertEqual(try options.note().paragraphs[1].list?.level, 0)
+        try await Task.sleep(nanoseconds: 30_000_000)
         options.text.undoManager?.undo()
         XCTAssertEqual(try options.note().paragraphs[1].list?.level, 1)
         options.text.undoManager?.undo()
