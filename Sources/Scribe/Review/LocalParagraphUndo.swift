@@ -18,7 +18,7 @@ import AppKit
     }
     private static func restore(from source: LocalParagraphUndoState, to target: LocalParagraphUndoState,
                                 owner: ScribeFileDocument, action: String) {
-        guard let editor = owner.editorController?.editor, editor.owner != nil,
+        guard let editor = owner.editingEditor, editor.owner != nil,
               source.location >= 0, source.location <= editor.storage.length,
               source.value.length <= editor.storage.length - source.location else { return }
         register(before: source, after: target, owner: owner, action: action)

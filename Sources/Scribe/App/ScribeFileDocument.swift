@@ -13,7 +13,7 @@ import ImportExport
     /// a document window or creating independent recovery files.
     weak var embeddedEditor: PaginatedEditor?
     var isTransientEditingSession = false
-    private var editingEditor: PaginatedEditor? { editorController?.editor ?? embeddedEditor }
+    var editingEditor: PaginatedEditor? { editorController?.editor ?? embeddedEditor }
     var importWarnings: [String] = []
     private(set) var isRecoveredCopy = false
     private var recoveryWork: DispatchWorkItem?
