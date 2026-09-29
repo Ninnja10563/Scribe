@@ -19,7 +19,7 @@ import DocumentCore
         let start = previous.location == NSNotFound ? 0 : NSMaxRange(previous)
         let following = text.range(of: "\n", range: NSRange(location: range.location, length: text.length - range.location))
         let end = following.location == NSNotFound ? text.length : following.location
-        guard NSMaxRange(range) <= end else { return nil }
+        guard NSMaxRange(range) <= end, view.selectedRange().location >= start, view.selectedRange().location <= end else { return nil }
         let hasSeparator = end < text.length
         let extent = NSRange(location: start, length: end - start + (hasSeparator ? 1 : 0))
         guard extent.length <= 8192 else { return nil }

@@ -197,12 +197,29 @@ import DocumentCore
         return super.shouldChangeText(in: affectedCharRange, replacementString: replacementString)
     }
     func applyLocalParagraphReplacement(_ replacement: LocalParagraphReplacement, action: String) {
+        guard let editor, let owner = editor.owner else { return }
+        breakUndoCoalescing()
+        let before = LocalParagraphUndoState(location: replacement.range.location,
+            value: editor.storage.attributedSubstring(from: replacement.range),
+            selection: selectedRange(), typingAttributes: typingAttributes)
+        let after = LocalParagraphUndoState(location: replacement.range.location, value: replacement.value,
+            selection: NSRange(location: replacement.caret, length: 0), typingAttributes: replacement.typingAttributes)
         applyingReviewReplacement = true
-        defer { applyingReviewReplacement = false }
-        super.insertText(replacement.value, replacementRange: replacement.range)
-        setSelectedRange(NSRange(location: replacement.caret, length: 0))
-        typingAttributes = replacement.typingAttributes
-        undoManager?.setActionName(action == "Typing" ? "New Paragraph" : action)
+        let manager = undoManager, registering = manager?.isUndoRegistrationEnabled == true
+        if registering { manager?.disableUndoRegistration() }
+        guard shouldChangeText(in: replacement.range, replacementString: replacement.value.string) else {
+            if registering { manager?.enableUndoRegistration() }; applyingReviewReplacement = false; return
+        }
+        // NSTextView insertion can inherit absent paragraph metadata from the
+        // old typing attributes. This projection is already complete and must
+        // be applied exactly, including removed continuation-only attributes.
+        editor.storage.replaceCharacters(in: replacement.range, with: replacement.value)
+        setSelectedRange(after.selection); typingAttributes = after.typingAttributes
+        didChangeText()
+        if registering { manager?.enableUndoRegistration() }
+        applyingReviewReplacement = false
+        LocalParagraphUndo.register(before: before, after: after, owner: owner,
+                                    action: action == "Typing" ? "New Paragraph" : action)
     }
     private func applyTrackedReplacement(_ value: NSAttributedString, range: NSRange, action: String) {
         guard let editor else { return }
