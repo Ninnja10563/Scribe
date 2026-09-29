@@ -9,6 +9,11 @@ import ImportExport
     static let recovery = RecoveryStore(directory: FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0].appendingPathComponent("Scribe/Recovery", isDirectory: true))
     var model = ScribeDocument()
     var editorController: EditorWindowController?
+    /// A modal editing session shares the native editing engine without owning
+    /// a document window or creating independent recovery files.
+    weak var embeddedEditor: PaginatedEditor?
+    var isTransientEditingSession = false
+    private var editingEditor: PaginatedEditor? { editorController?.editor ?? embeddedEditor }
     var importWarnings: [String] = []
     private(set) var isRecoveredCopy = false
     private var recoveryWork: DispatchWorkItem?
@@ -38,7 +43,7 @@ import ImportExport
         controller.synchronizeWindowTitleWithDocumentName()
     }
     func snapshot() -> ScribeDocument {
-        if let editor = editorController?.editor {
+        if let editor = editingEditor {
             if let composition = editor.textViews.compactMap(\.reviewComposition).first {
                 let insertion = composition.originalRange.location == composition.originalStorage.length ? composition.typingAttributes : nil
                 model = AttributedDocument.capture(composition.originalStorage, preserving: model, typingAttributes: insertion)
@@ -72,6 +77,7 @@ import ImportExport
     func didEdit() {
         guard !isRestoring, !isClosed else { return }
         updateChangeCount(.changeDone)
+        guard !isTransientEditingSession else { return }
         recoveryWork?.cancel()
         let work = DispatchWorkItem { [weak self] in
             guard let self else { return }
@@ -87,13 +93,13 @@ import ImportExport
         recoveryWork = work; DispatchQueue.main.asyncAfter(deadline: .now() + 1.5, execute: work)
     }
     func performEdit(_ name: String, recordReview: Bool = true, change: (inout ScribeDocument) -> Void) {
-        for view in editorController?.editor.textViews ?? [] where view.reviewComposition != nil { view.unmarkText() }
+        for view in editingEditor?.textViews ?? [] where view.reviewComposition != nil { view.unmarkText() }
         let before = snapshot(); var after = before; change(&after); after.reconcileCommentAnchors(); after.reconcileNotes()
         guard before != after else { return }
-        if recordReview, let author = editorController?.editor.reviewEditing.author {
+        if recordReview, let author = editingEditor?.reviewEditing.author {
             do {
                 try after.recordParagraphFormattingChanges(from: before, identity: RevisionIdentity(author: author))
-                editorController?.editor.reviewEditing.resetGrouping()
+                editingEditor?.reviewEditing.resetGrouping()
             } catch { NSApp.presentError(error); return }
         }
         restore(after, undo: before, name: name)
@@ -109,9 +115,9 @@ import ImportExport
         undoManager?.registerUndo(withTarget: self) { target in MainActor.assumeIsolated { target.restore(previous, undo: value, name: name, localized: localized) } }
         undoManager?.setActionName(name)
         isRestoring = true
-        let selection = editorController?.editor.activeTextView.selectedRange() ?? NSRange(location: 0, length: 0)
+        let selection = editingEditor?.activeTextView.selectedRange() ?? NSRange(location: 0, length: 0)
         model = value
-        if let editor = editorController?.editor {
+        if let editor = editingEditor {
             let replaced = localized ? DocumentProjectionUpdate.apply(from: previous, to: value, storage: editor.storage) : nil
             lastStructureReplacementLength = replaced ?? editor.storage.length
             if replaced == nil {
@@ -139,9 +145,10 @@ import ImportExport
     override func close() {
         isClosed = true; recoveryTask?.cancel()
         editorController?.prepareForClose()
+        embeddedEditor?.prepareForClose(); embeddedEditor = nil
         recoveryWork?.cancel()
         let id = model.id
-        Task { try? await Self.recovery.remove(id: id) }
+        if !isTransientEditingSession { Task { try? await Self.recovery.remove(id: id) } }
         super.close()
         // A closed window may survive until AppKit finishes its key/main-window
         // transition. Its controller must not keep a non-owning document link
