@@ -6,14 +6,14 @@ import DocumentCore
 
 @MainActor final class ReviewOutputTests: XCTestCase {
     override func setUp() { super.setUp(); _ = NSApplication.shared }
-    private func fixture() -> ScribeDocument {
+    private func fixture(kind: DocumentNote.Kind = .footnote) -> ScribeDocument {
         let author = RevisionAuthor(name: "Writer")
         func changed(_ text: String, insertion: Bool) -> TextRun {
             var run = TextRun(text), review = RunReview()
             if insertion { review.insertion = .init(author: author) } else { review.deletion = .init(author: author) }
             run.review = review; return run
         }
-        var document = ScribeDocument(), note = DocumentNote(kind: .footnote)
+        var document = ScribeDocument(), note = DocumentNote(kind: kind)
         note.paragraphs[0].runs = [changed("Note old", insertion: false), changed("Note new", insertion: true)]
         var reference = TextRun("\u{fffc}"); reference.noteID = note.id
         document.notes = [note]
@@ -21,7 +21,8 @@ import DocumentCore
         return document
     }
     func testAllReviewOutputModesKeepSourceAndRecoveryIdentityIndependent() throws {
-        let source = fixture(), original = source
+        for kind in [DocumentNote.Kind.footnote, .endnote] {
+        let source = fixture(kind: kind), original = source
         for mode in ReviewOutputMode.allCases {
             let output = try ReviewOutputSession(source: source, mode: mode); defer { output.close() }
             XCTAssertNotEqual(output.editor.owner?.model.id, source.id)
@@ -44,8 +45,11 @@ import DocumentCore
                 try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
                 let name: String
                 switch mode { case .marked: name = "Marked"; case .accepted: name = "Accepted"; case .rejected: name = "Rejected" }
-                try output.renderer.exportPDF(to: folder.appendingPathComponent("ReviewOutput" + name + ".pdf"), title: name, author: "Writer")
+                try output.renderer.exportPDF(to: folder.appendingPathComponent((kind == .footnote ? "ReviewOutput" : "ReviewEndnote") + name + ".pdf"), title: name, author: "Writer")
                 XCTAssertFalse(output.editor.drawingReviewMarkup)
+                if let endnotes = output.editor.canvas.endnotes {
+                    XCTAssertFalse((endnotes.layout.delegate as? ScreenTextAttributes)?.includeReviewInOutput ?? true)
+                }
                 for page in output.editor.canvas.footnotes.values {
                     for fragment in page.notes {
                         XCTAssertFalse((fragment.note.layout.delegate as? ScreenTextAttributes)?.includeReviewInOutput ?? true)
@@ -53,6 +57,7 @@ import DocumentCore
                 }
             }
             XCTAssertEqual(source, original)
+        }
         }
     }
     func testPDFPageValidationFollowsChosenReviewLayout() throws {
