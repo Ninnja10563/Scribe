@@ -60,14 +60,14 @@ public extension ScribeDocument {
     }
     mutating func addTableRow(tableID: UUID, after row: Int) {
         guard let table = tables.first(where: { $0.id == tableID }) else { return }
-        editTableGrid(tableID: tableID, rowAxis: true, position: max(0, min(table.rows, row + 1)), inserting: true)
+        editTableGrid(tableID: tableID, rowAxis: true, position: max(-1, min(table.rows - 1, row)) + 1, inserting: true)
     }
     mutating func deleteTableRow(tableID: UUID, row: Int) {
         editTableGrid(tableID: tableID, rowAxis: true, position: row, inserting: false)
     }
     mutating func addTableColumn(tableID: UUID, after column: Int) {
         guard let table = tables.first(where: { $0.id == tableID }) else { return }
-        editTableGrid(tableID: tableID, rowAxis: false, position: max(0, min(table.columnWidths.count, column + 1)), inserting: true)
+        editTableGrid(tableID: tableID, rowAxis: false, position: max(-1, min(table.columnWidths.count - 1, column)) + 1, inserting: true)
     }
     mutating func deleteTableColumn(tableID: UUID, column: Int) {
         editTableGrid(tableID: tableID, rowAxis: false, position: column, inserting: false)

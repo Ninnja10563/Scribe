@@ -28,7 +28,11 @@ import DocumentCore
         XCTAssertGreaterThanOrEqual(pdf.pageCount, 3)
         let text = pdf.string ?? ""
         for row in 0..<40 { for column in 0..<2 {
-            XCTAssertEqual(text.components(separatedBy: "Unique-\(row)-\(column)-end").count - 1, 1, "Missing or duplicated cell \(row),\(column)")
+            let token = "Unique-\(row)-\(column)-end"
+            XCTAssertEqual(text.components(separatedBy: token).count - 1, 1, "Missing or duplicated cell \(row),\(column)")
+            let selection = try XCTUnwrap(pdf.findString(token, withOptions: []).first)
+            let page = try XCTUnwrap(selection.pages.first)
+            XCTAssertTrue(page.bounds(for: .mediaBox).contains(selection.bounds(for: page)), "Cell text outside the physical page: \(token)")
         } }
     }
     func testMergeDialogAndSplitUndo() throws {

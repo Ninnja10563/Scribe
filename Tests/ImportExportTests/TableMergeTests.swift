@@ -19,6 +19,9 @@ final class TableMergeTests: XCTestCase {
             if let cell = document.sections[0].paragraphs[p].tableCell { document.sections[0].paragraphs[p].runs = [TextRun("Cell \(cell.row),\(cell.column)")] }
         }
         let region = TableMerge(row: 0, column: 0, rowSpan: 2, columnSpan: 2)
+        let reviewed = try XCTUnwrap(document.paragraphs.first { $0.text == "Cell 1,1" })
+        document.comments = [Comment(anchor: TextAnchor(paragraphID: reviewed.id, offset: 0, length: 4), text: "Merged review", author: "Writer")]
+        _ = document.addParagraphBookmark(name: "Reviewed_cell", paragraphID: reviewed.id)
         try document.mergeTableCells(tableID: document.tables[0].id, region: region)
         let bytes = try DOCX.encode(document), parts = try ZipArchive.decode(bytes)
         let xml = String(decoding: parts["word/document.xml"]!, as: UTF8.self)
@@ -28,6 +31,10 @@ final class TableMergeTests: XCTestCase {
         let imported = try DOCX.decode(bytes)
         XCTAssertEqual(imported.document.tables[0].mergedCells, [region])
         XCTAssertEqual(imported.document.paragraphs.map(\.text), document.paragraphs.map(\.text))
+        let comment = try XCTUnwrap(imported.document.comments.first)
+        XCTAssertEqual(comment.text, "Merged review"); XCTAssertNotEqual(comment.isDetached, true)
+        XCTAssertEqual(imported.document.paragraphs.first { $0.id == comment.anchor.paragraphID }?.text, "Cell 1,1")
+        XCTAssertEqual(imported.document.bookmarks.first?.name, "Reviewed_cell")
         XCTAssertTrue(imported.warnings.isEmpty, imported.warnings.joined(separator: "\n"))
         if let directory = ProcessInfo.processInfo.environment["SCRIBE_SCHEMA_OUTPUT"] {
             let folder = URL(fileURLWithPath: directory, isDirectory: true)
