@@ -31,7 +31,9 @@ import DocumentCore
         window.tabbingMode = .preferred; window.tabbingIdentifier = "ScribeDocuments"
         window.setFrameAutosaveName("ScribeDocumentWindow"); window.center()
         super.init(window: window)
-        self.document = document
+        // Register the controller through NSDocument; assigning document first
+        // makes addWindowController treat it as already attached without listing it.
+        document.addWindowController(self)
         buildInterface()
         editor.onChange = { [weak self] in self?.fileDocument.didEdit(); self?.scheduleStatistics(); if self?.searchBar.isHidden == false { self?.searchBar.search() } }
         editor.onSelection = { [weak self] in self?.updateStatus() }

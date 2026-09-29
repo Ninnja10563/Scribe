@@ -39,7 +39,7 @@ import ImportExport
     }
     override func makeWindowControllers() {
         let controller = EditorWindowController(document: self)
-        editorController = controller; addWindowController(controller)
+        editorController = controller
         controller.synchronizeWindowTitleWithDocumentName()
     }
     func snapshot() -> ScribeDocument {
