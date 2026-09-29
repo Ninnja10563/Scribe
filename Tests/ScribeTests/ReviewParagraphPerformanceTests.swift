@@ -34,6 +34,10 @@ import DocumentCore
                 XCTAssertEqual(range.location, end); end = NSMaxRange(range)
             }
             XCTAssertEqual(end, editor.layout.numberOfGlyphs)
+            let caret = min(editor.activeTextView.selectedRange().location, editor.storage.length - 1)
+            let glyph = editor.layout.glyphIndexForCharacter(at: caret)
+            XCTAssertTrue(editor.activeTextView.textContainer === editor.layout.textContainer(forGlyphAt: glyph, effectiveRange: nil),
+                          "The insertion point must belong to the focused page after pagination")
         }
         var model = document.snapshot(); try NativeFormat.validate(model)
         XCTAssertEqual(model.paragraphs.count, original.count + 3)
