@@ -11,12 +11,24 @@ import ImportExport
     var editorController: EditorWindowController?
     var importWarnings: [String] = []
     private var recoveryWork: DispatchWorkItem?
+    private var recoveryTask: Task<Void, Never>?
+    private var isClosed = false
     private var isRestoring = false
     override class var autosavesInPlace: Bool { true }
     override class var readableTypes: [String] { [typeName] }
     override class var writableTypes: [String] { [typeName] }
     override class func canConcurrentlyReadDocuments(ofType typeName: String) -> Bool { false }
     override init() { super.init(); hasUndoManager = true }
+    static func recovering(_ snapshot: RecoverySnapshot) throws -> ScribeFileDocument {
+        try NativeFormat.validate(snapshot.document)
+        guard snapshot.document.sections.count == 1 else { throw DocumentError.invalid("this version cannot edit multiple native sections without losing their layout") }
+        let recovered = ScribeFileDocument()
+        recovered.model = snapshot.document
+        recovered.model.id = UUID() // Never share recovery storage with an open original.
+        recovered.model.title += " — Recovered"
+        recovered.updateChangeCount(.changeDone)
+        return recovered
+    }
     override func makeWindowControllers() {
         let controller = EditorWindowController(document: self)
         editorController = controller; addWindowController(controller)
@@ -48,15 +60,17 @@ import ImportExport
         MainActor.assumeIsolated { model = decoded }
     }
     func didEdit() {
-        guard !isRestoring else { return }
+        guard !isRestoring, !isClosed else { return }
         updateChangeCount(.changeDone)
         recoveryWork?.cancel()
         let work = DispatchWorkItem { [weak self] in
             guard let self else { return }
             let snapshot = RecoverySnapshot(document: self.snapshot(), originalURL: self.fileURL)
-            Task {
+            self.recoveryTask?.cancel()
+            self.recoveryTask = Task { [weak self] in
                 do { try await Self.recovery.save(snapshot) }
-                catch { self.editorController?.showStatus("Recovery copy failed: \(error.localizedDescription)") }
+                catch is CancellationError { }
+                catch { self?.editorController?.showStatus("Recovery copy failed: \(error.localizedDescription)") }
             }
             self.editorController?.refreshOutline()
         }
@@ -93,6 +107,7 @@ import ImportExport
         isRestoring = false; didEdit(); editorController?.refreshOutline()
     }
     override func close() {
+        isClosed = true; recoveryTask?.cancel()
         editorController?.prepareForClose()
         recoveryWork?.cancel()
         let id = model.id

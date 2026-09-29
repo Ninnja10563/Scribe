@@ -25,16 +25,12 @@ import ImportExport
                 alert.informativeText = "Scribe found a recovery copy from \(snapshot.savedAt.formatted()). It opens as an unsaved document; the original is kept intact."
                 alert.addButton(withTitle: "Recover Copy"); alert.addButton(withTitle: "Keep for Later")
                 if alert.runModal() == .alertFirstButtonReturn {
-                    let document = ScribeFileDocument(); document.model = snapshot.document
-                    document.model.title += " — Recovered"
-                    let reviewed = document.model.paragraphs[2]
-            let lastIndex = document.model.sections[0].paragraphs.count - 1
-            let finalText = document.model.sections[0].paragraphs[lastIndex].text
-            document.model.sections[0].paragraphs[lastIndex].runs = [TextRun(finalText, link: DocumentLink.paragraph(reviewed.id))]
-            document.model.comments = [Comment(anchor: TextAnchor(paragraphID: reviewed.id, offset: 0, length: (reviewed.text as NSString).length), text: "Check the section structure before sharing this draft.\nThe outline and page layout should agree.", author: "Scribe reviewer")]
-            var resolvedComment = Comment(anchor: TextAnchor(paragraphID: document.model.paragraphs[3].id, offset: 0, length: 6), text: "Checked in an earlier review.", author: "Copy editor")
-            resolvedComment.resolved = true; document.model.comments.append(resolvedComment)
-            documents.addDocument(document); document.makeWindowControllers(); document.showWindows(); document.updateChangeCount(.changeDone)
+                    do {
+                        let document = try ScribeFileDocument.recovering(snapshot)
+                        let replacement = RecoverySnapshot(document: document.model, originalURL: snapshot.originalURL)
+                        try await ScribeFileDocument.recovery.replaceSnapshot(id: snapshot.document.id, with: replacement)
+                        documents.addDocument(document); document.makeWindowControllers(); document.showWindows()
+                    } catch { NSApp.presentError(error) }
                 }
             }
             if documents.documents.isEmpty { _ = try? documents.openUntitledDocumentAndDisplay(true) }
