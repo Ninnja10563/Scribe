@@ -17,9 +17,19 @@ public enum DOCX {
         return try DOCXWriter(document).encode()
     }
     public static func decode(_ data: Data) throws -> ImportResult {
+        try decode(data, revisionContext: nil)
+    }
+    /// Internal development path until native review editing and all interchange
+    /// cases are ready. The application continues using the public copy importer.
+    static func decodePreservingRevisions(_ data: Data) throws -> ImportResult {
+        let context = DOCXRevisionImportContext()
+        do { return try decode(data, revisionContext: context) }
+        catch { if let reason = context.failure { throw DocumentError.invalid(reason) }; throw error }
+    }
+    private static func decode(_ data: Data, revisionContext: DOCXRevisionImportContext?) throws -> ImportResult {
         let files = try ZipArchive.decode(data)
         guard let content = files["word/document.xml"] else { throw DocumentError.invalid("DOCX has no main document part") }
-        let delegate = WordReader(); delegate.files = files
+        let delegate = WordReader(revisionContext: revisionContext); delegate.files = files
         delegate.document.title = "" // The importing application can suggest the source filename.
         delegate.document.language = "und"
         var metadataPath = "docProps/core.xml"
@@ -58,7 +68,7 @@ public enum DOCX {
             let relPath = "word/" + (components.dropLast() + ["_rels", components.last! + ".rels"]).joined(separator: "/")
             if let relations = files[relPath] { try parse(relations, delegate: noteRelationships) }
             let notesReader = DOCXNotesReader(kind: kind) {
-                let reader = WordReader(); reader.files = files
+                let reader = WordReader(revisionContext: revisionContext); reader.files = files
                 reader.document.styles = delegate.document.styles
                 reader.document.language = delegate.document.language
                 reader.styleLists = delegate.styleLists; reader.numbering = delegate.numbering
@@ -157,7 +167,10 @@ public enum DOCX {
             let references = isHeader ? delegate.headerIDs : delegate.footerIDs
             for (variant, id) in references {
                 guard ["default", "first", "even"].contains(variant), let target = delegate.targets[id], let data = files["word/" + target] else { continue }
-                let reader = WordReader(); try parse(data, delegate: reader)
+                let reader = WordReader(revisionContext: revisionContext); try parse(data, delegate: reader)
+                if revisionContext != nil, reader.paragraphs.contains(where: { $0.runs.contains(where: { !($0.review?.pendingIDs.isEmpty ?? true) }) }) {
+                    throw DocumentError.invalid("Preserving DOCX running-content revisions is not yet supported.")
+                }
                 delegate.warnings.formUnion(reader.warnings)
                 if !reader.paragraphs.isEmpty {
                     delegate.warnings.insert("Headers and footers are imported as plain text; rich formatting and embedded objects are not retained.")
@@ -223,7 +236,7 @@ public enum DOCX {
 
 func wordAttribute(_ a: [String: String], _ key: String = "val") -> String? { a["w:\(key)"] ?? a[key] }
 private func flag(_ a: [String: String]) -> Bool { !["0", "false", "off"].contains(wordAttribute(a) ?? "1") }
-private func applyRun(_ name: String, _ a: [String: String], _ f: inout TextFormatting) {
+func applyRun(_ name: String, _ a: [String: String], _ f: inout TextFormatting) {
     switch name {
     case "rFonts": f.fontFamily = wordAttribute(a, "ascii") ?? wordAttribute(a, "hAnsi")
     case "sz": f.fontSize = wordAttribute(a).flatMap(Double.init).map { $0 / 2 }
@@ -326,6 +339,9 @@ private class StyleReader: NSObject, XMLParserDelegate {
     }
 }
 class WordReader: NSObject, XMLParserDelegate {
+    private let revisionReader: DOCXRevisionReader?
+    init(revisionContext: DOCXRevisionImportContext? = nil) { revisionReader = revisionContext.map(DOCXRevisionReader.init) }
+
     var document = ScribeDocument(), paragraphs: [Paragraph] = [], warnings: Set<String> = []
     var paragraph: Paragraph?, run = TextRun(""), collecting = false, links: [String: String] = [:], link: String?
     var numbering = DOCXNumberingReader()
@@ -351,8 +367,9 @@ class WordReader: NSObject, XMLParserDelegate {
     private let imageReader = DOCXImageReader()
     private let equationReader = DOCXEquationReader()
     func parser(_ parser: XMLParser, didStartElement name: String, namespaceURI: String?, qualifiedName: String?, attributes a: [String: String]) {
+        if revisionReader?.start(name, namespace: namespaceURI, attributes: a, inRun: inRun, run: &run, parser: parser) == true { return }
         if skippedReviewDepth > 0 { skippedReviewDepth += 1; return }
-        if namespaceURI == DOCX.wordNS, ["del", "moveFrom", "rPrChange", "pPrChange"].contains(name) {
+        if revisionReader == nil, namespaceURI == DOCX.wordNS, ["del", "moveFrom", "rPrChange", "pPrChange"].contains(name) {
             warnings.insert(reviewImportWarning)
             skippedReviewDepth = 1
             return
@@ -370,8 +387,8 @@ class WordReader: NSObject, XMLParserDelegate {
         case "p":
             paragraph = Paragraph(); paragraph?.runs = []; listID = nil; listLevel = nil
             if let t = tableIndex, row >= 0, column >= 0 { paragraph?.tableCell = TableCellReference(tableID: document.tables[t].id, row: row, column: column) }
-        case "r": run = TextRun("", link: link); inRun = true
-        case "t": collecting = true
+        case "r": run = TextRun("", link: link); inRun = true; revisionReader?.apply(to: &run)
+        case "t", "delText": collecting = name == "t" || revisionReader != nil
         case "lang":
             if let language = wordAttribute(a), (try? DocumentMetadata.languageIdentifier(language)) != document.language {
                 warnings.insert("Run and paragraph spelling languages are flattened to the document language.")
@@ -481,12 +498,13 @@ class WordReader: NSObject, XMLParserDelegate {
         }
     }
     func parser(_ parser: XMLParser, foundCharacters text: String) {
-        guard skippedReviewDepth == 0 else { return }
+        guard skippedReviewDepth == 0, revisionReader?.collectingHistory != true else { return }
         if equationReader.active { equationReader.characters(text, parser: parser); return }
         if collecting { run.text += text }
         if collectingInstruction { instruction += text }
     }
     func parser(_ parser: XMLParser, didEndElement name: String, namespaceURI: String?, qualifiedName: String?) {
+        if revisionReader?.end(name, namespace: namespaceURI, run: &run) == true { return }
         if skippedReviewDepth > 0 { skippedReviewDepth -= 1; return }
         if equationReader.active {
             if let result = equationReader.end() {
@@ -501,7 +519,7 @@ class WordReader: NSObject, XMLParserDelegate {
             tableFormatting.end(name, table: &document.tables[t], warnings: &warnings)
         }
         switch name {
-        case "t": collecting = false
+        case "t", "delText": collecting = false
         case "instrText":
             collectingInstruction = false
             if !fieldInstructions.isEmpty { fieldInstructions[fieldInstructions.count - 1] += instruction }

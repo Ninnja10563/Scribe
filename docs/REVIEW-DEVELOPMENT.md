@@ -95,3 +95,9 @@ The internal mode is now `runChanges` and also exports a single pending characte
 The independent rendering check materializes accepted/rejected property states in test-only OPC copies, renders them with LibreOffice and checks PDF font size, color, bold and retained italic. This tests emitted property values and rendering, not Word's interactive accept/reject behavior.
 
 Overlapping insertion/deletion metadata now exports as nested insertion and deletion containers, retaining both authors. Rejecting only the deletion restores the still-pending inserted text; rejecting the insertion removes it. The native and independent XML decision checks cover this case. Paragraph histories, layered character histories, object revisions and review-preserving import remain future work.
+
+## Review-preserving import development
+
+An internal `decodePreservingRevisions` path now reads supported run insertions/deletions, nested insertion/deletion and single run-property histories into native review metadata. It shares author identities across body and notes, parses source UTC/offset/fractional dates, and assigns fresh native component identities. The public application importer remains unchanged and reports its flattening behavior. Native file round-trip tests preserve the imported history; acceptance/rejection tests compare both text and prior/current formatting.
+
+The internal path rejects missing author/date/identifiers, conflicting metadata, unsupported old run properties, structural/move revisions, reviewed objects and revisions in running content. It does not claim full Office review preservation or expose partially supported imported histories in the public editor. Native selection/Undo and marked/accepted/rejected PDF tests are added for this path and await macOS validation.
