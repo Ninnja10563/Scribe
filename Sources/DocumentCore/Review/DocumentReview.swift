@@ -18,7 +18,7 @@ public extension ScribeDocument {
     mutating func resolveAllRevisions(accepting: Bool) throws {
         try resolveRevisions(Set(pendingRevisionIDs), accepting: accepting)
     }
-    private mutating func resolveRevisions(_ ids: Set<UUID>, accepting: Bool) throws {
+    mutating func resolveRevisions(_ ids: Set<UUID>, accepting: Bool) throws {
         try NativeFormat.validate(self)
         guard !ids.isDisjoint(with: pendingRevisionIDs) else { return }
         var candidate = self, removed: [NSRange] = [], offset = 0

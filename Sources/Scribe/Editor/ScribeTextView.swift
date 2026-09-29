@@ -183,6 +183,12 @@ import DocumentCore
             if !ids.isEmpty { value.addAttribute(.scribeComments, value: ids, range: NSRange(location: 0, length: value.length)) }
             applyTrackedReplacement(value, range: range, action: "Typing"); return
         }
+        if editor?.reviewEditing.author == nil, !applyingReviewReplacement,
+           undoManager?.isUndoing != true, undoManager?.isRedoing != true,
+           range.length > 0 || (insertString as? String)?.contains("\n") == true || (insertString as? NSAttributedString)?.string.contains("\n") == true {
+            let value = (insertString as? NSAttributedString) ?? NSAttributedString(string: (insertString as? String) ?? "", attributes: typingAttributes)
+            if replaceSemanticParagraphRange(value, range: range, action: "Typing") { return }
+        }
         if let attributed = insertString as? NSAttributedString {
             let value = NSMutableAttributedString(attributedString: attributed)
             value.removeAttribute(.scribeComments, range: NSRange(location: 0, length: value.length))
@@ -193,6 +199,7 @@ import DocumentCore
     override func shouldChangeText(in affectedCharRange: NSRange, replacementString: String?) -> Bool {
         if replacementString == "", editor?.reviewEditing.author == nil, !applyingReviewReplacement,
            undoManager?.isUndoing != true, undoManager?.isRedoing != true {
+            if replaceSemanticParagraphRange(NSAttributedString(string: ""), range: affectedCharRange, action: "Delete") { return false }
             let adjusted = editableListRange(affectedCharRange)
             if adjusted != affectedCharRange {
                 if adjusted.length > 0 { insertText("", replacementRange: adjusted) }
@@ -244,7 +251,7 @@ import DocumentCore
         guard let editor else { return }
         let (range, value) = listContentReplacement(incoming, range: supplied, formatting: !["Typing", "Paste", "Delete"].contains(action))
         if range.length == 0, value.length == 0 { editor.select(range); return }
-        if replaceTrackedParagraphRange(value, range: range, action: action) { return }
+        if replaceSemanticParagraphRange(value, range: range, action: action) { return }
         if value.string == "\n", action == "Typing" || action == "Paste", insertTrackedParagraphBreak(replacing: range, action: action) { return }
         do {
             guard let replacement = try editor.reviewEditing.replacement(in: editor, range: range, with: value) else { return }
@@ -333,6 +340,9 @@ import DocumentCore
         if editor?.reviewEditing.author != nil, !applyingReviewReplacement, undoManager?.isUndoing != true, undoManager?.isRedoing != true {
             applyTrackedReplacement(value, range: range, action: action); return
         }
+        if editor?.reviewEditing.author == nil, !applyingReviewReplacement,
+           undoManager?.isUndoing != true, undoManager?.isRedoing != true,
+           replaceSemanticParagraphRange(value, range: range, action: action) { return }
         var replacement = value
         if !applyingReviewReplacement, let editor, editor.reviewEditing.author == nil,
            range.length > 0, NSMaxRange(range) <= editor.storage.length {

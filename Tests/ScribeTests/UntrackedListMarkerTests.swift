@@ -28,6 +28,25 @@ import DocumentCore
         document.undoManager?.undo(); XCTAssertEqual(document.snapshot().paragraphs, before.paragraphs)
         document.undoManager?.redo(); XCTAssertEqual(document.snapshot().paragraphs, joined.paragraphs)
     }
+    func testReplacingAcrossListItemsUsesSemanticCaretAndPreservesUndo() throws {
+        for inserted in ["X", "X\n語"] {
+            let document = fixture(["First", "Second"]); defer { document.close() }
+            let editor = document.editorController!.editor, before = document.snapshot()
+            let text = editor.storage.string as NSString
+            let start = text.range(of: "First").location + 2
+            let end = text.range(of: "Second").location + 2
+            editor.select(NSRange(location: start, length: end - start))
+            editor.activeTextView.insertText(inserted, replacementRange: NSRange(location: NSNotFound, length: 0))
+            let changed = document.snapshot()
+            XCTAssertEqual(changed.paragraphs.map(\.text), inserted.contains("\n") ? ["FiX", "語cond"] : ["FiXcond"])
+            XCTAssertFalse(changed.hasPendingRevisions)
+            let context = try XCTUnwrap(editor.activeTextView.listContext())
+            XCTAssertEqual(editor.activeTextView.selectedRange().location - context.contentStart, inserted.contains("\n") ? 1 : 3)
+            try NativeFormat.validate(changed)
+            document.undoManager?.undo(); XCTAssertEqual(document.snapshot().paragraphs, before.paragraphs)
+            document.undoManager?.redo(); XCTAssertEqual(document.snapshot().paragraphs, changed.paragraphs)
+        }
+    }
     func testTypingIntoMarkerPreservesNumberAndNativeUndo() throws {
         let document = fixture(); defer { document.close() }
         let editor = document.editorController!.editor, before = document.snapshot()

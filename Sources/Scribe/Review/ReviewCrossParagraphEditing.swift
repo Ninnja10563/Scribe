@@ -3,17 +3,29 @@ import AppKit
 import DocumentCore
 
 extension ScribeTextView {
-    func replaceTrackedParagraphRange(_ value: NSAttributedString, range: NSRange, action: String) -> Bool {
+    func replaceSemanticParagraphRange(_ value: NSAttributedString, range: NSRange, action: String) -> Bool {
         if value.string == "\n", action != "Typing", action != "Paste" { return false }
         let multilineTyping = action == "Typing" && value.string.contains("\n") && value.string != "\n"
         let multilinePaste = action == "Paste" && value.string.contains("\n")
         guard !hasMarkedText(), (!value.string.contains("\n") || value.string == "\n" || multilineTyping || multilinePaste),
-              let editor, let owner = editor.owner, let author = editor.reviewEditing.author,
+              let editor, let owner = editor.owner,
               range.location >= 0, range.length >= 0,
               range.location <= editor.storage.length, range.length <= editor.storage.length - range.location,
               multilineTyping || multilinePaste || (editor.storage.string as NSString).substring(with: range).contains("\n"),
               let first = listContext(for: NSRange(location: range.location, length: 0)),
               let last = listContext(for: NSRange(location: NSMaxRange(range), length: 0)) else { return false }
+        let author = editor.reviewEditing.author
+        if author == nil {
+            var containsList = false
+            let extent = NSRange(location: range.location, length: min(editor.storage.length - range.location, max(1, range.length)))
+            editor.storage.enumerateAttribute(.scribeList, in: extent) { value, _, stop in
+                if value != nil { containsList = true; stop.pointee = true }
+            }
+            if !containsList, NSMaxRange(range) < editor.storage.length {
+                containsList = editor.storage.attribute(.scribeList, at: NSMaxRange(range), effectiveRange: nil) != nil
+            }
+            guard containsList else { return false }
+        }
         do {
             let before = owner.snapshot(), paragraphs = before.paragraphs
             guard paragraphs.indices.contains(first.index), paragraphs.indices.contains(last.index) else {
@@ -51,9 +63,16 @@ extension ScribeTextView {
             var isolated = ScribeDocument(); isolated.styles = before.styles
             let fragment = AttributedDocument.capture(inline, preserving: isolated)
             var updated = before
-            let caret = try updated.replaceTrackedRange(anchor, withLines: fragment.paragraphs.map(\.runs),
-                                                       paragraphProperties: multilinePaste ? fragment.paragraphs.map(ParagraphRevisionState.init) : nil,
-                                                       author: author, insertedNotes: fragment.notes)
+            let caret: TextAnchor
+            if let author {
+                caret = try updated.replaceTrackedRange(anchor, withLines: fragment.paragraphs.map(\.runs),
+                    paragraphProperties: multilinePaste ? fragment.paragraphs.map(ParagraphRevisionState.init) : nil,
+                    author: author, insertedNotes: fragment.notes)
+            } else {
+                caret = try updated.replaceUntrackedRange(anchor, withLines: fragment.paragraphs.map(\.runs),
+                    paragraphProperties: multilinePaste ? fragment.paragraphs.map(ParagraphRevisionState.init) : nil,
+                    insertedNotes: fragment.notes)
+            }
             owner.applyReviewedStructure(updated, replacing: before, name: action)
             editor.reviewEditing.resetGrouping()
             editor.jump(to: caret.paragraphID)
