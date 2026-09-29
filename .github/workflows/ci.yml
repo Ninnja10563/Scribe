@@ -112,6 +112,23 @@ jobs:
         run: python -m pip install -r tools/requirements-validation.txt
       - name: Verify rendered PDF and Word smoke output
         run: python scripts/verify-smoke.py build/smoke
+      - name: Install independent Office renderer
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libreoffice-writer fonts-liberation
+          libreoffice --version
+      - name: Render DOCX exports in LibreOffice
+        run: python scripts/verify-office-render.py build
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Office-render
+          path: |
+            build/office-render/*.pdf
+            build/office-render/*.png
+            build/office-render/*.json
+            build/office-render/*.log
+          if-no-files-found: ignore
   release:
     if: startsWith(github.ref, 'refs/tags/v')
     needs: [macos, office-validation]
