@@ -96,9 +96,14 @@ import ImportExport
         for view in editingEditor?.textViews ?? [] where view.reviewComposition != nil { view.unmarkText() }
         let before = snapshot(); var after = before; change(&after); after.reconcileCommentAnchors(); after.reconcileNotes()
         guard before != after else { return }
-        if recordReview, let author = editingEditor?.reviewEditing.author {
+        let author = editingEditor?.reviewEditing.author
+        if recordReview, author != nil || before.hasPendingRevisions {
             do {
-                try after.recordParagraphFormattingChanges(from: before, identity: RevisionIdentity(author: author))
+                let identity = RevisionIdentity(author: author ?? RevisionAuthor(name: "Untracked edit"))
+                try after.recordParagraphFormattingChanges(from: before, identity: identity)
+                if author == nil, after.pendingRevisionIDs.contains(identity.id) {
+                    try after.resolveRevision(identity.id, accepting: true)
+                }
                 editingEditor?.reviewEditing.resetGrouping()
             } catch { NSApp.presentError(error); return }
         }

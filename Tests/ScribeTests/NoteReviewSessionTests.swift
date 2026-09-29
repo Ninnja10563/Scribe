@@ -70,6 +70,34 @@ import DocumentCore
         XCTAssertFalse(rejected.hasPendingRevisions)
         try NativeFormat.validate(rejected)
     }
+    func testUntrackedParagraphIndentSurvivesRejectingEarlierAlignment() throws {
+        let original = DocumentNote(kind: .endnote, text: "Citation")
+        let session = NoteReviewSession(note: original, styles: ParagraphStyle.defaults, author: .init(name: "Writer"))
+        defer { session.close() }
+        session.document.performEdit("Alignment") { model in
+            var format = (model.paragraphs[0].formatting ?? model.style(for: model.paragraphs[0]).paragraph); format.alignment = .center
+            model.sections[0].paragraphs[0].formatting = format
+        }
+        let tracked = try session.note()
+        XCTAssertNotNil(tracked.paragraphs[0].formattingReview)
+        session.editor.reviewEditing.author = nil
+        session.document.undoManager?.removeAllActions()
+        session.document.performEdit("Indent") { model in
+            var format = (model.paragraphs[0].formatting ?? model.style(for: model.paragraphs[0]).paragraph); format.headIndent = 18
+            model.sections[0].paragraphs[0].formatting = format
+        }
+        let changed = try session.note()
+        XCTAssertEqual(changed.paragraphs[0].formattingReview?.changes.count, 2)
+        XCTAssertEqual(changed.paragraphs[0].formattingReview?.changes.last?.accepted, true)
+        session.document.undoManager?.undo(); XCTAssertEqual(try session.note(), tracked)
+        session.document.undoManager?.redo(); XCTAssertEqual(try session.note(), changed)
+        var rejected = session.document.snapshot()
+        try rejected.resolveAllRevisions(accepting: false)
+        XCTAssertEqual((rejected.paragraphs[0].formatting ?? rejected.style(for: rejected.paragraphs[0]).paragraph).alignment, .left)
+        XCTAssertEqual((rejected.paragraphs[0].formatting ?? rejected.style(for: rejected.paragraphs[0]).paragraph).headIndent, 18)
+        XCTAssertFalse(rejected.hasPendingRevisions)
+        try NativeFormat.validate(rejected)
+    }
     func testLongDraftFlowsAndRetainsCharacterFormattingReview() throws {
         var original = DocumentNote(kind: .endnote)
         original.paragraphs = (1...90).map { Paragraph("Citation \($0). " + String(repeating: "Source details. ", count: 8)) }
