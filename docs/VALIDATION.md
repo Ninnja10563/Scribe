@@ -227,6 +227,8 @@ The first complete running-content run, [36524090953](https://github.com/Ninnja1
 - Corrected candidate bdd1011 passed full run [36530341744](https://github.com/Ninnja10563/Scribe/actions/runs/36530341744): 210 macOS tests, three additional 98-test native repetitions, three 98-test Address Sanitizer runs, arm64 app/DMG creation and real app launch, independent schema validation and LibreOffice rendering. The nine-formula Office PDF was downloaded and visually inspected: sums/integrals have no placeholder boxes, standalone operators retain their bounds, normal text is upright, and formulas remain vector. LibreOffice's equation font sizes/spacing differ from Scribe; the export notice discloses that limitation. Final main/tag validation follows this candidate result.
 - Final portable equation verification passed 114 tests with one AppKit-only skip (115 total). Existing-equation Apply/size changes and undo also passed through the actual native dialog in [36529367273](https://github.com/Ninnja10563/Scribe/actions/runs/36529367273).
 
+- Scribe 0.18.0, revision `6e14a31`: final main [36531008691](https://github.com/Ninnja10563/Scribe/actions/runs/36531008691) and tagged release [36531624645](https://github.com/Ninnja10563/Scribe/actions/runs/36531624645) passed all macOS and independent Office gates. The published Apple Silicon DMG was downloaded and its published SHA-256 checksum verified.
+
 
 ## Notes development — not released
 
