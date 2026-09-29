@@ -33,10 +33,11 @@ import PDFKit
         let editor = PaginatedEditor(document: document); defer { editor.prepareForClose() }
         let count = editor.textViews.count
         XCTAssertGreaterThan(count, 10)
+        try compareWithFullLayout(editor, document: document, phase: "Baseline")
         editor.storage.replaceCharacters(in: NSRange(location: 1, length: 0), with: "x")
         editor.paginate()
         XCTAssertLessThan(editor.lastPaginationVisitedPages, count)
-        try compareWithFullLayout(editor, document: document)
+        try compareWithFullLayout(editor, document: document, phase: "Typed")
         // Multiple edits can arrive before the debounced layout pass, including Unicode.
         editor.storage.replaceCharacters(in: NSRange(location: editor.storage.length / 2, length: 0), with: " café 👩🏽‍💻 ")
         editor.storage.replaceCharacters(in: NSRange(location: 0, length: 0), with: "Prefix ")
@@ -55,7 +56,7 @@ import PDFKit
         XCTAssertEqual(pdf.pageCount, editor.textViews.count)
         for index in 1..<160 { XCTAssertEqual(text.components(separatedBy: "Entry \(index):").count - 1, 1) }
     }
-    private func compareWithFullLayout(_ editor: PaginatedEditor, document: ScribeFileDocument) throws {
+    private func compareWithFullLayout(_ editor: PaginatedEditor, document: ScribeFileDocument, phase: String = "Edited") throws {
         let fresh = PaginatedEditor(document: document); defer { fresh.prepareForClose() }
         fresh.storage.setAttributedString(editor.storage); fresh.paginate()
         XCTAssertEqual(editor.textViews.count, fresh.textViews.count)
@@ -63,7 +64,27 @@ import PDFKit
             let a = editor.layout.textContainers[index], b = fresh.layout.textContainers[index]
             editor.layout.ensureLayout(for: a); fresh.layout.ensureLayout(for: b)
             XCTAssertEqual(editor.layout.glyphRange(for: a), fresh.layout.glyphRange(for: b), "Page \(index)")
-            XCTAssertEqual(editor.layout.usedRect(for: a), fresh.layout.usedRect(for: b), "Page \(index)")
+            // Compare glyph baselines, not aggregate usedRect trailing paragraph space.
+            var originalLines: [(Int, NSPoint)] = [], freshLines: [(Int, NSPoint)] = []
+            editor.layout.enumerateLineFragments(forGlyphRange: editor.layout.glyphRange(for: a)) { rect, _, _, range, _ in
+                let position = editor.layout.location(forGlyphAt: range.location)
+                originalLines.append((range.location, NSPoint(x: rect.minX + position.x, y: rect.minY + position.y)))
+            }
+            fresh.layout.enumerateLineFragments(forGlyphRange: fresh.layout.glyphRange(for: b)) { rect, _, _, range, _ in
+                let position = fresh.layout.location(forGlyphAt: range.location)
+                freshLines.append((range.location, NSPoint(x: rect.minX + position.x, y: rect.minY + position.y)))
+            }
+            XCTAssertEqual(originalLines.map(\.0), freshLines.map(\.0), "\(phase), page \(index)")
+            XCTAssertEqual(originalLines.map(\.1), freshLines.map(\.1), "\(phase), page \(index)")
+            if editor.layout.usedRect(for: a) != fresh.layout.usedRect(for: b) {
+                print("Used-rectangle difference \(phase), page \(index): \(editor.layout.usedRect(for: a)) versus \(fresh.layout.usedRect(for: b))")
+            }
+        }
+        if phase != "Edited", let directory = ProcessInfo.processInfo.environment["SCRIBE_SCHEMA_OUTPUT"] {
+            let folder = URL(fileURLWithPath: directory, isDirectory: true)
+            try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+            try PrintRenderer(editor: editor).exportPDF(to: folder.appendingPathComponent("Incremental-" + phase + ".pdf"), title: phase, author: "")
+            try PrintRenderer(editor: fresh).exportPDF(to: folder.appendingPathComponent("Full-" + phase + ".pdf"), title: phase, author: "")
         }
     }
 }

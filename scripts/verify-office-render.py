@@ -142,3 +142,15 @@ for label, path in [('Native', build / 'schema/ParagraphIndents.pdf'), ('LibreOf
     assert abs(boxes['RIGHT right-aligned paragraph.'].x1-(page.rect.width-72-36)) < 2, f'{label}: right indent lost'
     page.get_pixmap(matrix=pymupdf.Matrix(1, 1)).save(output / (label + '-ParagraphIndents.png'))
 print('Native and LibreOffice PDFs retain first-line, hanging and right paragraph indents authored through the ruler.')
+
+# Reused page containers must paint the same words at the same coordinates as full layout.
+for phase in ['Baseline', 'Typed']:
+    incremental = pymupdf.open(build / ('schema/Incremental-' + phase + '.pdf'))
+    full = pymupdf.open(build / ('schema/Full-' + phase + '.pdf'))
+    assert len(incremental) == len(full), f'{phase}: incremental page count differs'
+    for number, (a, b) in enumerate(zip(incremental, full)):
+        aw, bw = a.get_text('words'), b.get_text('words')
+        assert len(aw) == len(bw), f'{phase} page {number}: lost words'
+        for x, y in zip(aw, bw):
+            assert x[4] == y[4] and all(abs(x[i]-y[i]) < 0.01 for i in range(4)), f'{phase} page {number}: painted word geometry differs: {x} / {y}'
+print('Baseline and incrementally edited PDFs match full layout word-for-word and coordinate-for-coordinate.')
