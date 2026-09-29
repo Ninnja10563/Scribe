@@ -50,7 +50,7 @@ import DocumentCore
         }
         return true
     }
-    override func updateRuler() { editor?.paragraphRuler?.refresh() }
+    override func updateRuler() { editor?.refreshRulerFromTextSystem() }
     override func updateFontPanel() {
         super.updateFontPanel()
         let range = selectedRange()

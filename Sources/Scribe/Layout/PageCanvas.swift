@@ -187,6 +187,11 @@ import DocumentCore
         view.setAccessibilityLabel("Document page \(textViews.count + 1)")
         textViews.append(view); canvas.addSubview(view)
     }
+    func refreshRulerFromTextSystem() {
+        // TextKit requests a ruler refresh for many individual line fragments.
+        // A pagination batch publishes its selection/status once when done.
+        if !isLayingOut { paragraphRuler?.refresh() }
+    }
     func paginateForEditing() { paginate(pageBudget: 8) }
     func paginate(pageBudget: Int? = nil) {
         guard !isLayingOut, firstDirtyPage != Int.max else { return }
@@ -344,7 +349,10 @@ import DocumentCore
         for (index, view) in textViews.enumerated() {
             let rect = canvas.pageRect(index)
             let frame = NSRect(x: rect.minX + p.left, y: rect.minY + p.top, width: p.contentWidth, height: layout.textContainers[index].containerSize.height)
-            if view.frame != frame { view.frame = frame }
+            // Recentring a page does not change its writing area. Calling
+            // NSTextView.setFrame here also enters its size/layout machinery.
+            if view.frame.origin != frame.origin { view.setFrameOrigin(frame.origin) }
+            if view.frame.size != frame.size { view.setFrameSize(frame.size) }
         }
         noteControls.update(in: canvas)
         canvas.needsDisplay = true
