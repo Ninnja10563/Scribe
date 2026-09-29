@@ -4,7 +4,7 @@ import DocumentCore
 
 @MainActor enum ExternalTextProjection {
     static func render(_ value: NSAttributedString, includeImages: Bool) throws -> NSAttributedString {
-        let text = ScriptProjection.external(value)
+        let text = try NoteClipboard.external(ScriptProjection.external(value))
         if includeImages { return try ExternalEquationProjection.render(ExternalImageProjection.render(text)) }
         let result = NSMutableAttributedString(attributedString: text)
         var replacements: [(NSRange, String)] = []

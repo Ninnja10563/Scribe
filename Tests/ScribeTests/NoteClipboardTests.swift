@@ -1,0 +1,44 @@
+#if canImport(AppKit)
+import AppKit
+import XCTest
+import DocumentCore
+@testable import Scribe
+
+@MainActor final class NoteClipboardTests: XCTestCase {
+    func testNativeCopyPreservesContentCreatesIndependentNotesAndKeepsExternalTextReadable() throws {
+        _ = NSApplication.shared
+        let source = ScribeFileDocument()
+        var note = DocumentNote(kind: .footnote, text: "Citation résumé with a second paragraph.")
+        note.paragraphs[0].runs[0].format.italic = true
+        note.paragraphs.append(Paragraph("Another source detail."))
+        var reference = TextRun("\u{fffc}"); reference.noteID = note.id
+        source.model.notes = [note]; source.model.sections[0].paragraphs[0].runs = [TextRun("Before "), reference, TextRun(" after")]
+        source.makeWindowControllers(); defer { source.close() }
+        let sourceEditor = source.editorController!.editor
+        sourceEditor.select(NSRange(location: 0, length: sourceEditor.storage.length))
+        let board = NSPasteboard.general; board.clearContents()
+        sourceEditor.activeTextView.copy(nil)
+        let fallback = "Before " + NoteClipboard.fallback(note) + " after"
+        XCTAssertEqual(board.string(forType: .string), fallback)
+        let rich = try NSAttributedString(data: XCTUnwrap(board.data(forType: .rtfd)), options: [.documentType: NSAttributedString.DocumentType.rtfd], documentAttributes: nil)
+        XCTAssertEqual(rich.string, fallback)
+        let payload = try XCTUnwrap(board.data(forType: InlineObjectClipboard.type))
+        XCTAssertThrowsError(try InlineObjectClipboard.restore(payload, in: NSAttributedString(string: "Modified clipboard")))
+        let destination = ScribeFileDocument(); destination.makeWindowControllers(); defer { destination.close() }
+        let editor = destination.editorController!.editor
+        editor.activeTextView.paste(nil); editor.paginate()
+        let first = try XCTUnwrap(destination.snapshot().notes.first)
+        XCTAssertNotEqual(first.id, note.id)
+        XCTAssertEqual(first.plainText, note.plainText)
+        XCTAssertEqual(first.paragraphs[0].runs[0].format.italic, true)
+        XCTAssertTrue(Set(first.paragraphs.map(\.id)).isDisjoint(with: Set(note.paragraphs.map(\.id))))
+        editor.activeTextView.paste(nil); editor.paginate()
+        let pasted = destination.snapshot()
+        XCTAssertEqual(pasted.notes.count, 2)
+        XCTAssertEqual(Set(pasted.notes.map(\.id)).count, 2)
+        try NativeFormat.validate(pasted)
+        destination.undoManager?.undo(); XCTAssertEqual(destination.snapshot().notes.count, 1)
+        destination.undoManager?.redo(); XCTAssertEqual(destination.snapshot().notes.count, 2)
+    }
+}
+#endif

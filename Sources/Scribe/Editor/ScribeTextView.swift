@@ -87,7 +87,7 @@ import DocumentCore
     }
     override func writeSelection(to pasteboard: NSPasteboard, type: NSPasteboard.PasteboardType) -> Bool {
         if type == InlineObjectClipboard.type, let textStorage {
-            do { return pasteboard.setData(try InlineObjectClipboard.encode(textStorage.attributedSubstring(from: selectedRange())), forType: type) }
+            do { return pasteboard.setData(try InlineObjectClipboard.encode(textStorage.attributedSubstring(from: selectedRange()), styles: editor?.owner?.model.styles ?? ParagraphStyle.defaults), forType: type) }
             catch { presentError(error); return false }
         }
         if type == .string || type.rawValue == "NSStringPboardType", let textStorage {
@@ -96,7 +96,7 @@ import DocumentCore
             selection.enumerateAttribute(.scribeEquation, in: NSRange(location: 0, length: selection.length)) { value, _, stop in
                 if value != nil { hasEquation = true; stop.pointee = true }
             }
-            if hasEquation {
+            if hasEquation || selection.containsNoteReferences {
                 do { return pasteboard.setString(try ExternalTextProjection.render(selection, includeImages: false).string, forType: type) }
                 catch { presentError(error); return false }
             }
