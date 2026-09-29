@@ -45,6 +45,9 @@ import DocumentCore
             let attributes = editor.storage.attributes(at: range.location, effectiveRange: nil)
             XCTAssertEqual((attributes[.font] as? NSFont)?.pointSize, 13)
             XCTAssertEqual(ScriptProjection.logicalFont(in: attributes)?.pointSize, 20)
+            let accessible = try XCTUnwrap(editor.activeTextView.accessibilityAttributedString(for: range))
+            XCTAssertEqual(accessible.string, token)
+            XCTAssertEqual(accessible.attribute(.accessibilitySuperscript, at: 0, effectiveRange: nil) as? Int, token == "SUP" ? 1 : -1)
         }
         editor.select(NSRange(location: 0, length: editor.storage.length))
         editor.activeTextView.updateFontPanel()
