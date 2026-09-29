@@ -250,3 +250,10 @@ The first complete running-content run, [36524090953](https://github.com/Ninnja1
 - Final main run [36538281585](https://github.com/Ninnja10563/Scribe/actions/runs/36538281585) passed macOS tests, repeated native and Address Sanitizer suites, app launch/render checks and Office validation at `205b852`. The actual Notes window capture was inspected; its settled status shows 40 words across two pages.
 - Tag `v0.19.0` points to that validated revision. Tagged run [36539441600](https://github.com/Ninnja10563/Scribe/actions/runs/36539441600) passed both validation jobs and published the Apple Silicon DMG. The published DMG was downloaded and its accompanying SHA-256 checksum verified successfully.
 - Subsequent note-search work identified an unnecessary line wrap when a note starts with a list: generated note indentation did not shift existing tab stops. The correction and a native layout regression are in development; ordinary paragraph notes are unaffected.
+
+## Note search and listed-note layout (0.19.1 development)
+
+- Portable ARM64 verification passed 129 tests with one AppKit-only placeholder skipped. Native changes require macOS validation.
+- Targeted macOS run [36539859708](https://github.com/Ninnja10563/Scribe/actions/runs/36539859708) passed 12 tests, covering body/note search order, Unicode, generated marker exclusion, note navigation, continuation pages, retained formatting/list identities, atomic failure and batch undo/redo.
+- Run [36540133553](https://github.com/Ninnja10563/Scribe/actions/runs/36540133553) passed the listed-note correction and related native regressions. Its actual PDF was downloaded and visually inspected: the note label, list marker and short content share one line.
+- The PDF-highlight regression was subsequently strengthened to retain the same renderer and assert that live highlight attributes remain present after export; this avoids a false pass caused by reconstructing note layout before printing. Full final validation is pending.
