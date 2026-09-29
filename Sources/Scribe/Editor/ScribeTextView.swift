@@ -37,9 +37,22 @@ import DocumentCore
         menu.addItem(.separator()); menu.addItem(NSMenuItem(title: "Add Comment…", action: #selector(EditorWindowController.addComment), keyEquivalent: ""))
         return menu
     }
+    override func writeSelection(to pasteboard: NSPasteboard, type: NSPasteboard.PasteboardType) -> Bool {
+        guard type == .rtfd, let textStorage else { return super.writeSelection(to: pasteboard, type: type) }
+        do {
+            let value = try ExternalImageProjection.render(textStorage.attributedSubstring(from: selectedRange()))
+            let data = try value.data(from: NSRange(location: 0, length: value.length), documentAttributes: [.documentType: NSAttributedString.DocumentType.rtfd])
+            return pasteboard.setData(data, forType: type)
+        } catch { presentError(error); return false }
+    }
     override func paste(_ sender: Any?) {
         // Normalize clipboard paragraphs and exclude unsupported attachments before they enter the model.
         let pasteboard = NSPasteboard.general
+        if let data = pasteboard.data(forType: .rtfd),
+           let value = try? NSAttributedString(data: data, options: [.documentType: NSAttributedString.DocumentType.rtfd], documentAttributes: nil) {
+            let normalized = AttributedDocument.capture(value, preserving: ScribeDocument())
+            replaceSelection(AttributedDocument.render(normalized), action: "Paste"); return
+        }
         if let data = pasteboard.data(forType: .png) ?? pasteboard.data(forType: .tiff) {
             do { try insertImageData(data) } catch { presentError(error) }; return
         }

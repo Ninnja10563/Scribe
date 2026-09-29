@@ -8,9 +8,10 @@ extension EditorWindowController {
     func exportDocument(format: String) {
         guard let window else { return }
         let model = fileDocument.snapshot()
-        if ["txt", "md", "docx"].contains(format) {
+        if ["txt", "md", "docx"].contains(format) || (format == "rtf" && model.paragraphs.contains { $0.runs.contains { $0.image != nil } }) {
             let alert = NSAlert(); alert.messageText = "Export a \(format.uppercased()) copy?"
             alert.informativeText = format == "txt" ? "Plain text removes all formatting, page layout, and document metadata. Your Scribe document is kept intact." : "This export preserves supported text formatting. Some Scribe metadata and layout features may not transfer. Your Scribe document is kept intact."
+            if format == "rtf" { alert.informativeText = "RTF export omits images. Use Word Document or PDF to retain them. Your Scribe document is kept intact." }
             if format == "docx", model.comments.contains(where: { $0.isDetached == true }) { alert.informativeText += " Detached comments are retained in the package, but other editors may hide them." }
             if format == "docx", model.styles.contains(where: { $0.text.fontFace != nil }) || model.paragraphs.contains(where: { $0.runs.contains(where: { $0.format.fontFace != nil }) }) {
                 alert.informativeText += " Specific font faces and intermediate weights may be approximated by their family and bold/italic traits in Word."
