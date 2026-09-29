@@ -64,6 +64,32 @@ import DocumentCore
         XCTAssertTrue(editor.canvas.footnotes.isEmpty)
         XCTAssertTrue(editor.layout.textContainers.allSatisfy { $0.containerSize.height == editor.canvas.pageSettings.contentHeight })
     }
+    func testMultipleLongNotesShareAReferenceLineAndRetainLaterBodyContent() throws {
+        _ = NSApplication.shared
+        let document = ScribeFileDocument()
+        var notes = [DocumentNote(kind: .footnote), DocumentNote(kind: .footnote), DocumentNote(kind: .footnote, text: "FinalCitation")]
+        notes[0].paragraphs = (0..<45).map { Paragraph("FirstCitation\($0) " + String(repeating: "Detailed source. ", count: 10)) }
+        notes[1].paragraphs = (0..<25).map { Paragraph("SecondCitation\($0) " + String(repeating: "Another explanation. ", count: 8)) }
+        document.model.notes = notes
+        func reference(_ note: DocumentNote) -> TextRun { var value = TextRun("\u{fffc}"); value.noteID = note.id; return value }
+        var opening = Paragraph("References "); opening.runs += [reference(notes[0]), reference(notes[1])]
+        document.model.sections[0].paragraphs = [opening] + (0..<40).map { Paragraph("BodyToken\($0) " + String(repeating: "Body text continues. ", count: 5)) }
+        document.model.sections[0].paragraphs[20].runs.append(reference(notes[2]))
+        document.makeWindowControllers(); defer { document.close() }
+        let editor = document.editorController!.editor
+        XCTAssertNil(editor.outputWarning)
+        let folder = ProcessInfo.processInfo.environment["SCRIBE_SCHEMA_OUTPUT"].map { URL(fileURLWithPath: $0, isDirectory: true) } ?? FileManager.default.temporaryDirectory
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        let url = folder.appendingPathComponent("MultipleFootnoteContinuation.pdf")
+        try PrintRenderer(editor: editor).exportPDF(to: url, title: "Multiple continuations", author: "")
+        let pdf = try XCTUnwrap(PDFDocument(url: url))
+        let text = (pdf.string ?? "").split(whereSeparator: \.isWhitespace).joined(separator: " ")
+        for (prefix, count) in [("FirstCitation", 45), ("SecondCitation", 25), ("BodyToken", 40)] {
+            for index in 0..<count { XCTAssertEqual(text.components(separatedBy: "\(prefix)\(index) ").count - 1, 1) }
+        }
+        XCTAssertEqual(text.components(separatedBy: "FinalCitation").count - 1, 1)
+        XCTAssertEqual(document.snapshot().notes, notes)
+    }
     func testLongFootnoteContinuesAcrossPagesWithoutTruncatingSemanticContent() throws {
         _ = NSApplication.shared
         let document = ScribeFileDocument()
