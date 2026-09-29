@@ -1,13 +1,12 @@
-Scribe 0.17.0 adds first-page and odd/even headers and footers.
+Scribe 0.18.0 adds editable native equations.
 
-- Headers and Footers offers Default, First Page and Even Pages settings. Empty first-page fields can leave the cover's running text blank; page numbers remain separately configured.
-- Alternate text is retained when its display option is switched off. Custom starting page numbers determine odd/even parity, with the first-page setting taking precedence.
-- Screen, PDF and printing use the same page-specific running text. Changes participate in document undo, autosave and native save/reopen.
-- DOCX uses real first/default/even header and footer parts, section title-page settings and document even/odd settings. Import retains those variants and custom starting parity.
-- Overlong or multiline running text produces a warning and blocks PDF/printing instead of silently losing text. Dormant variants do not block output.
-- Even-numbered starts have a compatibility notice: Scribe follows Word’s documented numbering-based header parity; LibreOffice uses physical page order.
-- Native format v11 migrates earlier versions in memory without rewriting source files.
+- Insert → Equation provides mathematical source input, structure templates, size controls and a live preview. Format → Edit Equation and the contextual menu reopen an existing equation.
+- Fractions, square/indexed roots, powers, subscripts, sums, products, integrals and Greek symbols use native vector layout. A bundled math font keeps rendering independent of installed fonts.
+- Equations retain editable source through native save/reopen, autosave, undo and copying between Scribe windows. Other rich-text recipients receive a visible PNG; plain-text/Markdown/RTF exports retain readable source.
+- DOCX contains real Office Math objects. Supported objects import as editable equations; unsupported constructs retain readable text with a warning.
+- Oversized equations block PDF/printing before an existing export is overwritten. Native saving preserves the source.
+- Native format v12 migrates earlier versions in memory without rewriting the original file.
 
-This remains a development release. Headers and footers currently contain single-line plain text; direct on-page editing, rich formatting and metadata fields remain unfinished. Imported Word running fields remain cached text with a warning. Track changes, notes, independent section editing, floating objects, shapes and equations are still pending. See docs/FEATURES.md and docs/VALIDATION.md.
+This remains a development release. The equation engine implements a bounded mathematical subset, not full TeX. Matrices, accents, equation numbering, structural visual editing, advanced math kerning and multiline formulas remain unfinished. Equation color/weight controls and broad Word/Pages interoperability also remain future work. Track changes, notes, independent section editing, floating objects and shapes are still pending. See docs/FEATURES.md and docs/VALIDATION.md.
 
 For Apple Silicon, macOS 14+. Development builds are ad-hoc signed, not notarized. Physical-Mac input/accessibility and manual Word/Pages validation remain pending.

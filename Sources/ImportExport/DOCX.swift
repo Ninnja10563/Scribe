@@ -287,6 +287,7 @@ private class WordReader: NSObject, XMLParserDelegate {
     private let equationReader = DOCXEquationReader()
     func parser(_ parser: XMLParser, didStartElement name: String, namespaceURI: String?, qualifiedName: String?, attributes a: [String: String]) {
         if equationReader.active || (namespaceURI == DOCXEquations.namespace && name == "oMath") {
+            if !equationReader.active { equationReader.defaultSize = paragraph.map { document.style(for: $0).text.fontSize ?? 12 } ?? 12 }
             equationReader.start(name, namespace: namespaceURI, attributes: a, parser: parser); return
         }
         if inDrawing {

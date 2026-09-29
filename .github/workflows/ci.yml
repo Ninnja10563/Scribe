@@ -115,7 +115,7 @@ jobs:
       - name: Install independent Office renderer
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends libreoffice-writer fonts-liberation
+          sudo apt-get install -y --no-install-recommends libreoffice-writer libreoffice-math fonts-liberation
           libreoffice --version
       - name: Render DOCX exports in LibreOffice
         run: python scripts/verify-office-render.py build

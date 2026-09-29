@@ -14,20 +14,24 @@ final class DOCXEquationReader {
         init(_ name: String, _ attributes: [String: String]) { self.name = name; self.attributes = attributes }
         func child(_ name: String) -> Node? { children.first { $0.name == name } }
         var value: String? { attributes["m:val"] }
-        var fallback: String { (name == "m:t" ? text : "") + children.map(\.fallback).joined() }
+        var fallback: String { ([name == "m:t" ? text : ""] + children.map(\.fallback)).filter { !$0.isEmpty }.joined(separator: " ") }
     }
     private var stack: [Node] = []
     private var count = 0, textBytes = 0
     private var size: Double?
+    var defaultSize: Double = 12
+    private var approximatedFormatting = false
     var active: Bool { !stack.isEmpty }
     func start(_ name: String, namespace: String?, attributes: [String: String], parser: XMLParser) {
-        if stack.isEmpty { count = 0; textBytes = 0; size = nil }
+        if stack.isEmpty { count = 0; textBytes = 0; size = nil; approximatedFormatting = false }
         count += 1
         guard count <= 4096, stack.count < 64 else { parser.abortParsing(); return }
         let prefix = namespace == DOCXEquations.namespace ? "m:" : namespace == DOCX.wordNS ? "w:" : "unknown:"
         let node = Node(prefix + name, attributes)
         stack.last?.children.append(node); stack.append(node)
         if node.name == "w:sz", size == nil { size = attributes["w:val"].flatMap(Double.init).map { $0 / 2 } }
+        if node.name == "m:sty", ["b", "bi"].contains(node.value ?? "") { approximatedFormatting = true }
+        if ["w:b", "w:color", "w:highlight", "w:shd"].contains(node.name) { approximatedFormatting = true }
     }
     func characters(_ value: String, parser: XMLParser) {
         textBytes += value.utf8.count
@@ -38,9 +42,9 @@ final class DOCXEquationReader {
         guard let node = stack.popLast(), stack.isEmpty else { return nil }
         do {
             let markup = try source(node)
-            let equation = try Equation(source: markup, pointSize: min(144, max(8, size ?? 18)))
+            let equation = try Equation(source: markup, pointSize: min(144, max(8, size ?? defaultSize)))
             var run = TextRun("\u{FFFC}"); run.equation = equation
-            return (run, nil)
+            return (run, approximatedFormatting ? "Equation color, highlighting and bold styling are approximated by Scribe’s current monochrome math renderer." : nil)
         } catch {
             let fallback = node.fallback
             return (TextRun(fallback.isEmpty ? "[Unsupported equation]" : "[Equation: \(fallback)]"), "An unsupported equation was retained as readable text; its mathematical layout could not be imported.")
@@ -65,11 +69,15 @@ final class DOCXEquationReader {
             throw DocumentError.invalid("unsupported equation content")
         }
         switch node.name {
+        case "m:argPr":
+            guard node.children.isEmpty else { throw DocumentError.invalid("unsupported math argument properties") }
+            return ""
         case "m:oMath", "m:e", "m:num", "m:den", "m:deg", "m:sub", "m:sup": return try children()
         case "m:r":
             let value = node.children.filter { $0.name == "m:t" }.map(\.text).joined()
             let properties = node.child("m:rPr")
-            let upright = properties?.child("m:sty")?.value == "p" || properties?.child("m:nor")?.value == "1"
+            let normal = properties?.child("m:nor")
+            let upright = properties?.child("m:sty")?.value == "p" || (normal != nil && !["0", "false", "off"].contains(normal?.value ?? "1"))
             guard node.children.allSatisfy({ ["m:t", "m:rPr", "w:rPr"].contains($0.name) }) else { throw DocumentError.invalid("unsupported math run") }
             if value.isEmpty { return "" }
             if ["∑", "∏", "∫"].contains(value) { return value }
@@ -93,8 +101,8 @@ final class DOCXEquationReader {
             guard ["∑", "∏", "∫"].contains(symbol) else { throw DocumentError.invalid("unsupported n-ary operator") }
             var result = symbol
             let lower = try argument("sub"), upper = try argument("sup")
-            if properties?.child("m:subHide")?.value != "1", !lower.isEmpty { result += "_{\(lower)}" }
-            if properties?.child("m:supHide")?.value != "1", !upper.isEmpty { result += "^{\(upper)}" }
+            if !["1", "true", "on"].contains(properties?.child("m:subHide")?.value ?? "0"), !lower.isEmpty { result += "_{\(lower)}" }
+            if !["1", "true", "on"].contains(properties?.child("m:supHide")?.value ?? "0"), !upper.isEmpty { result += "^{\(upper)}" }
             result += try argument("e")
             return result
         case "m:d":

@@ -38,6 +38,19 @@ final class EquationInterchangeTests: XCTestCase {
             try bytes.write(to: directory.appendingPathComponent("Equations.docx"))
         }
     }
+    func testEquationImportDisclosesUnsupportedStylingAndRejectsExcessiveNesting() throws {
+        var parts = try ZipArchive.decode(DOCX.encode(ScribeDocument()))
+        func package(_ math: String) throws -> Data {
+            parts["word/document.xml"] = Data("<w:document xmlns:w=\"\(DOCX.wordNS)\" xmlns:m=\"\(DOCXEquations.namespace)\"><w:body><w:p>\(math)</w:p></w:body></w:document>".utf8)
+            return try ZipArchive.encode(parts)
+        }
+        let styled = "<m:oMath><m:r><m:rPr><m:sty m:val=\"bi\"/></m:rPr><m:t>x</m:t></m:r></m:oMath>"
+        let result = try DOCX.decode(package(styled))
+        XCTAssertNotNil(result.document.paragraphs[0].runs[0].equation)
+        XCTAssertTrue(result.warnings.contains { $0.contains("bold styling") })
+        let nested = "<m:oMath>" + String(repeating: "<m:box><m:e>", count: 40) + "<m:r><m:t>x</m:t></m:r>" + String(repeating: "</m:e></m:box>", count: 40) + "</m:oMath>"
+        XCTAssertThrowsError(try DOCX.decode(package(nested)))
+    }
     func testUnknownMathRetainsTextAndAlternateNamespacePrefixImports() throws {
         var parts = try ZipArchive.decode(DOCX.encode(ScribeDocument()))
         let body = "<q:oMath><q:acc><q:e><q:r><q:t>x</q:t></q:r></q:e></q:acc></q:oMath>"
