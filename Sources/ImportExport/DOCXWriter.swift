@@ -65,9 +65,9 @@ final class DOCXWriter {
             let bodyRelationships = relationships
             relationships = []
             let notes = document.notes.filter { $0.kind == kind }.map { note -> String in
-                var paragraphs = note.paragraphs.map(paragraph)
-                if let end = paragraphs[0].range(of: "</w:pPr>") {
-                    paragraphs[0].insert(contentsOf: "<w:r><w:rPr><w:vertAlign w:val=\"superscript\"/></w:rPr><w:\(kind.rawValue)Ref/></w:r><w:r><w:t xml:space=\"preserve\"> </w:t></w:r>", at: end.upperBound)
+                let label = "<w:r><w:rPr><w:vertAlign w:val=\"superscript\"/></w:rPr><w:\(kind.rawValue)Ref/></w:r><w:r><w:t xml:space=\"preserve\"> </w:t></w:r>"
+                let paragraphs = note.paragraphs.enumerated().map { index, value in
+                    paragraph(value, prefix: index == 0 ? label : "")
                 }
                 return "<w:\(kind.rawValue) w:id=\"\(noteIDs[note.id]!.id)\">\(paragraphs.joined())</w:\(kind.rawValue)>"
             }.joined()
@@ -109,7 +109,8 @@ final class DOCXWriter {
         put("[Content_Types].xml", "<Types xmlns=\"http://schemas.openxmlformats.org/package/2006/content-types\"><Default Extension=\"rels\" ContentType=\"application/vnd.openxmlformats-package.relationships+xml\"/><Default Extension=\"xml\" ContentType=\"application/xml\"/>\(images)\(standard)\(overrides.joined())</Types>")
         return try ZipArchive.encode(parts)
     }
-    private func paragraph(_ p: Paragraph) -> String {
+    private func paragraph(_ p: Paragraph) -> String { paragraph(p, prefix: "") }
+    private func paragraph(_ p: Paragraph, prefix: String) -> String {
         var properties = "<w:pStyle w:val=\"\(DOCX.xml(p.styleID))\"/>"
         if p.pageBreakBefore { properties += "<w:pageBreakBefore/>" }
         if let list = p.list {
@@ -123,6 +124,7 @@ final class DOCXWriter {
             properties += DOCX.paragraphProperties(formatting)
         } else if let f = p.formatting { properties += DOCX.paragraphProperties(f) }
         properties += revisions.paragraphMark(p.breakReview)
+        properties += revisions.paragraphProperties(p.formattingReview)
         var text = "", offset = 0
         let boundaries = comments.boundaries(paragraphID: p.id)
         for run in p.runs {
@@ -137,7 +139,7 @@ final class DOCXWriter {
         }
         text += comments.markers(paragraphID: p.id, offset: offset)
         let bookmark = bookmarkIDs[p.id].map { "<w:bookmarkStart w:id=\"\($0)\" w:name=\"\(DocumentLink.officeBookmark(p.id))\"/><w:bookmarkEnd w:id=\"\($0)\"/>" } ?? ""
-        return "<w:p><w:pPr>\(properties)</w:pPr>\(bookmark)\(namedBookmarks?.markers(at: p.id) ?? "")\(contents.start(p.id))\(text)\(contents.end(p.id))</w:p>"
+        return "<w:p><w:pPr>\(properties)</w:pPr>\(prefix)\(bookmark)\(namedBookmarks?.markers(at: p.id) ?? "")\(contents.start(p.id))\(text)\(contents.end(p.id))</w:p>"
     }
     private func runXML(_ run: TextRun) -> String {
             if let id = run.noteID, let note = noteIDs[id] {

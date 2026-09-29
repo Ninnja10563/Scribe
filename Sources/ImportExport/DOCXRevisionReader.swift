@@ -43,6 +43,7 @@ final class DOCXRevisionReader {
     private var elements: [(String?, String)] = []
     private var insertion: RevisionIdentity?, deletion: RevisionIdentity?
     private(set) var paragraphBreak: RunReview?
+    private let paragraphHistory = DOCXParagraphRevisionReader()
     private var previousDepth = 0
     private var previous = TextFormatting()
     private var formattingIdentity: RevisionIdentity?
@@ -54,6 +55,9 @@ final class DOCXRevisionReader {
         elements.append((namespace, name))
         do {
             guard elements.count <= 4096 else { throw DocumentError.invalid("DOCX XML nesting is too deep.") }
+            if paragraphHistory.depth > 0 {
+                try paragraphHistory.start(name, namespace: namespace, attributes: attributes); return true
+            }
             if previousDepth > 0 {
                 previousDepth += 1
                 guard namespace == DOCX.wordNS, ["rPr", "rFonts", "b", "i", "strike", "color", "sz", "u", "shd", "vertAlign"].contains(name) else {
@@ -61,6 +65,14 @@ final class DOCXRevisionReader {
                 }
                 applyRun(name, attributes, &previous)
                 return true
+            }
+            if !inRun, parent?.0 == DOCX.wordNS, parent?.1 == "pPr" {
+                paragraphHistory.observeCurrent(name, namespace: namespace, attributes: attributes)
+            }
+            if !inRun, parent?.0 == DOCX.wordNS, parent?.1 == "rPr", elements.count >= 3,
+               elements[elements.count - 3].0 == DOCX.wordNS, elements[elements.count - 3].1 == "pPr",
+               namespace != DOCX.wordNS || !["ins", "del"].contains(name) {
+                paragraphHistory.markUnsupportedCurrent()
             }
             let formatting = inRun && !(run.review?.formatting.isEmpty ?? true)
             if formatting && ((namespace == DOCX.wordNS && ["drawing", "pict", "footnoteReference", "endnoteReference"].contains(name)) || (namespace == DOCXEquations.namespace && name == "oMath")) {
@@ -70,11 +82,14 @@ final class DOCXRevisionReader {
                 throw DocumentError.invalid("Preserving legacy drawing revisions is not yet supported.")
             }
             guard namespace == DOCX.wordNS else { return false }
-            if ["pPrChange", "tblPrChange", "trPrChange", "tcPrChange", "tblGridChange", "sectPrChange", "moveFrom", "moveTo", "cellIns", "cellDel", "cellMerge", "numberingChange"].contains(name) || name.hasPrefix("customXmlIns") || name.hasPrefix("customXmlDel") || name.hasPrefix("customXmlMove") {
+            if ["tblPrChange", "trPrChange", "tcPrChange", "tblGridChange", "sectPrChange", "moveFrom", "moveTo", "cellIns", "cellDel", "cellMerge", "numberingChange"].contains(name) || name.hasPrefix("customXmlIns") || name.hasPrefix("customXmlDel") || name.hasPrefix("customXmlMove") {
                 throw DocumentError.invalid("Preserving this DOCX structural revision is not yet supported.")
             }
             switch name {
-            case "p": paragraphBreak = nil
+            case "p": paragraphBreak = nil; paragraphHistory.reset()
+            case "pPrChange":
+                guard !inRun, parent?.0 == DOCX.wordNS, parent?.1 == "pPr" else { throw DocumentError.invalid("Invalid paragraph revision placement.") }
+                try paragraphHistory.begin(context.identity(attributes, kind: name, scope: scope)); return true
             case "ins", "del":
                 if !inRun, parent?.0 == DOCX.wordNS, parent?.1 == "rPr", elements.count >= 3,
                    elements[elements.count - 3].0 == DOCX.wordNS, elements[elements.count - 3].1 == "pPr" {
@@ -112,6 +127,10 @@ final class DOCXRevisionReader {
 
     func end(_ name: String, namespace: String?, run: inout TextRun) -> Bool {
         defer { if !elements.isEmpty { elements.removeLast() } }
+        if paragraphHistory.depth > 0 {
+            do { try paragraphHistory.end() } catch { context.failure = error.localizedDescription }
+            return true
+        }
         if previousDepth > 0 {
             previousDepth -= 1
             if previousDepth == 0, let identity = formattingIdentity {
@@ -133,7 +152,12 @@ final class DOCXRevisionReader {
         context.failure = "A revised DOCX object could not be imported without losing its content."
         parser.abortParsing()
     }
-    var collectingHistory: Bool { previousDepth > 0 }
+    func fail(_ error: Error, parser: XMLParser) { context.failure = error.localizedDescription; parser.abortParsing() }
+    func applyParagraph(to paragraph: inout Paragraph, document: ScribeDocument, defaultStyleID: String, styleLists: [String: StyleList]) throws {
+        if let failure = context.failure { throw DocumentError.invalid(failure) }
+        try paragraphHistory.apply(to: &paragraph, document: document, defaultStyleID: defaultStyleID, styleLists: styleLists)
+    }
+    var collectingHistory: Bool { previousDepth > 0 || paragraphHistory.depth > 0 }
     func apply(to run: inout TextRun) {
         guard insertion != nil || deletion != nil else { return }
         var review = run.review ?? RunReview()
