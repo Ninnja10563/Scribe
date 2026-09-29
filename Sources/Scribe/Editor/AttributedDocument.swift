@@ -124,7 +124,10 @@ extension NSAttributedString.Key {
                     let format = captureTextFormat(attributes, style: style)
                     let link = (attributes[.link] as? URL)?.absoluteString ?? attributes[.link] as? String
                     var run = TextRun(value, format: format, link: link)
-                    if let data = attributes[.scribeReview] as? Data { run.review = try? JSONDecoder().decode(RunReview.self, from: data) }
+                    if let data = attributes[.scribeReview] as? Data {
+                        run.review = try? JSONDecoder().decode(RunReview.self, from: data)
+                        run.format = run.review?.preservingFormatting(format, inheriting: style.text) ?? format
+                    }
                     if let attachment = attributes[.attachment] as? NSTextAttachment {
                         if let data = attributes[.scribeNote] as? Data, data.count <= NativeFormat.maximumBytes,
                            let note = try? JSONDecoder().decode(DocumentNote.self, from: data) {

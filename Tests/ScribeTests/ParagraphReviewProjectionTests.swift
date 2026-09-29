@@ -30,7 +30,9 @@ import DocumentCore
         try text.format(NSRange(location: 0, length: 7), identity: italic) { var format = $0; format.italic = true; return format }
         second.runs = text.runs; document.sections[0].paragraphs = [first, second]
         try document.resolveRevision(review.deletion!.id, accepting: true)
+        let semanticFormat = document.paragraphs[0].runs.last?.format
         document = AttributedDocument.capture(AttributedDocument.render(document), preserving: document)
+        XCTAssertEqual(document.paragraphs[0].runs.last?.format, semanticFormat)
         try NativeFormat.validate(document)
         try document.resolveRevision(italic.id, accepting: false)
         let rendered = AttributedDocument.render(document)

@@ -36,6 +36,14 @@ public struct RunReview: Codable, Equatable, Sendable {
     public var pendingIDs: [UUID] {
         [insertion?.id, deletion?.id].compactMap { $0 } + formatting.filter { !$0.accepted }.map { $0.identity.id }
     }
+    /// Native text systems can normalize redundant attributes. Restore the
+    /// semantic overrides when their rendered appearance is unchanged, so a
+    /// future style-definition edit does not alter the meaning of old revisions.
+    public func preservingFormatting(_ projected: TextFormatting, inheriting style: TextFormatting) -> TextFormatting {
+        guard let base = formattingBase else { return projected }
+        let expected = formatting.reduce(base) { $0.applyingDifference(from: $1.before, to: $1.after) }
+        return expected.materialized(over: style) == projected.materialized(over: style) ? expected : projected
+    }
     public var isEmpty: Bool { insertion == nil && deletion == nil && formatting.isEmpty }
 }
 
