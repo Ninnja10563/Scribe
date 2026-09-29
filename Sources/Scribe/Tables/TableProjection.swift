@@ -37,7 +37,9 @@ import DocumentCore
                 block.backgroundColor = NSColor(hex: background)
             }
             if let heights = definition.minimumRowHeights, heights.indices.contains(reference.row), let height = heights[reference.row] {
-                block.setValue(max(1, height - 2 * padding - 2 * border), type: .absoluteValueType, for: .minimumHeight)
+                let contentHeight = max(1, height - 2 * padding - 2 * border)
+                block.setValue(contentHeight, type: .absoluteValueType, for: .minimumHeight)
+                block.setValue(contentHeight, type: .absoluteValueType, for: .height)
             }
             blocks[key] = block
         }

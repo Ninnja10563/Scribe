@@ -43,6 +43,28 @@ import DocumentCore
         XCTAssertGreaterThan(top.bounds(for: page).minY - bottom.bounds(for: page).minY, 80)
         XCTAssertTrue(page.string?.contains("Cell 1,0") == true)
     }
+    func testMinimumHeightStillGrowsForLongCellText() throws {
+        let document = ScribeFileDocument()
+        document.model.insertTable(rows: 2, columns: 2, after: document.model.paragraphs[0].id)
+        let tableID = document.model.tables[0].id
+        for p in document.model.sections[0].paragraphs.indices {
+            guard let cell = document.model.sections[0].paragraphs[p].tableCell else { continue }
+            let text = cell.row == 0 && cell.column == 0 ? String(repeating: "Content must remain visible as this cell grows. ", count: 12) + "Final cell sentence." : "Row \(cell.row) column \(cell.column)"
+            document.model.sections[0].paragraphs[p].runs = [TextRun(text)]
+        }
+        try document.model.setMinimumRowHeight(40, row: 0, tableID: tableID)
+        let editor = PaginatedEditor(document: document)
+        let directory = ProcessInfo.processInfo.environment["SCRIBE_SCHEMA_OUTPUT"].map { URL(fileURLWithPath: $0, isDirectory: true) } ?? FileManager.default.temporaryDirectory
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let url = directory.appendingPathComponent("GrowingTable.pdf")
+        try PrintRenderer(editor: editor).exportPDF(to: url, title: "Growing cells", author: "")
+        let pdf = try XCTUnwrap(PDFDocument(url: url)), page = try XCTUnwrap(pdf.page(at: 0))
+        let end = try XCTUnwrap(pdf.findString("Final cell sentence.", withOptions: []).first)
+        let next = try XCTUnwrap(pdf.findString("Row 1 column 0", withOptions: []).first)
+        XCTAssertTrue(end.pages.first === page)
+        XCTAssertTrue(next.pages.first === page)
+        XCTAssertGreaterThan(end.bounds(for: page).minY, next.bounds(for: page).maxY)
+    }
     func testNativeCellDialogCanFormatAColumnAndUndo() throws {
         let document = ScribeFileDocument()
         document.model.insertTable(rows: 2, columns: 2, after: document.model.paragraphs[0].id)
