@@ -67,6 +67,18 @@ import DocumentCore
         options.text.undoManager?.undo()
         XCTAssertEqual(try options.note(), original)
     }
+    func testApplyCommitsOrdinaryMarkedInputInPlainNote() throws {
+        _ = NSApplication.shared
+        let options = NoteOptions(note: DocumentNote(kind: .footnote, text: "Citation"), styles: ParagraphStyle.defaults)
+        defer { options.close() }
+        options.text.setSelectedRange(NSRange(location: 8, length: 0))
+        options.text.setMarkedText("語", selectedRange: NSRange(location: 1, length: 0), replacementRange: NSRange(location: NSNotFound, length: 0))
+        XCTAssertTrue(options.text.hasMarkedText())
+        let applied = try options.note()
+        XCTAssertFalse(options.text.hasMarkedText())
+        XCTAssertEqual(applied.plainText, "Citation語")
+        XCTAssertTrue(applied.paragraphs[0].runs.allSatisfy { $0.review == nil })
+    }
     func testOrdinaryNoteListReturnContinuesNumberingAndUndoRestores() throws {
         _ = NSApplication.shared
         let original = note(.footnote)

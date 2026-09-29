@@ -33,7 +33,7 @@ import DocumentCore
         editor.onLayout?()
     }
     func note() throws -> DocumentNote {
-        for text in editor.textViews where text.reviewComposition != nil { text.unmarkText() }
+        for text in editor.textViews where text.reviewComposition != nil || text.hasMarkedText() { text.unmarkText() }
         var result = original
         result.paragraphs = document.snapshot().paragraphs
         var check = ScribeDocument(); check.styles = document.model.styles; check.notes = [result]
