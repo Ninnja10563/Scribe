@@ -6,6 +6,24 @@ import DocumentCore
 
 @MainActor final class StyleEditorTests: XCTestCase {
     override func setUp() { super.setUp(); _ = NSApplication.shared }
+    func testDefinitionControlsPreserveConcreteFacesAndApplyAutomaticTraits() throws {
+        let font = try XCTUnwrap(NSFont(name: "HelveticaNeue-Medium", size: 17))
+        var style = ParagraphStyle(id: "sample", name: "Sample")
+        style.text.fontFamily = font.familyName; style.text.fontFace = font.fontName; style.text.fontSize = 17
+        let options = StyleEditorOptions(style: style)
+        options.size.stringValue = "20"
+        let concrete = try options.value(contentWidth: 450)
+        XCTAssertEqual(FontProjection.font(TextFormatting(), over: concrete.text).fontName, font.fontName)
+        XCTAssertEqual(FontProjection.font(TextFormatting(), over: concrete.text).pointSize, 20)
+        options.face.selectItem(at: 0)
+        if let action = options.face.action { NSApp.sendAction(action, to: options.face.target, from: options.face) }
+        XCTAssertTrue(options.bold.isEnabled); XCTAssertTrue(options.italic.isEnabled)
+        options.bold.state = .on; options.italic.state = .on
+        let automatic = try options.value(contentWidth: 450)
+        XCTAssertNil(automatic.text.fontFace)
+        let traits = NSFontManager.shared.traits(of: FontProjection.font(TextFormatting(), over: automatic.text))
+        XCTAssertTrue(traits.contains(.boldFontMask)); XCTAssertTrue(traits.contains(.italicFontMask))
+    }
     func testInitialTypingUsesOpeningParagraphFormatting() throws {
         let document = ScribeFileDocument()
         document.model.sections[0].paragraphs = [Paragraph("Heading", style: "heading1")]

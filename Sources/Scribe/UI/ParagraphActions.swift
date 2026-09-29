@@ -36,7 +36,9 @@ extension EditorWindowController {
     }
     @objc func paragraphSettings() {
         let view = editor.activeTextView
-        let current = view.typingAttributes[.paragraphStyle] as? NSParagraphStyle ?? NSParagraphStyle.default
+        let selection = view.selectedRange()
+        let attributes = selection.location < editor.storage.length ? editor.storage.attributes(at: selection.location, effectiveRange: nil) : view.typingAttributes
+        let current = attributes[.paragraphStyle] as? NSParagraphStyle ?? NSParagraphStyle.default
         let values = [current.lineSpacing, current.paragraphSpacingBefore, current.paragraphSpacing, current.firstLineHeadIndent, current.headIndent, -current.tailIndent]
         let labels = ["Additional line spacing", "Space before", "Space after", "First line indent", "Left indent", "Right indent"]
         let fields = values.map { NSTextField(string: String(format: "%.1f", $0)) }
