@@ -7,6 +7,30 @@ import DocumentCore
 
 @MainActor final class TableMergeTests: XCTestCase {
     override func setUp() { super.setUp(); _ = NSApplication.shared }
+    func testMergeDialogAndSplitUndo() throws {
+        let document = ScribeFileDocument()
+        document.model.insertTable(rows: 2, columns: 2, after: document.model.paragraphs[0].id)
+        document.makeWindowControllers(); defer { document.close() }
+        let controller = document.editorController!
+        let first = try XCTUnwrap(document.model.paragraphs.first { $0.tableCell != nil })
+        controller.editor.jump(to: first.id)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            func descendants(_ view: NSView) -> [NSView] { [view] + view.subviews.flatMap(descendants) }
+            guard let content = NSApp.modalWindow?.contentView else { XCTFail("Missing merge dialog"); NSApp.abortModal(); return }
+            let views = descendants(content)
+            for field in views.compactMap({ $0 as? NSTextField }).filter({ $0.isEditable }) { field.stringValue = "2" }
+            NativeDialogCapture.save(content, name: "MergeCellsDialog")
+            guard let button = views.compactMap({ $0 as? NSButton }).first(where: { $0.title == "Merge" }) else { XCTFail("Missing Merge"); NSApp.abortModal(); return }
+            button.performClick(nil)
+        }
+        controller.mergeCells()
+        XCTAssertEqual(document.snapshot().tables[0].mergedCells, [TableMerge(row: 0, column: 0, rowSpan: 2, columnSpan: 2)])
+        document.undoManager?.removeAllActions()
+        controller.splitMergedCell()
+        XCTAssertNil(document.snapshot().tables[0].mergedCells)
+        document.undoManager?.undo()
+        XCTAssertEqual(document.snapshot().tables[0].mergedCells?.count, 1)
+    }
     func testMergedCellProjectionUndoTabAndPDF() throws {
         let document = ScribeFileDocument()
         document.model.insertTable(rows: 3, columns: 3, after: document.model.paragraphs[0].id)

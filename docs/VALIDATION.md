@@ -122,6 +122,7 @@ An audit found smoke-document setup accidentally duplicated inside the recovery 
 - Recovery and table formatting passed [36504669009](https://github.com/Ninnja10563/Scribe/actions/runs/36504669009): **121 macOS tests**, three additional 48-test native runs and three 48-test Address Sanitizer runs, actual app launch/save/export, Office schema checks and independent PDF/package inspection. The captured light/dark app windows now show the new cell formatting. The hosted 256-page debug benchmark measured **0.596 seconds initial layout and 4.1 ms for an end edit**. A full Linux run passed 73 portable tests with one AppKit-only skip. A final native window-title regression checks that recovered copies stay visibly labeled until saved.
 
 - The recovered-window title regression and final v0.8 candidate passed [36505303323](https://github.com/Ninnja10563/Scribe/actions/runs/36505303323). Tag v0.8.0 points to validated revision `7d8006d`.
+- [Scribe v0.8.0](https://github.com/Ninnja10563/Scribe/releases/tag/v0.8.0) was published by successful [release run 36505639730](https://github.com/Ninnja10563/Scribe/actions/runs/36505639730). Its published arm64 DMG was downloaded and verified against its SHA-256 checksum. The v0.7 recovery warning now points to this fix.
 
 ## Merged cells (v0.9 development)
 

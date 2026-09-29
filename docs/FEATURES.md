@@ -1,4 +1,4 @@
-# Feature status — Scribe 0.9 development (0.8 release publishing)
+# Feature status — Scribe 0.9 development (latest release: 0.8)
 
 This is a foundation release. “Implemented” means there is working code and an exposed editing path, not that the feature has the interoperability coverage of a mature word processor.
 
