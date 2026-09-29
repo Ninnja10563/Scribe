@@ -263,3 +263,10 @@ The first complete running-content run, [36524090953](https://github.com/Ninnja1
 - Final candidate [36540445042](https://github.com/Ninnja10563/Scribe/actions/runs/36540445042) and main [36540774541](https://github.com/Ninnja10563/Scribe/actions/runs/36540774541) both passed at the identical revision `4e15d8f`, including repeated native tests, Address Sanitizer, the actual app launch, exported packages and Office rendering.
 - The strengthened live-highlight regression passed in [36540348700](https://github.com/Ninnja10563/Scribe/actions/runs/36540348700): Find attributes remained present after PDF export. Independent PyMuPDF rendering of the downloaded plain and highlighted exports was pixel-identical on both pages at 144 dpi.
 - Tag `v0.19.1` points to the validated revision. Release run [36541388374](https://github.com/Ninnja10563/Scribe/actions/runs/36541388374) passed all validation and published the DMG. The published Apple Silicon DMG was downloaded and its SHA-256 checksum verified successfully.
+
+
+## 0.19.2 window-lifetime fix (release preparation)
+
+- Visible-window review testing exposed a stale document reference when opening the next window. Diagnostic [36570848458](https://github.com/Ninnja10563/Scribe/actions/runs/36570848458) reported `respondsToSelector:` being sent to a deallocated `ScribeFileDocument` under Objective-C zombies.
+- Closed window controllers now clear their document reference after closing. Development-branch native [36571294558](https://github.com/Ninnja10563/Scribe/actions/runs/36571294558) passed the failing scenario and a repeated visible-window lifecycle regression. The isolated close fix and lifecycle test are backported here; unreleased review features are not included.
+- The main-branch portable suite passed 130 tests (129 passed, one AppKit placeholder skipped), recorded in `scribe-0192-core.log`. Full main-branch macOS validation follows before tagging. No 0.19.2 release is claimed published yet. Native format remains v13.
