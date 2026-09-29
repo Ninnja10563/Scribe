@@ -57,19 +57,21 @@ public extension ScribeDocument {
                 let removedBreak = separator.runs.isEmpty
                 paragraph.breakReview = separator.runs.first?.review
                 if removedBreak, body { removed.append(NSRange(location: offset - 1, length: 1)) }
-                if mergeNext, let previous = result.last {
-                    guard Set(paragraph.formattingReview?.pendingIDs ?? []).isSubset(of: Set(previous.formattingReview?.pendingIDs ?? [])) else {
+                if mergeNext, let previous = result.indices.last {
+                    guard Set(paragraph.formattingReview?.pendingIDs ?? []).isSubset(of: Set(result[previous].formattingReview?.pendingIDs ?? [])) else {
                         throw DocumentError.invalid("resolve this paragraph’s formatting changes before joining it to the previous paragraph")
                     }
-                    if body { mergedParagraphs[paragraph.id] = previous.id }
+                    if body { mergedParagraphs[paragraph.id] = result[previous].id }
                     var incoming = paragraph.runs
-                    if paragraph.styleID != previous.styleID {
+                    if paragraph.styleID != result[previous].styleID {
                         let inherited = style(for: paragraph).text
                         incoming = incoming.map { $0.materializingReviewFormatting(over: inherited) }
                     }
-                    if result[result.count - 1].text.isEmpty { result[result.count - 1].runs = [] }
-                    result[result.count - 1].runs += incoming
-                    result[result.count - 1].breakReview = paragraph.breakReview
+                    // Do not assemble the growing paragraph merely to test emptiness,
+                    // or retain a copy of it while appending (which forces COW).
+                    if result[previous].runs.allSatisfy({ $0.text.isEmpty }) { result[previous].runs = [] }
+                    result[previous].runs += incoming
+                    result[previous].breakReview = paragraph.breakReview
                 } else { result.append(paragraph) }
                 mergeNext = removedBreak
             }

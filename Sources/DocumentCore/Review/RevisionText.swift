@@ -79,10 +79,12 @@ public struct RevisionText: Equatable, Sendable {
     static func coalescing(_ source: [TextRun]) -> [TextRun] {
         var result: [TextRun] = []
         for run in source {
-            if let previous = result.last, previous.format == run.format, previous.link == run.link,
-               previous.review == run.review, previous.image == nil, run.image == nil,
-               previous.equation == nil, run.equation == nil, previous.noteID == nil, run.noteID == nil {
-                result[result.count - 1].text += run.text
+            // Retaining a copy of the previous run also retains its String
+            // buffer, forcing a full copy on every append in a long merge.
+            if let index = result.indices.last, result[index].format == run.format, result[index].link == run.link,
+               result[index].review == run.review, result[index].image == nil, run.image == nil,
+               result[index].equation == nil, run.equation == nil, result[index].noteID == nil, run.noteID == nil {
+                result[index].text += run.text
             } else { result.append(run) }
         }
         return result
