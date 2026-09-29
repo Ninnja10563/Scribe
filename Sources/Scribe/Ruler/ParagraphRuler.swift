@@ -15,6 +15,7 @@ import DocumentCore
     init(editor: PaginatedEditor) {
         self.editor = editor
         super.init(scrollView: editor.scrollView, orientation: .horizontalRuler)
+        clipsToBounds = true
         ruleThickness = 36; reservedThicknessForMarkers = 0
         clientView = editor.canvas
         for indent in ParagraphIndent.allCases {
@@ -87,7 +88,7 @@ import DocumentCore
         refresh()
     }
     override func draw(_ dirtyRect: NSRect) {
-        NSColor.windowBackgroundColor.setFill(); dirtyRect.fill()
+        NSColor.windowBackgroundColor.setFill(); dirtyRect.intersection(bounds).fill()
         NSColor.textBackgroundColor.setFill()
         NSRect(x: writingOrigin, y: 0, width: writingWidth, height: bounds.height).intersection(bounds).fill()
         guard scale > 0 else { return }

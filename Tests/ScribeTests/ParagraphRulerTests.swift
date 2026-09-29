@@ -27,9 +27,12 @@ import ImportExport
         XCTAssertEqual(document.snapshot().paragraphs[0].formatting?.headIndent, 0)
         XCTAssertFalse(document.undoManager!.canUndo)
         XCTAssertEqual(editor.canvas.indentGuide?.offset, 36)
+        window.displayIfNeeded()
         NativeDialogCapture.save(window.contentView!, name: "ParagraphRulerDrag")
         try handle.mouseUp(with: event(.leftMouseUp, point: target, window: window))
         XCTAssertNil(editor.canvas.indentGuide)
+        XCTAssertNil(ruler.accessoryView, "TextKit must not add unrepresented tab/style controls")
+        XCTAssertEqual(ruler.requiredThickness, 36, accuracy: 0.1)
         let result = document.snapshot().paragraphs[0].formatting
         XCTAssertEqual(result?.headIndent, 36); XCTAssertEqual(result?.firstLineIndent, 18)
         XCTAssertEqual(result?.spaceBefore, 12); XCTAssertEqual(result?.alignment, .justified)
@@ -38,7 +41,19 @@ import ImportExport
         document.undoManager?.undo(); XCTAssertEqual(document.snapshot().paragraphs[0].formatting?.headIndent, 0)
         XCTAssertFalse(document.undoManager!.canUndo)
         document.undoManager?.redo(); XCTAssertEqual(document.snapshot().paragraphs[0].formatting?.headIndent, 36)
+        window.displayIfNeeded()
         NativeDialogCapture.save(window.contentView!, name: "ParagraphRuler")
+        let content = try XCTUnwrap(window.contentView)
+        let bitmap = try XCTUnwrap(content.bitmapImageRepForCachingDisplay(in: content.bounds))
+        content.cacheDisplay(in: content.bounds, to: bitmap)
+        var white = 0, sampled = 0
+        for y in stride(from: 0, to: bitmap.pixelsHigh, by: 8) {
+            for x in stride(from: 0, to: bitmap.pixelsWide, by: 8) {
+                sampled += 1
+                if let color = bitmap.colorAt(x: x, y: y)?.usingColorSpace(.sRGB), min(color.redComponent, color.greenComponent, color.blueComponent) > 0.99 { white += 1 }
+            }
+        }
+        XCTAssertGreaterThan(Double(white) / Double(sampled), 0.15, "Ruler drawing must not paint over the document page")
     }
     func testRulerCoordinatesFollowZoomAndHorizontalScroll() throws {
         let document = ScribeFileDocument(); document.makeWindowControllers(); defer { document.close() }

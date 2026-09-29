@@ -103,3 +103,12 @@ with pymupdf.open(root / 'Smoke.pdf') as full, pymupdf.open(root / 'Selected-pag
     for comment in comments:
         assert comment['text'] not in text, 'Review sidebar text leaked into printed body'
     print(f'Verified {len(full)} source pages, two selected pages, metadata, numbering, table, image and {len(comments)} comments.')
+
+# A PDF can be valid while an overlapping chrome view hides the editing surface.
+for name in ['Scribe.png', 'Scribe-Dark.png']:
+    screenshot = pymupdf.open(root / name)
+    pix = screenshot[0].get_pixmap(alpha=False)
+    samples = pix.samples
+    white = sum(min(samples[i:i+3]) > 252 for i in range(0, len(samples), pix.n))
+    assert white / (pix.width * pix.height) > 0.15, f'{name}: document page missing from the actual window capture'
+print('Light and dark native window captures retain visible document pages.')
