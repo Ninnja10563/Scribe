@@ -97,3 +97,7 @@ A conservative pagination fast path tracks UTF-16 page-end offsets for small pla
 Cold layout also recalculates a terminal container once it gains an overflow successor. Otherwise TextKit can use different trailing line/paragraph spacing decisions on initial construction and later reflow. Adding text views preserves the shared typing attributes instead of resetting the active font to the opening paragraph's attributes.
 
 Image corner drags use the dominant normalized movement on either axis, constrained to the page. Escape restores the original projection. Window-coordinate deltas remain valid if repagination removes the original text view; commit resolves the current text view again. Original asset bytes and semantic adjustments are retained.
+
+## Hierarchical navigation (0.16 development)
+
+DocumentOutlineView uses NSOutlineView's native hierarchy, selection, disclosure, keyboard and accessibility behavior. A heading attaches to the nearest previous lower-level heading, so missing heading levels do not create artificial document nodes. Stable paragraph IDs preserve node identity, expansion and selection across refreshes. Expansion is window UI state and does not alter the file or undo history. Passive navigation retains keyboard focus; Return/double-click explicitly returns it to the native document text view. Refresh and close suppress navigation callbacks.

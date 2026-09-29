@@ -1,4 +1,4 @@
-# Feature status — Scribe 0.15 development (latest release: 0.14)
+# Feature status — Scribe 0.16 development (latest release: 0.14)
 
 This is a foundation release. “Implemented” means there is working code and an exposed editing path, not that the feature has the interoperability coverage of a mature word processor.
 
@@ -13,7 +13,7 @@ This is a foundation release. “Implemented” means there is working code and 
 | Tables | Editable cells, insertion, add/delete rows/columns, Tab navigation, column widths, cell backgrounds/borders/padding/vertical alignment, minimum row heights, header shading, rectangular merge/split and span-aware grid edits; TextKit layout | Drag sizing, cell-range selection, nested tables, cells taller than one page (PDF/print blocked when text overflows) |
 | Images | PNG/JPEG/HEIC/TIFF insertion, Finder drop, image paste, inline layout, proportional resizing by handles or dialog, vertical/horizontal gestures with Escape cancellation, alt text; reversible crop, clockwise rotation and opacity | Floating placement/wrapping, visual crop handles |
 | Running content | Text headers/footers; top/bottom, left/centre/right page numbers and formats, custom start | Direct-on-page editing, first/odd/even variants, document metadata fields |
-| Navigation | Clickable outline, case/whole-word find/replace, match highlights, semantic statistics; heading links with DOCX/PDF destinations; automatic TOC/update from layout; named paragraph bookmarks with rename/delete/navigation and DOCX/PDF links | Character-range bookmarks, editing existing link targets, imported live TOC reconstruction |
+| Navigation | Native collapsible heading tree with preserved expansion state, keyboard navigation and focus commands; case/whole-word find/replace, match highlights, semantic statistics; heading links with DOCX/PDF destinations; automatic TOC/update from layout; named paragraph bookmarks with rename/delete/navigation and DOCX/PDF links | Character-range bookmarks, editing existing link targets, imported live TOC reconstruction |
 | Review/references | Native anchored comments with multi-paragraph associations, detached-text retention, sidebar edit/delete/resolve/reopen; named paragraph bookmarks and modular grammar protocol | Modern Word reply threads and collaboration metadata, track changes, footnotes/endnotes, equation layout |
 | DOCX | Real OPC ZIP/XML; common text, headings, lists/tables/images, anchored comments and resolved state, page geometry, running content, fields on export; import warnings | More Word/Pages/LibreOffice fixture coverage, advanced styles, custom compound numbering and restart rules, nested tables, tracked changes/notes, newer review metadata, field import, exact line-spacing fidelity |
 | Other formats | Basic RTF (image omission disclosed), RTFD clipboard images, Markdown subset, UTF-8 text; native copies protect originals | RTF table import, complete CommonMark, external Markdown image bundles |
