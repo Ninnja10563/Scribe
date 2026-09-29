@@ -111,7 +111,11 @@ extension NSAttributedString.Key {
                             run.image = try? ImageProjection.image(from: bytes, maximumWidth: original.sections[0].page.contentWidth, maximumHeight: original.sections[0].page.contentHeight - 24)
                         }
                     }
-                    p.runs.append(run)
+                    if (run.equation != nil || run.image != nil), value.allSatisfy({ $0 == "\u{FFFC}" }) {
+                        // AppKit may coalesce adjacent copies of the same attachment.
+                        run.text = "\u{FFFC}"
+                        p.runs.append(contentsOf: Array(repeating: run, count: value.count))
+                    } else { p.runs.append(run) }
                 }
             }
             if p.runs.isEmpty { p.runs = [TextRun("", format: captureTextFormat(attrs, style: style))] }

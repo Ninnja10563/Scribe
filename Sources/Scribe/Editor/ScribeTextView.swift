@@ -82,9 +82,14 @@ import DocumentCore
     override var writablePasteboardTypes: [NSPasteboard.PasteboardType] {
         var types = super.writablePasteboardTypes
         if isRichText, selectedRange().length > 0, !types.contains(.rtfd) { types.insert(.rtfd, at: 0) }
+        if isRichText, selectedRange().length > 0 { types.insert(InlineObjectClipboard.type, at: 0) }
         return types
     }
     override func writeSelection(to pasteboard: NSPasteboard, type: NSPasteboard.PasteboardType) -> Bool {
+        if type == InlineObjectClipboard.type, let textStorage {
+            do { return pasteboard.setData(try InlineObjectClipboard.encode(textStorage.attributedSubstring(from: selectedRange())), forType: type) }
+            catch { presentError(error); return false }
+        }
         // AppKit still requests pre-UTI names during ordinary Copy.
         let richImages = type == .rtfd || type.rawValue == "NeXT RTFD pasteboard type"
         let richText = type == .rtf || type.rawValue == "NeXT Rich Text Format v1.0 pasteboard type"
@@ -100,7 +105,8 @@ import DocumentCore
         let pasteboard = NSPasteboard.general
         if let data = pasteboard.data(forType: .rtfd),
            let value = try? NSAttributedString(data: data, options: [.documentType: NSAttributedString.DocumentType.rtfd], documentAttributes: nil) {
-            let normalized = AttributedDocument.capture(value, preserving: ScribeDocument())
+            let restored = pasteboard.data(forType: InlineObjectClipboard.type).flatMap { try? InlineObjectClipboard.restore($0, in: value) } ?? value
+            let normalized = AttributedDocument.capture(restored, preserving: ScribeDocument())
             replaceSelection(AttributedDocument.render(normalized), action: "Paste"); return
         }
         if let data = pasteboard.data(forType: .png) ?? pasteboard.data(forType: .tiff) {

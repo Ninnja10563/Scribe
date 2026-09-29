@@ -49,6 +49,11 @@ public enum TextFormats {
             if p.styleID == "quote" { prefix = "> " }
             if let list = p.list { prefix = String(repeating: "  ", count: list.level) + (list.kind == .bullet ? "- " : "1. ") }
             return prefix + p.runs.map { run in
+                if let equation = run.equation {
+                    let longest = equation.source.split(whereSeparator: { $0 != "`" }).map(\.count).max() ?? 0
+                    let fence = String(repeating: "`", count: longest + 1)
+                    return fence + " " + equation.source + " " + fence
+                }
                 var text = run.text
                 if run.format.bold == true { text = "**\(text)**" }
                 if run.format.italic == true { text = "*\(text)*" }
