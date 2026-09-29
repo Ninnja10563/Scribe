@@ -139,20 +139,39 @@ import DocumentCore
         editor.storage.setAttributedString(NSAttributedString(string: "Short")); editor.paginate()
         XCTAssertEqual(editor.textViews.count, 1)
     }
-    func testTwoHundredPageLayoutReusesExistingContainers() {
-        let document = ScribeFileDocument()
-        document.model.sections[0].paragraphs = (0..<1600).map { Paragraph("Paragraph \($0). " + String(repeating: "Document layout must preserve glyph coverage and page continuity. ", count: 6)) }
-        let start = Date()
-        let editor = PaginatedEditor(document: document)
-        XCTAssertGreaterThan(editor.textViews.count, 200)
-        let first = editor.textViews[0]
-        let initialTime = Date().timeIntervalSince(start)
-        let editStart = Date()
-        editor.storage.replaceCharacters(in: NSRange(location: editor.storage.length - 1, length: 0), with: "x")
-        editor.paginate()
-        XCTAssertTrue(editor.textViews[0] === first)
-        XCTAssertEqual(NSMaxRange(editor.layout.glyphRange(for: editor.layout.textContainers.last!)), editor.layout.numberOfGlyphs)
-        print("Large layout: \(editor.textViews.count) pages; initial \(initialTime)s; end edit \(Date().timeIntervalSince(editStart))s")
+    func testLongDocumentLayoutReusesContainersAtFrontMiddleAndEnd() throws {
+        var measurements: [[String: Any]] = []
+        for paragraphCount in [80, 320, 640, 1600] {
+            let document = ScribeFileDocument()
+            document.model.sections[0].paragraphs = (0..<paragraphCount).map { Paragraph("Paragraph \($0). " + String(repeating: "Document layout must preserve glyph coverage and page continuity. ", count: 6)) }
+            let start = Date(), editor = PaginatedEditor(document: document)
+            let initialTime = Date().timeIntervalSince(start), pages = editor.textViews.count
+            XCTAssertGreaterThan(pages, paragraphCount / 8)
+            if paragraphCount == 1600 { XCTAssertGreaterThan(pages, 200) }
+            let first = editor.textViews[0]
+            var result: [String: Any] = ["paragraphs": paragraphCount, "pages": pages, "initialSeconds": initialTime]
+            for position in ["end", "middle", "front"] {
+                let index = position == "end" ? editor.storage.length - 1 : (position == "middle" ? editor.storage.length / 2 : 0)
+                let editStart = Date()
+                editor.storage.replaceCharacters(in: NSRange(location: index, length: 0), with: "x")
+                editor.paginate()
+                result[position + "EditSeconds"] = Date().timeIntervalSince(editStart)
+                XCTAssertTrue(editor.textViews[0] === first)
+                var covered = 0
+                for container in editor.layout.textContainers {
+                    let range = editor.layout.glyphRange(for: container)
+                    XCTAssertEqual(range.location, covered); covered = NSMaxRange(range)
+                }
+                XCTAssertEqual(covered, editor.layout.numberOfGlyphs)
+            }
+            print("Large layout measurements: \(result)")
+            measurements.append(result); editor.prepareForClose()
+        }
+        if let directory = ProcessInfo.processInfo.environment["SCRIBE_SCHEMA_OUTPUT"] {
+            let folder = URL(fileURLWithPath: directory, isDirectory: true)
+            try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+            try JSONSerialization.data(withJSONObject: measurements, options: [.prettyPrinted, .sortedKeys]).write(to: folder.appendingPathComponent("LayoutMeasurements.json"))
+        }
     }
     func testPDFPageSelectionAndMetadata() throws {
         let document = ScribeFileDocument()

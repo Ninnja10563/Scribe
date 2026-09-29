@@ -92,7 +92,7 @@ import DocumentCore
         NSColor.textBackgroundColor.setFill()
         NSRect(x: writingOrigin, y: 0, width: writingWidth, height: bounds.height).intersection(bounds).fill()
         guard scale > 0 else { return }
-        let step = max(18, ceil(36 / scale / 18) * 18)
+        let step = [18.0, 36, 72, 144, 288, 576, 1152, 2304].first { $0 * scale >= 35.999 } ?? 2304
         let width = editor?.canvas.pageSettings.contentWidth ?? 0
         let attrs: [NSAttributedString.Key: Any] = [.font: NSFont.monospacedDigitSystemFont(ofSize: 9, weight: .regular), .foregroundColor: NSColor.secondaryLabelColor]
         for value in stride(from: 0.0, through: width, by: step) {

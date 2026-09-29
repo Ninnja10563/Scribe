@@ -1,11 +1,13 @@
-Scribe 0.13.0 improves superscript/subscript rendering and font-state reliability.
+Scribe 0.14.0 adds a native paragraph ruler.
 
-- Superscript and subscript use reduced native glyphs and size-relative baseline offsets on screen and in vector PDF/print output. Format → Normal Baseline restores ordinary text.
-- Repeated script commands do not compound font scaling. Font-family, size and trait editing use the logical font; the Font panel reports that size and genuine mixed-font selections.
-- Native files, DOCX and rich-text clipboard exports retain semantic script levels and logical sizes. RTF/RTFD copying avoids double scaling.
-- Character formatting in an empty paragraph survives saving, reopening and subsequent typing. Font/script changes there are undoable and mark the document for autosave.
-- Unchanged formatting no longer adds redundant undo operations.
+- Drag first-line, left and right indent markers; a page guide previews the position. Each completed drag is one undoable edit. Escape cancels.
+- Indents follow page centering, zoom and horizontal scrolling. Mixed selections are indicated, and changing one indent preserves the other paragraph settings.
+- View → Focus Ruler (⇧⌘R) provides keyboard access. Arrow keys move by one point; Shift-arrow moves by six. Escape returns to the document. Native accessibility slider actions are also supported.
+- Focus mode hides the ruler and restores its previous visibility. View → Toggle Ruler controls it independently.
+- Empty-paragraph indents survive saving and subsequent typing. Native, DOCX and PDF retain first-line, hanging and right indents.
 
-This remains a development release. A draggable ruler, paragraph-mark background refinement, floating images, independent sections, track changes, footnotes/endnotes, equations and shapes remain unfinished. Tall cells cannot continue across pages; unsafe PDF/print output is blocked. See docs/FEATURES.md and docs/VALIDATION.md.
+The ruler currently edits ordinary and heading paragraphs. Lists, tables and generated table-of-contents entries use their existing controls. Custom tab stops are not yet supported.
+
+This remains a development release. Floating images, independent sections, track changes, footnotes/endnotes, equations and shapes remain unfinished. Tall cells cannot continue across pages; unsafe PDF/print output is blocked. See docs/FEATURES.md and docs/VALIDATION.md.
 
 For Apple Silicon, macOS 14+. Development builds are ad-hoc signed, not notarized. Physical-Mac input/accessibility and manual Word/Pages validation remain pending.
