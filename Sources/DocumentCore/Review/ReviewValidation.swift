@@ -10,6 +10,18 @@ extension NativeFormat {
             } else { identities[identity.id] = (identity, kind) }
             guard identities.count <= 100_000 else { throw DocumentError.invalid("too many tracked changes") }
         }
+        for flow in document.sections.map(\.paragraphs) + document.notes.map(\.paragraphs) {
+            for (index, paragraph) in flow.enumerated() {
+                guard let review = paragraph.breakReview else { continue }
+                guard index + 1 < flow.count, review.formatting.isEmpty, review.formattingBase == nil,
+                      paragraph.tableCell == flow[index + 1].tableCell,
+                      paragraph.toc == nil, flow[index + 1].toc == nil else {
+                    throw DocumentError.invalid("invalid tracked paragraph separator")
+                }
+                if let insertion = review.insertion { try record(insertion, kind: 0) }
+                if let deletion = review.deletion { try record(deletion, kind: 1) }
+            }
+        }
         for paragraph in document.paragraphs + document.notes.flatMap(\.paragraphs) {
             for run in paragraph.runs {
                 guard let review = run.review else { continue }

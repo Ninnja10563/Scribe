@@ -62,7 +62,7 @@ extension TextFormatting {
 public extension ScribeDocument {
     var hasPendingRevisions: Bool {
         (paragraphs + notes.flatMap(\.paragraphs)).contains { paragraph in
-            paragraph.runs.contains { !($0.review?.pendingIDs.isEmpty ?? true) }
+            !(paragraph.breakReview?.pendingIDs.isEmpty ?? true) || paragraph.runs.contains { !($0.review?.pendingIDs.isEmpty ?? true) }
         }
     }
 }

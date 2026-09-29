@@ -76,6 +76,8 @@ public struct Paragraph: Codable, Equatable, Sendable, Identifiable {
     public var runs: [TextRun]
     public var formatting: ParagraphFormatting?
     public var list: ListDescriptor?
+    /// Review metadata for the paragraph separator following this paragraph.
+    public var breakReview: RunReview?
     public var pageBreakBefore = false
     public var tableCell: TableCellReference?
     public var toc: TOCParagraph?

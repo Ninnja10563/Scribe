@@ -3,6 +3,7 @@ import AppKit
 import DocumentCore
 
 extension NSAttributedString.Key {
+    static let scribeBreakReview = NSAttributedString.Key("org.scribe.breakReview")
     static let scribeReview = NSAttributedString.Key("org.scribe.review")
     static let scribePageBreakMarker = NSAttributedString.Key("org.scribe.pageBreakMarker")
     static let scribeTOC = NSAttributedString.Key("org.scribe.tableOfContents")
@@ -59,7 +60,9 @@ extension NSAttributedString.Key {
                 result.append(NSAttributedString(string: run.text, attributes: attrs))
             }
             if index < paragraphs.count - 1 {
-                result.append(NSAttributedString(string: "\n", attributes: base))
+                var separator = base
+                if let review = paragraph.breakReview { separator[.scribeBreakReview] = try? JSONEncoder().encode(review) }
+                result.append(NSAttributedString(string: "\n", attributes: separator))
             }
             if result.length > start {
                 result.addAttributes([.scribeStyle: paragraph.styleID, .scribeParagraphID: paragraph.id.uuidString], range: NSRange(location: start, length: result.length - start))
@@ -104,6 +107,9 @@ extension NSAttributedString.Key {
             if let ns = attrs[.paragraphStyle] as? NSParagraphStyle {
                 let f = paragraphFormatting(ns)
                 if f != style.paragraph { p.formatting = f }
+            }
+            if offset + length < storage.length, let data = storage.attribute(.scribeBreakReview, at: offset + length, effectiveRange: nil) as? Data {
+                p.breakReview = try? JSONDecoder().decode(RunReview.self, from: data)
             }
             p.runs = []
             var prefix = p.pageBreakBefore ? 1 : 0

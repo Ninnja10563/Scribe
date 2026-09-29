@@ -274,3 +274,8 @@ The first complete running-content run, [36524090953](https://github.com/Ninnja1
 - Tag `v0.19.1` points to the validated revision. Release run [36541388374](https://github.com/Ninnja10563/Scribe/actions/runs/36541388374) passed all validation and published the DMG. The published Apple Silicon DMG was downloaded and its SHA-256 checksum verified successfully.
 
 - Review-decision follow-up: 15 targeted portable tests passed, including preservation of direct character formatting when accepting deletion of all text in a paragraph.
+
+## Tracked paragraph separators (unreleased)
+
+- Clean portable build passed 150 tests with one AppKit-only placeholder skipped. New cases cover accepting deleted separators, rejecting inserted separator chains, combined text/separator decisions, comment/bookmark relocation, retaining character appearance across different paragraph styles, preserving later formatting revisions and separators within notes. Invalid trailing and cross-cell separator revisions are rejected.
+- Native projection tests for separator metadata and joined heading fonts are pending macOS validation. The native editing/open gates remain in place; no public Track Changes editing workflow is claimed.

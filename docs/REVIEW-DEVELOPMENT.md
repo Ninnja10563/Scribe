@@ -8,7 +8,7 @@ The first implementation adds versioned run review metadata and core decisions f
 
 Remaining integration:
 
-1. Track paragraph separators explicitly, including split/merge semantics and paragraph formatting changes. Run-level operations alone cannot implement document-wide tracked typing.
+1. Connect the now-explicit paragraph-separator review metadata to split/merge typing. Core accept/reject already joins paragraph chains, rebases comments/bookmarks, preserves inherited character appearance, and handles note paragraphs. Paragraph formatting changes still need their own review history.
 2. Project review metadata without confusing author formatting with revision decoration. Preserve metadata through native undo, recovery and clipboard; do not inherit another author's revision when typing.
 3. Integrate native typing, deletion, marked-text composition, formatting and document transactions. Group related typing changes without coalescing different authors or unrelated edits.
 4. Expose Track Changes, previous/next, accept/reject current and all, with readable revision presentation and keyboard-accessible navigation. Test edits around pending deletions and accept/reject undo.

@@ -3,7 +3,7 @@ import Foundation
 public extension ScribeDocument {
     var pendingRevisionIDs: [UUID] {
         var seen = Set<UUID>()
-        return (paragraphs + notes.flatMap(\.paragraphs)).flatMap { $0.runs.flatMap { $0.review?.pendingIDs ?? [] } }
+        return (paragraphs + notes.flatMap(\.paragraphs)).flatMap { $0.runs.flatMap { $0.review?.pendingIDs ?? [] } + ($0.breakReview?.pendingIDs ?? []) }
             .filter { seen.insert($0).inserted }
     }
     mutating func resolveRevision(_ id: UUID, accepting: Bool) throws {
@@ -16,6 +16,7 @@ public extension ScribeDocument {
         try NativeFormat.validate(self)
         guard !ids.isDisjoint(with: pendingRevisionIDs) else { return }
         var candidate = self, removed: [NSRange] = [], offset = 0
+        var mergedParagraphs: [UUID: UUID] = [:]
         func resolve(_ paragraph: inout Paragraph, body: Bool) {
             for run in paragraph.runs {
                 let length = (run.text as NSString).length
@@ -31,11 +32,45 @@ public extension ScribeDocument {
             paragraph.runs = text.runs.isEmpty ? [TextRun("", format: paragraph.runs.first?.format ?? TextFormatting())] : text.runs
             if body { offset += 1 } // Paragraph separators are outside this run operation.
         }
+        func resolveFlow(_ source: [Paragraph], body: Bool) -> [Paragraph] {
+            var result: [Paragraph] = [], mergeNext = false
+            for var paragraph in source {
+                let originalBreak = paragraph.breakReview
+                resolve(&paragraph, body: body)
+                var mark = TextRun("\n"); mark.review = originalBreak
+                var separator = RevisionText(runs: [mark])
+                let order = separator.pendingIDs.filter { ids.contains($0) }
+                for id in accepting ? order : Array(order.reversed()) {
+                    if accepting { separator.accept(id) } else { separator.reject(id) }
+                }
+                let removedBreak = separator.runs.isEmpty
+                paragraph.breakReview = separator.runs.first?.review
+                if removedBreak, body { removed.append(NSRange(location: offset - 1, length: 1)) }
+                if mergeNext, let previous = result.last {
+                    if body { mergedParagraphs[paragraph.id] = previous.id }
+                    var incoming = paragraph.runs
+                    if paragraph.styleID != previous.styleID {
+                        let inherited = style(for: paragraph).text
+                        incoming = incoming.map { $0.materializingReviewFormatting(over: inherited) }
+                    }
+                    if result[result.count - 1].text.isEmpty { result[result.count - 1].runs = [] }
+                    result[result.count - 1].runs += incoming
+                    result[result.count - 1].breakReview = paragraph.breakReview
+                } else { result.append(paragraph) }
+                mergeNext = removedBreak
+            }
+            return result
+        }
         for section in candidate.sections.indices {
-            for paragraph in candidate.sections[section].paragraphs.indices { resolve(&candidate.sections[section].paragraphs[paragraph], body: true) }
+            candidate.sections[section].paragraphs = resolveFlow(candidate.sections[section].paragraphs, body: true)
         }
         for note in candidate.notes.indices {
-            for paragraph in candidate.notes[note].paragraphs.indices { resolve(&candidate.notes[note].paragraphs[paragraph], body: false) }
+            candidate.notes[note].paragraphs = resolveFlow(candidate.notes[note].paragraphs, body: false)
+        }
+        for index in candidate.bookmarks.indices {
+            if let destination = mergedParagraphs[candidate.bookmarks[index].anchor.paragraphID] {
+                candidate.bookmarks[index].anchor = TextAnchor(paragraphID: destination, offset: 0, length: 0)
+            }
         }
         candidate.rebaseReviewComments(from: paragraphs, removing: removed)
         candidate.reconcileNotes()
