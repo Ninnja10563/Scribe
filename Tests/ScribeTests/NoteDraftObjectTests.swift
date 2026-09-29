@@ -12,6 +12,7 @@ import DocumentCore
         var run = TextRun("\u{fffc}")
         run.image = InlineImage(data: png, fileExtension: "png", width: 420, height: 620, altText: "Original illustration")
         note.paragraphs[0].runs = [run]
+        _ = try NoteTextLayout(note: NoteNumbering.resolve(referenceIDs: [note.id], notes: [note])[0], styles: ParagraphStyle.defaults, width: PageSettings().contentWidth)
         let options = NoteOptions(note: note, styles: ParagraphStyle.defaults)
         defer { options.close() }
         let editor = try XCTUnwrap(options.text.editor)
@@ -32,6 +33,7 @@ import DocumentCore
         var note = DocumentNote(kind: .endnote), run = TextRun("\u{fffc}")
         run.equation = equation; note.paragraphs[0].runs = [run]
         note.paragraphs[0].list = ListDescriptor(kind: .decimal, level: 2)
+        _ = try NoteTextLayout(note: NoteNumbering.resolve(referenceIDs: [note.id], notes: [note])[0], styles: ParagraphStyle.defaults, width: 660)
         let options = NoteOptions(note: note, styles: ParagraphStyle.defaults)
         defer { options.close() }
         let editor = try XCTUnwrap(options.text.editor)

@@ -120,6 +120,8 @@ jobs:
         run: python scripts/verify-review-drawing.py build/schema
       - name: Verify review PDF output modes
         run: python scripts/verify-review-output.py build/schema
+      - name: Verify note draft object output
+        run: python scripts/verify-note-draft-objects.py build/schema
       - name: Verify native list editing output
         run: python scripts/verify-list-editing.py build/schema
       - name: Verify tracked note dialog output
