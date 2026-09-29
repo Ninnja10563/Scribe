@@ -6,7 +6,8 @@ extension PaginatedEditor {
     /// the caret. Reflow can move that caret into a different page container.
     func restoreCaretAfterPagination(_ range: NSRange, typingAttributes: [NSAttributedString.Key: Any]) {
         guard range.length == 0, range.location <= storage.length,
-              let current = canvas.window?.firstResponder as? ScribeTextView, current.editor === self else { return }
+              let current = canvas.window?.firstResponder as? ScribeTextView, current.editor === self,
+              current.reviewComposition == nil, !current.hasMarkedText() else { return }
         let container: NSTextContainer?
         if storage.length == 0 { container = layout.textContainers.first }
         else if range.location == storage.length, let extra = layout.extraLineFragmentTextContainer { container = extra }

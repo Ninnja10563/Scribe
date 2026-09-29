@@ -101,6 +101,25 @@ import DocumentCore
         XCTAssertEqual(typed.paragraphs.last?.text, "X")
         XCTAssertEqual(typed.paragraphs.last?.runs.first?.format.bold, true)
     }
+    func testPaginationDoesNotMoveAnActiveCompositionToAnotherInputClient() throws {
+        let document = ScribeFileDocument(); defer { document.close() }
+        document.model.sections[0].paragraphs = [Paragraph("Body")]
+        document.model.sections[0].page.height = 216
+        document.makeWindowControllers()
+        let editor = document.editorController!.editor
+        editor.reviewEditing.author = .init(name: "Writer")
+        editor.select(NSRange(location: 4, length: 0))
+        let view = editor.activeTextView, provisional = String(repeating: " provisional text", count: 60)
+        view.setMarkedText(provisional, selectedRange: NSRange(location: provisional.utf16.count, length: 0), replacementRange: NSRange(location: 4, length: 0))
+        editor.paginate()
+        XCTAssertGreaterThan(editor.canvas.pageCount, 1)
+        XCTAssertTrue(editor.canvas.window?.firstResponder === view)
+        XCTAssertNotNil(view.reviewComposition)
+        XCTAssertEqual(document.snapshot().paragraphs[0].text, "Body")
+        view.cancelOperation(nil)
+        XCTAssertEqual(editor.storage.string, "Body")
+        XCTAssertFalse(document.snapshot().hasPendingRevisions)
+    }
     func testExplicitNewlineReplacementTreatsLiteralTabsAsContent() throws {
         let document = document(Paragraph("\tField\tvalue")); defer { document.close() }
         let editor = document.editorController!.editor
