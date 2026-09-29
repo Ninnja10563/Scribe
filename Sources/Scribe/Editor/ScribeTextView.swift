@@ -4,7 +4,15 @@ import DocumentCore
 
 @MainActor final class ScribeTextView: NSTextView {
     weak var editor: PaginatedEditor?
-    override func checkSpelling(_ sender: Any?) { DocumentSpelling.findNext(in: self) }
+    private(set) var spellingTask: Task<Void, Never>?
+    override func checkSpelling(_ sender: Any?) {
+        spellingTask?.cancel()
+        spellingTask = Task { [weak self] in
+            guard let self else { return }
+            await DocumentSpelling.findNext(in: self)
+        }
+    }
+    func cancelSpellingCheck() { spellingTask?.cancel(); spellingTask = nil }
     override func becomeFirstResponder() -> Bool {
         let accepted = super.becomeFirstResponder()
         if accepted { editor?.rememberSelection(self) }

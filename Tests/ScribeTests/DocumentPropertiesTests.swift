@@ -6,7 +6,7 @@ import DocumentCore
 
 @MainActor final class DocumentPropertiesTests: XCTestCase {
     override func setUp() { super.setUp(); _ = NSApplication.shared }
-    func testExplicitCheckSpellingSelectsNextErrorInDocumentLanguage() throws {
+    func testExplicitCheckSpellingSelectsNextErrorInDocumentLanguage() async throws {
         guard NSSpellChecker.shared.availableLanguages.contains(where: { (try? DocumentMetadata.languageIdentifier($0)) == "en-AU" }) else { throw XCTSkip("English (Australia) dictionary is not installed") }
         let document = ScribeFileDocument()
         document.model.sections[0].paragraphs = [Paragraph("Hello qzxqzxqzxy.")]
@@ -14,6 +14,7 @@ import DocumentCore
         let editor = document.editorController!.editor
         editor.select(NSRange(location: 0, length: 0))
         editor.activeTextView.checkSpelling(nil)
+        await editor.activeTextView.spellingTask?.value
         XCTAssertEqual((editor.storage.string as NSString).substring(with: editor.activeTextView.selectedRange()), "qzxqzxqzxy")
     }
     func testSpellingOptionsArePerDocumentAndAutomaticClearsOldOrthography() throws {

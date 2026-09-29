@@ -103,7 +103,7 @@ import DocumentCore
     func prepareForClose() {
         relayout?.cancel(); onChange = nil; onSelection = nil
         NotificationCenter.default.removeObserver(self)
-        for view in textViews { view.delegate = nil; view.editor = nil }
+        for view in textViews { view.cancelSpellingCheck(); view.delegate = nil; view.editor = nil }
         layout.delegate = nil; storage.delegate = nil; owner = nil
     }
     private func addPage() {

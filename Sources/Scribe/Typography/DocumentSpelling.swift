@@ -3,7 +3,7 @@ import AppKit
 import DocumentCore
 
 @MainActor enum DocumentSpelling {
-    static func findNext(in view: ScribeTextView) {
+    static func findNext(in view: ScribeTextView) async {
         guard let editor = view.editor, let document = editor.owner, editor.storage.length > 0 else { return }
         let checker = NSSpellChecker.shared
         if document.model.language != "und" {
@@ -14,9 +14,17 @@ import DocumentCore
         }
         var types = NSTextCheckingResult.CheckingType.spelling.rawValue
         let options = options(document: document.model, original: [:], types: &types)
-        let results = checker.check(editor.storage.string, range: NSRange(location: 0, length: editor.storage.length), types: types, options: options, inSpellDocumentWithTag: view.spellCheckerDocumentTag, orthography: nil, wordCount: nil)
-            .filter { $0.resultType == .spelling }.sorted { $0.range.location < $1.range.location }
-        let end = NSMaxRange(view.selectedRange())
+        let revision = editor.revision, selection = view.selectedRange()
+        document.editorController?.showStatus("Checking spelling…")
+        let checked: [NSTextCheckingResult] = await withCheckedContinuation { continuation in
+            checker.requestChecking(of: editor.storage.string, range: NSRange(location: 0, length: editor.storage.length), types: types, options: options, inSpellDocumentWithTag: view.spellCheckerDocumentTag) { _, results, _, _ in
+                continuation.resume(returning: results)
+            }
+        }
+        guard !Task.isCancelled, editor.owner === document, document.editorController?.isClosing != true,
+              revision == editor.revision, view.selectedRange() == selection else { return }
+        let results = checked.filter { $0.resultType == .spelling }.sorted { $0.range.location < $1.range.location }
+        let end = NSMaxRange(selection)
         guard let next = results.first(where: { $0.range.location >= end }) ?? results.first else {
             document.editorController?.showStatus("No spelling errors found."); return
         }
