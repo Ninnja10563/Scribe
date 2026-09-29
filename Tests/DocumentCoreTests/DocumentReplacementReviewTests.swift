@@ -59,6 +59,21 @@ final class DocumentReplacementReviewTests: XCTestCase {
         XCTAssertThrowsError(try document.replaceTrackedRange(selection(document, start: 0, end: 1), with: [], author: author))
         XCTAssertEqual(document, before)
     }
+    func testReturnReplacementOfEntireOwnDraftListStillCreatesASeparator() throws {
+        var document = ScribeDocument(), paragraph = Paragraph("")
+        paragraph.list = .init(kind: .decimal)
+        document.sections[0].paragraphs = [paragraph]
+        var text = RevisionText(runs: [])
+        _ = try text.replace(NSRange(location: 0, length: 0), with: [TextRun("AB")], insertion: .init(author: author), deletion: .init(author: author))
+        document.sections[0].paragraphs[0].runs = text.runs
+        _ = try document.splitTrackedParagraph(id: paragraph.id, range: NSRange(location: 1, length: 0), author: author)
+        let caret = try document.replaceTrackedRange(selection(document, start: 0, end: 1), with: [], author: author)
+        _ = try document.splitTrackedParagraph(id: caret.paragraphID, range: NSRange(location: caret.offset, length: 0), author: author, allowEmptyListExit: false)
+        XCTAssertEqual(document.paragraphs.map(\.text), ["", ""])
+        XCTAssertTrue(document.paragraphs.allSatisfy { $0.list != nil })
+        try document.resolveAllRevisions(accepting: false)
+        XCTAssertEqual(document.paragraphs, [paragraph])
+    }
     func testInvalidScalarBoundaryDoesNotMutateDocument() throws {
         var document = ScribeDocument(); document.sections[0].paragraphs = [Paragraph("A😀"), Paragraph("B")]
         let before = document

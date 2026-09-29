@@ -23,7 +23,7 @@ public extension ScribeDocument {
         guard paragraphs.first(where: { $0.id == id })?.list != nil else { throw DocumentError.invalid("the list item is unavailable") }
         return try splitTrackedParagraph(id: id, range: range, author: author)
     }
-    @discardableResult mutating func splitTrackedParagraph(id: UUID, range: NSRange, author: RevisionAuthor) throws -> UUID {
+    @discardableResult mutating func splitTrackedParagraph(id: UUID, range: NSRange, author: RevisionAuthor, allowEmptyListExit: Bool = true) throws -> UUID {
         try NativeFormat.validate(self)
         guard let section = sections.firstIndex(where: { $0.paragraphs.contains { $0.id == id } }),
               let index = sections[section].paragraphs.firstIndex(where: { $0.id == id }) else { throw DocumentError.invalid("the paragraph is unavailable") }
@@ -35,7 +35,7 @@ public extension ScribeDocument {
         for character in original.text { position += character.utf16.count; boundaries.insert(position) }
         guard boundaries.contains(range.location), boundaries.contains(NSMaxRange(range)) else { throw DocumentError.invalid("the paragraph selection splits a character") }
         var candidate = self
-        if length == 0, original.list != nil {
+        if length == 0, original.list != nil, allowEmptyListExit {
             guard let target = candidate.splitListItem(id: id, range: range) else { throw DocumentError.invalid("the list cannot be changed") }
             try candidate.recordParagraphFormattingChanges(from: self, identity: .init(author: author))
             self = candidate; return target

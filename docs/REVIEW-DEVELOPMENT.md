@@ -36,3 +36,6 @@ Ordinary-body reflow now continues across scheduled batches while preserving a s
 
 
 Process sampling also found work outside pagination: recovery recaptured the same document for outline refresh, and capture repeatedly converted identical fonts/colours. The recovery callback now reuses its snapshot, and character formatting conversions are cached within a single capture with a bounded number of entries. This cache does not include review or paragraph identities in its key; those are still captured independently. Styles, logical script fonts, requested missing faces and explicit highlight removal remain distinct.
+
+
+Cross-paragraph inline replacements now use `DocumentCore.replaceTrackedRange`, preserving original retained deletions and joining selected own draft boundaries atomically. This prevents generated list numbers from becoming authored text when a change is rejected. Comments, bookmarks and rich incoming runs remain semantic data. General multi-paragraph rich paste still needs integration; joining away unrelated paragraph-format review is intentionally refused until that history is resolved. Return across a selected paragraph range is being integrated as a semantic replacement followed by a forced paragraph split, including an emptied draft list item.

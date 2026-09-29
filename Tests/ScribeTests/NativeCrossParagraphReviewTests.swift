@@ -28,6 +28,25 @@ import DocumentCore
         document.undoManager?.undo(); XCTAssertEqual(document.snapshot().paragraphs, original.paragraphs)
         document.undoManager?.redo(); XCTAssertEqual(document.snapshot().paragraphs, changed.paragraphs)
     }
+    func testFormattingAParagraphMarkDoesNotInsertAnotherParagraph() throws {
+        let document = document([Paragraph("A"), Paragraph("B")]); defer { document.close() }
+        let editor = document.editorController!.editor, original = document.snapshot()
+        editor.select(NSRange(location: 1, length: 1)); editor.activeTextView.toggleBold(nil)
+        XCTAssertEqual(document.snapshot().paragraphs, original.paragraphs)
+        XCTAssertFalse(document.snapshot().hasPendingRevisions)
+    }
+    func testReturnAcrossOriginalParagraphsPreservesReviewAndCaret() throws {
+        let document = document([Paragraph("Alpha"), Paragraph("Beta")]); defer { document.close() }
+        let editor = document.editorController!.editor, original = document.snapshot()
+        editor.select(NSRange(location: 2, length: 6)); editor.activeTextView.insertNewline(nil)
+        let changed = document.snapshot(); try NativeFormat.validate(changed)
+        XCTAssertEqual(changed.paragraphs.map(\.text), ["Alpha", "Be", "ta"])
+        XCTAssertEqual(editor.activeTextView.selectedRange().location, editor.activeTextView.listContext()?.contentStart)
+        var accepted = changed; try accepted.resolveAllRevisions(accepting: true)
+        XCTAssertEqual(accepted.paragraphs.map(\.text), ["Al", "ta"])
+        var rejected = changed; try rejected.resolveAllRevisions(accepting: false)
+        XCTAssertEqual(rejected.paragraphs, original.paragraphs)
+    }
     func testReplacingAcrossOwnListSplitDoesNotTurnGeneratedNumberIntoAuthoredText() throws {
         var paragraph = Paragraph("ABCD"); paragraph.list = .init(kind: .decimal, start: 4, restart: true)
         let document = document([paragraph]); defer { document.close() }
@@ -38,6 +57,8 @@ import DocumentCore
         let continuationStart = try XCTUnwrap(editor.activeTextView.listContext()?.contentStart)
         let range = NSRange(location: start + 1, length: continuationStart + 1 - (start + 1))
         editor.select(range)
+        let beforeReplacement = document.snapshot()
+        document.undoManager?.removeAllActions()
         _ = try editor.reviewEditing.replacement(in: editor, range: range, with: NSAttributedString(string: "X", attributes: editor.activeTextView.typingAttributes))
         editor.activeTextView.insertText("X", replacementRange: range)
         let changed = document.snapshot(); try NativeFormat.validate(changed)
@@ -46,6 +67,8 @@ import DocumentCore
         XCTAssertEqual(rejected.paragraphs.first?.list, paragraph.list)
         var accepted = changed; try accepted.resolveAllRevisions(accepting: true)
         XCTAssertEqual(accepted.paragraphs.map(\.text), ["AXD"])
+        document.undoManager?.undo(); XCTAssertEqual(document.snapshot().paragraphs, beforeReplacement.paragraphs)
+        document.undoManager?.redo(); XCTAssertEqual(document.snapshot().paragraphs, changed.paragraphs)
     }
 }
 #endif
