@@ -48,12 +48,14 @@ for mode in ('Accepted', 'Rejected'):
     assert len(pdf) == 1
     page = pdf[0]
     assert not page.get_images()
+    # Search logical text while expanding the font's fi ligature.
+    search_flags = pymupdf.TEXT_DEHYPHENATE | pymupdf.TEXT_PRESERVE_WHITESPACE | pymupdf.TEXT_MEDIABOX_CLIP
     for prefix in ('Body', 'Note'):
         if mode == 'Accepted':
-            assert len(page.search_for(prefix + ' first' + prefix + ' second')) == 1
+            assert len(page.search_for(prefix + ' first' + prefix + ' second', flags=search_flags)) == 1
         else:
-            first = page.search_for(prefix + ' first')
-            second = page.search_for(prefix + ' second')
+            first = page.search_for(prefix + ' first', flags=search_flags)
+            second = page.search_for(prefix + ' second', flags=search_flags)
             assert len(first) == len(second) == 1
             assert second[0].y0 - first[0].y0 > 5, (mode, prefix, first, second)
 print('Imported Office paragraph review: body/note joins and retained boundaries verified')
