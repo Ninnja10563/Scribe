@@ -13,7 +13,11 @@ import DocumentCore
         let heading = NSMutableParagraphStyle(); heading.paragraphSpacing = 12
         let value = NSMutableAttributedString(string: "Endnotes\n", attributes: [.font: NSFont.boldSystemFont(ofSize: 18), .foregroundColor: NSColor.black, .paragraphStyle: heading])
         for (index, note) in notes.enumerated() {
-            if index > 0 { value.append(NSAttributedString(string: "\n", attributes: value.attributes(at: value.length - 1, effectiveRange: nil))) }
+            if index > 0 {
+                var attributes = value.attributes(at: value.length - 1, effectiveRange: nil)
+                attributes.removeValue(forKey: .scribeNoteLabelID); attributes.removeValue(forKey: .scribeNoteContentID)
+                value.append(NSAttributedString(string: "\n", attributes: attributes))
+            }
             value.append(try NoteTextLayout(note: note, styles: styles, width: page.contentWidth).storage)
         }
         let storage = NSTextStorage(attributedString: value), layout = NSLayoutManager()

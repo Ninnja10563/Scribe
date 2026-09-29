@@ -17,6 +17,8 @@ import DocumentCore
         let value = NSMutableAttributedString(attributedString: AttributedDocument.render(model))
         let base = AttributedDocument.editingAttributes(for: model.paragraphs[0], in: model)
         value.insert(NSAttributedString(string: "\(note.number).\t", attributes: base), at: 0)
+        value.addAttribute(.scribeNoteContentID, value: note.id.uuidString, range: NSRange(location: 0, length: value.length))
+        value.addAttribute(.scribeNoteLabelID, value: note.id.uuidString, range: NSRange(location: 0, length: ("\(note.number).\t" as NSString).length))
         let text = value.string as NSString
         var location = 0
         while location < value.length {

@@ -8,6 +8,8 @@ extension NSAttributedString.Key {
     static let scribeStyle = NSAttributedString.Key("org.scribe.paragraphStyle")
     static let scribeParagraphID = NSAttributedString.Key("org.scribe.paragraphID")
     static let scribeCell = NSAttributedString.Key("org.scribe.tableCell")
+    static let scribeNoteContentID = NSAttributedString.Key("org.scribe.noteContent")
+    static let scribeNoteLabelID = NSAttributedString.Key("org.scribe.noteLabel")
     static let scribeNoteNumber = NSAttributedString.Key("org.scribe.noteNumber")
     static let scribeNote = NSAttributedString.Key("org.scribe.note")
     static let scribeEquation = NSAttributedString.Key("org.scribe.equation")

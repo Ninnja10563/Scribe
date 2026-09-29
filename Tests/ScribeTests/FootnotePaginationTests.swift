@@ -88,7 +88,7 @@ import DocumentCore
             try XCTUnwrap(combined.dataRepresentation()).write(to: url.appendingPathComponent("FootnoteContinuation.pdf"))
         }
         XCTAssertEqual(document.snapshot().notes, [note])
-        XCTAssertNotNil(editor.outputWarning)
+        XCTAssertNil(editor.outputWarning)
     }
 }
 #endif

@@ -46,9 +46,11 @@ import DocumentCore
     }
     private func removingPrivateURLAnnotations(from data: Data) throws -> Data {
         var hasInternalLinks = false
-        editor.storage.enumerateAttribute(.link, in: NSRange(location: 0, length: editor.storage.length)) { value, _, stop in
-            let url = (value as? URL) ?? (value as? String).flatMap(URL.init(string:))
-            if url?.scheme?.lowercased() == "scribe" { hasInternalLinks = true; stop.pointee = true }
+        for storage in contentStorages {
+            storage.enumerateAttribute(.link, in: NSRange(location: 0, length: storage.length)) { value, _, stop in
+                let url = (value as? URL) ?? (value as? String).flatMap(URL.init(string:))
+                if url?.scheme?.lowercased() == "scribe" { hasInternalLinks = true; stop.pointee = true }
+            }
         }
         guard hasInternalLinks else { return data }
         guard let pdf = PDFDocument(data: data) else { throw DocumentError.invalid("could not finalize PDF links") }
@@ -69,9 +71,11 @@ import DocumentCore
         let full = NSRange(location: 0, length: editor.storage.length)
         let resolver = editor.owner.map { DocumentLinkResolver($0.snapshot()) }
         var linked: Set<UUID> = []
-        editor.storage.enumerateAttribute(.link, in: full) { value, _, _ in
-            let text = (value as? URL)?.absoluteString ?? value as? String ?? ""
-            if let id = resolver?.paragraphID(for: text) { linked.insert(id) }
+        for storage in contentStorages {
+            storage.enumerateAttribute(.link, in: NSRange(location: 0, length: storage.length)) { value, _, _ in
+                let text = (value as? URL)?.absoluteString ?? value as? String ?? ""
+                if let id = resolver?.paragraphID(for: text) { linked.insert(id) }
+            }
         }
         var result: [UUID: (page: Int, point: CGPoint)] = [:]
         let p = editor.canvas.pageSettings
@@ -108,6 +112,7 @@ import DocumentCore
             throw DocumentError.invalid("could not create PDF output")
         }
         let destinations = internalDestinations(in: Set(selected))
+        let noteTargets = noteDestinations(in: selected)
         let resolver = editor.owner.map { DocumentLinkResolver($0.snapshot()) }
         for index in selected {
             context.beginPDFPage(nil); context.saveGState()
@@ -119,19 +124,22 @@ import DocumentCore
             for (id, destination) in destinations where destination.page == index {
                 context.addDestination(DocumentLink.officeBookmark(id) as CFString, at: destination.point)
             }
-            if index >= editor.textViews.count { context.endPDFPage(); continue }
-            let container = editor.layout.textContainers[index]
-            let glyphs = editor.layout.glyphRange(for: container)
-            let characters = editor.layout.characterRange(forGlyphRange: glyphs, actualGlyphRange: nil)
-            editor.storage.enumerateAttribute(.link, in: characters) { value, range, _ in
-                guard let url = (value as? URL) ?? (value as? String).flatMap(URL.init(string:)) else { return }
-                let linkGlyphs = editor.layout.glyphRange(forCharacterRange: range, actualCharacterRange: nil)
-                let rect = editor.layout.boundingRect(forGlyphRange: NSIntersectionRange(linkGlyphs, glyphs), in: container)
-                let targetRect = CGRect(x: p.left + rect.minX, y: p.height - p.top - rect.maxY, width: rect.width, height: rect.height)
-                if let id = resolver?.paragraphID(for: url.absoluteString), destinations[id] != nil {
-                    context.setDestination(DocumentLink.officeBookmark(id) as CFString, for: targetRect)
-                } else if ["http", "https", "mailto"].contains(url.scheme ?? "") {
-                    context.setURL(url as CFURL, for: targetRect)
+            for (name, target) in noteTargets where target.page == index { context.addDestination(name as CFString, at: target.point) }
+            for fragment in textFragments(on: index) {
+                fragment.storage.enumerateAttribute(.link, in: fragment.characters) { value, range, _ in
+                    guard let url = (value as? URL) ?? (value as? String).flatMap(URL.init(string:)) else { return }
+                    let targetRect = fragment.bounds(for: range, pageHeight: p.height)
+                    if let id = resolver?.paragraphID(for: url.absoluteString), destinations[id] != nil {
+                        context.setDestination(DocumentLink.officeBookmark(id) as CFString, for: targetRect)
+                    } else if ["http", "https", "mailto"].contains(url.scheme ?? "") { context.setURL(url as CFURL, for: targetRect) }
+                }
+                for key in [NSAttributedString.Key.scribeNote, .scribeNoteLabelID] {
+                    fragment.storage.enumerateAttribute(key, in: fragment.characters) { value, range, _ in
+                        let id = key == .scribeNote ? (value as? Data).flatMap { try? JSONDecoder().decode(DocumentNote.self, from: $0).id } : (value as? String).flatMap(UUID.init(uuidString:))
+                        guard let id else { return }
+                        let name = Self.noteAnchor(id, reference: key == .scribeNoteLabelID)
+                        if noteTargets[name] != nil { context.setDestination(name as CFString, for: fragment.bounds(for: range, pageHeight: p.height)) }
+                    }
                 }
             }
             context.endPDFPage()

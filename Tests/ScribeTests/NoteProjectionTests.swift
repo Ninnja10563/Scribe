@@ -36,7 +36,7 @@ import DocumentCore
         document.makeWindowControllers(); defer { document.close() }
         let editor = document.editorController!.editor
         XCTAssertEqual(document.snapshot().notes, [note])
-        XCTAssertNotNil(editor.outputWarning, "An incomplete note layout must not silently omit note content from PDF/printing")
+        XCTAssertNil(editor.outputWarning)
         let cell = try XCTUnwrap((editor.storage.attribute(.attachment, at: 4, effectiveRange: nil) as? NSTextAttachment)?.attachmentCell)
         XCTAssertGreaterThan(cell.cellBaselineOffset().y, 0)
         editor.select(NSRange(location: 5, length: 0)); editor.activeTextView.insertText(" typed", replacementRange: NSRange(location: 5, length: 0))

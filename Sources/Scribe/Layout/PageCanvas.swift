@@ -73,7 +73,6 @@ import DocumentCore
     private(set) var textViews: [ScribeTextView] = []
     private(set) var layoutWarning: String?
     var outputWarning: String? {
-        if owner?.model.notes.isEmpty == false { return "Note layout is not available in this development build. Native saving retains the note content; PDF and printing are disabled for this document." }
         return layoutWarning ?? RunningContentLayout.warning(for: canvas)
     }
     private weak var selectionView: ScribeTextView?
