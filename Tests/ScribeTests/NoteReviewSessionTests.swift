@@ -73,6 +73,10 @@ import DocumentCore
                       let button = descendants(content).compactMap({ $0 as? NSButton }).first(where: { $0.title == title }) else {
                     XCTFail("Missing tracked note dialog controls"); NSApp.abortModal(); return
                 }
+                if let editor = text.editor {
+                    XCTAssertFalse(editor.scrollView.hasHorizontalScroller)
+                    XCTAssertLessThanOrEqual(editor.canvas.frame.width, editor.scrollView.contentView.bounds.width + 1)
+                }
                 text.setSelectedRange(NSRange(location: 8, length: 0))
                 text.insertText(" added", replacementRange: NSRange(location: NSNotFound, length: 0))
                 NativeDialogCapture.save(content, name: "TrackedNoteDialog")

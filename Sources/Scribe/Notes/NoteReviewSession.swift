@@ -14,13 +14,14 @@ import DocumentCore
         document.model.styles = styles
         document.model.sections[0].paragraphs = note.paragraphs
         var page = PageSettings()
-        page.width = 472; page.height = 600
+        page.width = 440; page.height = 600
         page.left = 32; page.right = 32; page.top = 24; page.bottom = 24
         document.model.sections[0].page = page
         editor = PaginatedEditor(document: document)
         document.embeddedEditor = editor
         editor.reviewEditing.author = author
         editor.scrollView.rulersVisible = false
+        editor.scrollView.hasHorizontalScroller = false
         editor.scrollView.allowsMagnification = false
         editor.onChange = { [weak document] in document?.didEdit() }
         editor.onLayout = { [weak editor] in
