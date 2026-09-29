@@ -1,4 +1,4 @@
-# Feature status — Scribe 0.6 development (latest release: 0.5)
+# Feature status — Scribe 0.7 development (latest release: 0.6)
 
 This is a foundation release. “Implemented” means there is working code and an exposed editing path, not that the feature has the interoperability coverage of a mature word processor.
 
@@ -6,7 +6,7 @@ This is a foundation release. “Implemented” means there is working code and 
 | --- | --- | --- |
 | Native application | Swift/AppKit, arm64 bundle, document windows and tabs, menus, native spelling, focus mode, zoom, light/dark chrome | Physical-Mac keyboard/IME/VoiceOver audit, richer preferences |
 | Document model | Versioned semantic paragraphs/runs, sections, styles, tables/cell references, inline images, IDs; v1–v5→v6 migrations; TOC definitions and entries | More block types, independent section editing, preservation of future extension payloads |
-| Pagination | Shared TextKit layout across actual page containers; A4/Letter/Legal, orientation, margins, page breaks | Virtualization, widow/orphan controls, configurable hyphenation, typography audit |
+| Pagination | Shared TextKit layout across actual page containers; A4/Letter/Legal, custom dimensions, orientation, fractional margins, page breaks | Virtualization, widow/orphan controls, configurable hyphenation, typography audit |
 | Formatting | Fonts/size and concrete faces/weights via native panel, common traits, color/highlight, super/subscript, alignment, spacing and indents | Draggable ruler, dedicated inline font-weight controls |
 | Styles | Built-in headings/title/body/quote/caption, custom creation/modification/deletion, live definition updates, outline navigation | Style inheritance editor, collapsible heading content |
 | Lists | Bullets, decimal/letter/Roman numbering, independent series, restart/continuation commands, nesting, Return split/empty-item exit, Backspace outdent | Physical-Mac input audit, custom compound markers, selection spanning multiple list items |

@@ -94,3 +94,6 @@ Portable tests cover generated title/page updates, stable entry IDs, preservatio
 ## Named paragraph bookmarks (next development update)
 
 Bookmarks now identify paragraph starts, with Add, Go To, Insert Link, Rename and Delete commands. Stable bookmark IDs keep links valid through renaming. Missing paragraphs leave bookmarks visible and recoverable by undo. DOCX uses actual named bookmarks and anchors; imported mid-paragraph locations explicitly warn about paragraph-start approximation. PDF links resolve to the same native paragraph destinations. Character-range bookmarks are not implemented. Portable, native dialog/deletion/undo and actual output regression coverage is being validated.
+
+- [Scribe v0.6.0](https://github.com/Ninnja10563/Scribe/releases/tag/v0.6.0) was published by successful [release run 36500547860](https://github.com/Ninnja10563/Scribe/actions/runs/36500547860), from validated revision `f591ccd`. The published arm64 DMG was downloaded and its SHA-256 verified.
+- Initial bookmark CI passed native navigation, text deletion/undo reattachment and actual PDF destinations. Its dialog test incorrectly grouped three directly invoked commands into one test event before Undo; the test now isolates the Delete command, as other native undo tests do. The corrected test is awaiting CI.

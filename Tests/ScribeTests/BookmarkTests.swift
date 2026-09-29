@@ -65,6 +65,7 @@ import DocumentCore
         XCTAssertEqual(document.snapshot().bookmarks.first?.name, "Notes")
         respond("Sources", actionIndex: 2, buttonTitle: "Apply"); controller.manageBookmarks()
         XCTAssertEqual(document.snapshot().bookmarks.first?.name, "Sources")
+        document.undoManager?.removeAllActions() // Separate UI commands normally arrive in separate events.
         respond("", actionIndex: 3, buttonTitle: "Apply"); controller.manageBookmarks()
         XCTAssertTrue(document.snapshot().bookmarks.isEmpty)
         document.undoManager?.undo()
