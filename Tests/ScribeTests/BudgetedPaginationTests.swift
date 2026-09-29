@@ -6,14 +6,7 @@ import DocumentCore
 @testable import Scribe
 
 @MainActor final class BudgetedPaginationTests: XCTestCase {
-    override func setUp() {
-        super.setUp(); _ = NSApplication.shared
-        if ProcessInfo.processInfo.environment["SCRIBE_PROFILE_NATIVE"] == "true",
-           let folder = try? outputFolder() {
-            try? String(ProcessInfo.processInfo.processIdentifier).write(
-                to: folder.appendingPathComponent("NativeTestPID"), atomically: true, encoding: .utf8)
-        }
-    }
+    override func setUp() { super.setUp(); _ = NSApplication.shared }
     private func document(paragraphs count: Int) -> ScribeFileDocument {
         let document = ScribeFileDocument()
         document.model.sections[0].paragraphs = (0..<count).map {
@@ -39,6 +32,11 @@ import DocumentCore
         document.editorController?.window?.displayIfNeeded()
         try await Task.sleep(nanoseconds: 500_000_000)
         XCTAssertGreaterThan(editor.canvas.pageCount, 200)
+        if ProcessInfo.processInfo.environment["SCRIBE_PROFILE_NATIVE"] == "true" {
+            try String(ProcessInfo.processInfo.processIdentifier).write(
+                to: outputFolder().appendingPathComponent("NativeTestPID"), atomically: true, encoding: .utf8)
+            try await Task.sleep(nanoseconds: 150_000_000)
+        }
         editor.select(NSRange(location: 0, length: 0)); editor.activeTextView.insertNewline(nil)
         var completions = 0
         let previous = editor.onLayout

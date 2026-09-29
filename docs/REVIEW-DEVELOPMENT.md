@@ -33,3 +33,6 @@ Eligible ordinary Return now uses a bounded native paragraph projection and an e
 
 
 Ordinary-body reflow now continues across scheduled batches while preserving a synchronous complete-layout path for output/navigation. Note/table passes remain synchronous. TextKit's independent [idle-time background layout](https://developer.apple.com/documentation/AppKit/NSLayoutManager/backgroundLayoutEnabled) is disabled because the editor owns deferred scheduling. Native range comparisons and sampled rendered PDFs pass, but visible-window heartbeat measurements still expose unrelated main-thread stalls; process sampling and additional mid-reflow deletion coverage are in progress.
+
+
+Process sampling also found work outside pagination: recovery recaptured the same document for outline refresh, and capture repeatedly converted identical fonts/colours. The recovery callback now reuses its snapshot, and character formatting conversions are cached within a single capture with a bounded number of entries. This cache does not include review or paragraph identities in its key; those are still captured independently. Styles, logical script fonts, requested missing faces and explicit highlight removal remain distinct.
