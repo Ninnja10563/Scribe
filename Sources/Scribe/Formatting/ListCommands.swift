@@ -31,6 +31,15 @@ extension ScribeTextView {
               selection.location >= context.contentStart, NSMaxRange(selection) <= context.end else { return false }
         let id = paragraphs[context.index].id
         let range = NSRange(location: selection.location - context.contentStart, length: selection.length)
+        if let author = editor.reviewEditing.author {
+            do {
+                var updated = model
+                let target = try updated.splitTrackedListItem(id: id, range: range, author: author)
+                owner.performEdit("New List Item", recordReview: false) { $0 = updated }
+                editor.reviewEditing.resetGrouping(); editor.selectListContent(id: target)
+            } catch { NSApp.presentError(error) }
+            return true
+        }
         var target: UUID?
         owner.performEdit("New List Item") { target = $0.splitListItem(id: id, range: range) }
         if let target { editor.selectListContent(id: target) }

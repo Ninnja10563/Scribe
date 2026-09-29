@@ -37,8 +37,10 @@ extension ScribeDocument {
         let before = paragraphs
         let originalRange = DocumentTextIndex(paragraphs: before).range(for: TextAnchor(paragraphID: id, offset: range.location, length: range.length))!
         var next = original; next.id = UUID(); next.pageBreakBefore = false; next.list?.restart = nil; next.toc = nil
+        next.formattingReview = next.formattingReview?.listContinuation()
         next.runs = slice(NSRange(location: NSMaxRange(range), length: length - NSMaxRange(range)))
         sections[section].paragraphs[index].runs = slice(NSRange(location: 0, length: range.location))
+        sections[section].paragraphs[index].breakReview = nil
         sections[section].paragraphs.insert(next, at: index + 1)
         transformCommentAnchors(from: before, replacing: originalRange, withLength: 1)
         return next.id

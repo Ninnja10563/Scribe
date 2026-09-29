@@ -76,7 +76,7 @@ public struct RevisionText: Equatable, Sendable {
         })
     }
 
-    private static func coalescing(_ source: [TextRun]) -> [TextRun] {
+    static func coalescing(_ source: [TextRun]) -> [TextRun] {
         var result: [TextRun] = []
         for run in source {
             if let previous = result.last, previous.format == run.format, previous.link == run.link,

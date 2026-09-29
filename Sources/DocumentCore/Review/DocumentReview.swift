@@ -58,7 +58,7 @@ public extension ScribeDocument {
                 paragraph.breakReview = separator.runs.first?.review
                 if removedBreak, body { removed.append(NSRange(location: offset - 1, length: 1)) }
                 if mergeNext, let previous = result.last {
-                    guard paragraph.formattingReview == nil else {
+                    guard Set(paragraph.formattingReview?.pendingIDs ?? []).isSubset(of: Set(previous.formattingReview?.pendingIDs ?? [])) else {
                         throw DocumentError.invalid("resolve this paragraph’s formatting changes before joining it to the previous paragraph")
                     }
                     if body { mergedParagraphs[paragraph.id] = previous.id }
@@ -73,6 +73,7 @@ public extension ScribeDocument {
                 } else { result.append(paragraph) }
                 mergeNext = removedBreak
             }
+            for index in result.indices { result[index].runs = RevisionText.coalescing(result[index].runs) }
             return result
         }
         for section in candidate.sections.indices {
@@ -93,7 +94,7 @@ public extension ScribeDocument {
     }
 }
 
-private extension ScribeDocument {
+extension ScribeDocument {
     mutating func rebaseReviewComments(from original: [Paragraph], removing ranges: [NSRange]) {
         guard !ranges.isEmpty else { return }
         let before = DocumentTextIndex(paragraphs: original), after = DocumentTextIndex(paragraphs: paragraphs)

@@ -78,6 +78,7 @@ extension NSAttributedString.Key {
         var capturedNotes: [DocumentNote] = []
         let text = storage.string as NSString
         let originalParagraphs = original.paragraphs
+        let originalsByID = Dictionary(originalParagraphs.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
         let originalTOCIDs = Set(originalParagraphs.filter { $0.toc != nil }.map(\.id))
         var offset = 0
         // components preserves the final empty paragraph, important after pressing Return.
@@ -108,6 +109,15 @@ extension NSAttributedString.Key {
             if let ns = attrs[.paragraphStyle] as? NSParagraphStyle {
                 let f = paragraphFormatting(ns)
                 if f != style.paragraph { p.formatting = f }
+                // List markers supply display indents. Capturing those as direct
+                // paragraph formatting would leave the list indent behind when
+                // the user exits a list, and freeze unrelated style properties.
+                if p.list != nil, p.tableCell == nil, let source = originalsByID[p.id],
+                   source.list == p.list, source.styleID == p.styleID,
+                   let projected = attributes(style: style, paragraph: source)[.paragraphStyle] as? NSParagraphStyle,
+                   paragraphFormatting(projected) == f {
+                    p.formatting = source.formatting
+                }
             }
             if let data = attrs[.scribeParagraphReview] as? Data,
                let review = try? JSONDecoder().decode(ParagraphFormattingReview.self, from: data) {
