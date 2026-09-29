@@ -34,6 +34,7 @@ On Linux, install Swift 6 plus the zlib development headers (`zlib1g-dev` on Deb
 - Inline equations with native source editing and preview, vector fractions/roots/scripts/operators, native persistence and Office Math interchange.
 - Find/replace with case and whole-word matching, selected-text word counts, focus mode and zoom.
 - Anchored comments with native review controls, multi-paragraph ranges, edit-aware associations, resolution and DOCX interchange.
+- Footnotes and endnotes with rich editing, automatic numbering, multi-page continuation, DOCX interchange and linked PDF references.
 - Automatic tables of contents, named paragraph bookmarks and internal heading/bookmark links in native, DOCX and PDF documents.
 - Versioned semantic `.scribe` documents, atomic writes, NSDocument autosave and separate recovery snapshots.
 - Basic DOCX, RTF, Markdown and UTF-8 text import/export. Imports open as new documents and disclose known fidelity losses.
@@ -41,9 +42,9 @@ On Linux, install Swift 6 plus the zlib development headers (`zlib1g-dev` on Deb
 
 ## Scope and limitations
 
-The full requested product is a multi-milestone engineering program. Nested tables, floating objects, shapes, wrapping, track changes, notes, direct-on-page header editing, and independent section layout are **not implemented**. Grammar checking remains a modular extension point. Anchored comments, automatic tables of contents and named paragraph bookmarks are implemented. Rectangular merged cells are also implemented; a cell taller than one page remains unsupported and must not be exported with clipped text.
+The full requested product is a multi-milestone engineering program. Nested tables, floating objects, shapes, wrapping, track changes, direct-on-page header editing, and independent section layout are **not implemented**. Grammar checking remains a modular extension point. Anchored comments, automatic tables of contents and named paragraph bookmarks are implemented. Rectangular merged cells are also implemented; a cell taller than one page remains unsupported and must not be exported with clipped text.
 
-DOCX supports common text, basic tables, inline images and running content, not full Word interoperability. Nested table geometry, tracked changes, notes and advanced fields are not preserved; comment reply hierarchy and newer collaboration metadata remain limited. Common numbering definitions and restarts are supported; custom compound markers, restart rules and complex styles remain limited, with known losses reported. Markdown supports a small subset and is not a CommonMark round-trip implementation. PDF export supports page ranges and title/author/subject/keywords; image-quality presets are pending; external hyperlinks are retained. Page views are reused but not virtualized. Long-document interactive performance still requires profiling on physical Macs.
+DOCX supports common text, basic tables, inline images and running content, not full Word interoperability. Nested table geometry, tracked changes and advanced fields are not preserved; comment reply hierarchy and newer collaboration metadata remain limited. Common numbering definitions and restarts are supported; custom compound markers, restart rules and complex styles remain limited, with known losses reported. Markdown supports a small subset and is not a CommonMark round-trip implementation. PDF export supports page ranges and title/author/subject/keywords; image-quality presets are pending; external hyperlinks are retained. Page views are reused but not virtualized. Long-document interactive performance still requires profiling on physical Macs.
 
 See the [feature matrix](docs/FEATURES.md), [architecture and roadmap](docs/DEVELOPMENT.md), [validation](docs/VALIDATION.md), and [installation](docs/INSTALL.md).
 
