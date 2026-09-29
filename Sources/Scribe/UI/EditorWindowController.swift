@@ -33,6 +33,7 @@ import DocumentCore
         editor.onChange = { [weak self] in self?.fileDocument.didEdit(); self?.scheduleStatistics(); if self?.searchBar.isHidden == false { self?.searchBar.search() } }
         editor.onSelection = { [weak self] in self?.updateStatus() }
         searchBar.editor = editor
+        editor.onLayout = { [weak self] in self?.searchBar.refreshHighlights() }
         refreshOutline(); updateStatus()
         window.initialFirstResponder = editor.textViews.first
         NotificationCenter.default.addObserver(self, selector: #selector(windowClosing), name: NSWindow.willCloseNotification, object: window)

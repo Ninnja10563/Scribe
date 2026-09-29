@@ -7,6 +7,7 @@ import DocumentCore
 @MainActor final class NoteTextLayout {
     let noteID: UUID
     let label: String
+    private let screenAttributes = ScreenTextAttributes()
     let storage: NSTextStorage
     let layout: NSLayoutManager
     let container: NSTextContainer
@@ -45,6 +46,7 @@ import DocumentCore
         guard bounds.maxX <= width + 1 else { throw DocumentError.invalid("a note object is wider than its writing area") }
         storage = noteStorage; layout = manager; container = textContainer; glyphRange = range
         height = max(1, ceil(bounds.maxY))
+        manager.delegate = screenAttributes
     }
     @MainActor struct Fragment {
         let note: NoteTextLayout

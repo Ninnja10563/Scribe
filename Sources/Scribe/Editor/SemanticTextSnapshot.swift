@@ -11,6 +11,8 @@ struct SemanticTextSnapshot: Sendable {
     }
     let text: String
     let statisticsText: String
+    private struct NoteText: Sendable { let id: UUID; let text: String; let reference: NSRange }
+    private let notes: [NoteText]
     private let segments: [Segment]
 
     @MainActor init(_ storage: NSAttributedString) {
@@ -19,6 +21,12 @@ struct SemanticTextSnapshot: Sendable {
         for (index, component) in components.enumerated() {
             let value = component as NSString
             var prefix = component.hasPrefix("\u{c}") ? 1 : 0
+            if sourceOffset < storage.length {
+                var labelRange = NSRange()
+                if storage.attribute(.scribeNoteLabelID, at: sourceOffset, effectiveRange: &labelRange) != nil {
+                    prefix = min(value.length, NSMaxRange(labelRange) - sourceOffset)
+                }
+            }
             if sourceOffset < storage.length,
                storage.attribute(.scribeList, at: sourceOffset, effectiveRange: nil) != nil {
                 let remaining = value.substring(from: prefix) as NSString
@@ -36,23 +44,38 @@ struct SemanticTextSnapshot: Sendable {
             }
             sourceOffset += value.length + 1
         }
-        var noteText: [String] = [], seen = Set<UUID>()
-        storage.enumerateAttribute(.scribeNote, in: NSRange(location: 0, length: storage.length)) { value, _, _ in
+        var noteText: [NoteText] = [], seen = Set<UUID>()
+        storage.enumerateAttribute(.scribeNote, in: NSRange(location: 0, length: storage.length)) { value, range, _ in
             guard let data = value as? Data, data.count <= NativeFormat.maximumBytes,
                   let note = try? JSONDecoder().decode(DocumentNote.self, from: data), seen.insert(note.id).inserted else { return }
-            noteText.append(note.paragraphs.map(\.text).joined(separator: "\n"))
+            noteText.append(NoteText(id: note.id, text: note.paragraphs.map(\.text).joined(separator: "\n"), reference: range))
         }
-        statisticsText = ([result] + noteText).joined(separator: "\n")
+        notes = noteText
+        statisticsText = ([result] + noteText.map(\.text)).joined(separator: "\n")
         text = result; segments = spans
     }
 
     func matches(query: String, options: SearchOptions = SearchOptions()) -> [NSRange] {
-        DocumentSearch.matches(in: text, query: query, options: options).compactMap { range in
-            guard let first = segment(containing: range.location),
-                  let last = segment(containing: NSMaxRange(range) - 1) else { return nil }
-            let start = first.source.location + range.location - first.content.location
-            let end = last.source.location + NSMaxRange(range) - last.content.location
-            return NSRange(location: start, length: end - start)
+        DocumentSearch.matches(in: text, query: query, options: options).compactMap { sourceRange($0) }
+    }
+    func sourceRange(forContentRange range: NSRange) -> NSRange? {
+        sourceRange(range)
+    }
+    private func sourceRange(_ range: NSRange) -> NSRange? {
+        guard range.length > 0, let first = segment(containing: range.location),
+              let last = segment(containing: NSMaxRange(range) - 1) else { return nil }
+        let start = first.source.location + range.location - first.content.location
+        let end = last.source.location + NSMaxRange(range) - last.content.location
+        return NSRange(location: start, length: end - start)
+    }
+    func documentMatches(query: String, options: SearchOptions = SearchOptions()) -> [DocumentSearchMatch] {
+        var result = matches(query: query, options: options).map(DocumentSearchMatch.body)
+        for note in notes {
+            result += DocumentSearch.matches(in: note.text, query: query, options: options).map { .note(id: note.id, range: $0, reference: note.reference) }
+        }
+        return result.sorted { left, right in
+            if left.sourceLocation != right.sourceLocation { return left.sourceLocation < right.sourceLocation }
+            return (left.noteRange?.location ?? -1) < (right.noteRange?.location ?? -1)
         }
     }
 

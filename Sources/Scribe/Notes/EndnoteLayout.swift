@@ -6,6 +6,7 @@ import DocumentCore
 /// endnotes to continue across real pages without changing their semantic owner.
 @MainActor final class EndnoteLayout {
     let labels: [UUID: String]
+    private let screenAttributes = ScreenTextAttributes()
     let storage: NSTextStorage
     let layout: NSLayoutManager
     let containers: [NSTextContainer]
@@ -46,6 +47,7 @@ import DocumentCore
             if NSMaxRange(range) == layout.numberOfGlyphs {
                 while containers.count > index + 1 { containers.removeLast(); layout.removeTextContainer(at: layout.textContainers.count - 1) }
                 self.storage = storage; self.layout = layout; self.containers = containers
+                layout.delegate = screenAttributes
                 return
             }
         }

@@ -79,6 +79,7 @@ import DocumentCore
     private weak var selectionView: ScribeTextView?
     var onChange: (() -> Void)?
     var onSelection: (() -> Void)?
+    var onLayout: (() -> Void)?
     weak var owner: ScribeFileDocument?
     private var relayout: DispatchWorkItem?
     private var isLayingOut = false
@@ -134,7 +135,7 @@ import DocumentCore
     }
     deinit { NotificationCenter.default.removeObserver(self) }
     func prepareForClose() {
-        relayout?.cancel(); onChange = nil; onSelection = nil
+        relayout?.cancel(); onChange = nil; onSelection = nil; onLayout = nil
         noteControls.clear()
         paragraphRuler?.editor = nil; paragraphRuler?.clientView = nil
         NotificationCenter.default.removeObserver(self)
@@ -285,6 +286,7 @@ import DocumentCore
         }
         canvas.bodyPageCount = textViews.count
         canvas.pageCount = textViews.count + (canvas.endnotes?.containers.count ?? 0); resizeCanvas()
+        onLayout?()
         onSelection?()
     }
     @objc private func rulerViewportChanged() { paragraphRuler?.updateGeometry() }
