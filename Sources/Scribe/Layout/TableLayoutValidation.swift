@@ -15,15 +15,22 @@ import DocumentCore
         guard !document.tables.isEmpty, storage.length > 0 else { cache.removeAll(); return false }
         let tables = Dictionary(uniqueKeysWithValues: document.tables.map { ($0.id, $0) })
         var present = Set<String>(), oversized = false
+        var cells: [String: (TableCellReference, NSMutableAttributedString)] = [:]
         storage.enumerateAttribute(.scribeCell, in: NSRange(location: 0, length: storage.length)) { value, range, _ in
-            guard let data = value as? Data, let cell = try? JSONDecoder().decode(TableCellReference.self, from: data),
-                  let table = tables[cell.tableID], table.columnWidths.indices.contains(cell.column) else { return }
+            guard let data = value as? Data, let cell = try? JSONDecoder().decode(TableCellReference.self, from: data) else { return }
+            // Equivalent JSON dictionaries can have different byte ordering, so
+            // attribute runs are not reliable cell boundaries. Group decoded IDs.
+            let key = "\(cell.tableID)-\(cell.row)-\(cell.column)"
+            if let existing = cells[key] { existing.1.append(storage.attributedSubstring(from: range)) }
+            else { cells[key] = (cell, NSMutableAttributedString(attributedString: storage.attributedSubstring(from: range))) }
+        }
+        for (key, (cell, source)) in cells {
+            guard let table = tables[cell.tableID], table.columnWidths.indices.contains(cell.column) else { continue }
             let columns = table.merge(atRow: cell.row, column: cell.column)?.columnSpan ?? 1
             let style = table.cellStyle(row: cell.row, column: cell.column)
             let inset = 2 * ((style?.padding ?? table.padding) + (style?.borderWidth ?? table.borderWidth))
             let width = max(1, table.columnWidths[cell.column..<(cell.column + columns)].reduce(0, +) - inset)
-            let key = "\(cell.tableID)-\(cell.row)-\(cell.column)"; present.insert(key)
-            let source = storage.attributedSubstring(from: range)
+            present.insert(key)
             let height: Double
             if let measurement = self.cache[key], measurement.width == width, measurement.text.isEqual(to: source) { height = measurement.height }
             else {

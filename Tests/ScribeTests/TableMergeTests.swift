@@ -16,6 +16,14 @@ import DocumentCore
             }
         }
         try document.model.mergeTableCells(tableID: document.model.tables[0].id, region: TableMerge(row: 0, column: 0, rowSpan: 40, columnSpan: 1))
+        let projection = NSMutableAttributedString(attributedString: AttributedDocument.render(document.model))
+        let id = document.model.tables[0].id.uuidString
+        let references = [Data("{\"row\":0,\"column\":0,\"tableID\":\"\(id)\"}".utf8), Data("{\"tableID\":\"\(id)\",\"column\":0,\"row\":0}".utf8)]
+        for row in 0..<40 {
+            let range = (projection.string as NSString).range(of: "Tall-cell-line-\(row)-end")
+            projection.addAttribute(.scribeCell, value: references[row % 2], range: (projection.string as NSString).paragraphRange(for: range))
+        }
+        XCTAssertTrue(TableLayoutValidation().hasOversizedCell(storage: projection, document: document.model, pageHeight: document.model.sections[0].page.contentHeight))
         let editor = PaginatedEditor(document: document)
         defer { editor.prepareForClose(); document.close() }
         XCTAssertNotNil(editor.layoutWarning)
