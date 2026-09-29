@@ -34,6 +34,10 @@ import DocumentCore
     }
     override func menu(for event: NSEvent) -> NSMenu? {
         let menu = super.menu(for: event) ?? NSMenu()
+        if selectedImageFrame != nil {
+            menu.addItem(.separator())
+            menu.addItem(NSMenuItem(title: "Image Properties…", action: #selector(EditorWindowController.imageProperties), keyEquivalent: ""))
+        }
         menu.addItem(.separator()); menu.addItem(NSMenuItem(title: "Add Comment…", action: #selector(EditorWindowController.addComment), keyEquivalent: ""))
         return menu
     }
