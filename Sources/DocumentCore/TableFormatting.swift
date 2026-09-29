@@ -33,6 +33,10 @@ extension ScribeDocument {
     }
     public mutating func setMinimumRowHeight(_ height: Double?, row: Int, tableID: UUID) throws {
         guard let index = tables.firstIndex(where: { $0.id == tableID }), (0..<tables[index].rows).contains(row) else { throw DocumentError.invalid("missing table row") }
+        if let height {
+            let areas = sections.filter { $0.paragraphs.contains(where: { $0.tableCell?.tableID == tableID }) }.map { $0.page.contentHeight }
+            if let limit = areas.min(), height > limit { throw DocumentError.invalid("minimum row height exceeds the page writing area") }
+        }
         var result = self
         var heights = tables[index].minimumRowHeights ?? Array(repeating: nil, count: tables[index].rows)
         heights[row] = height

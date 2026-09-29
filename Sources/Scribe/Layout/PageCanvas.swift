@@ -155,6 +155,9 @@ import DocumentCore
                 break
             }
         }
+        if layoutWarning == nil, owner?.model.tables.contains(where: { ($0.minimumRowHeights ?? []).compactMap { $0 }.contains { $0 > canvas.pageSettings.contentHeight } }) == true {
+            layoutWarning = "A table row's minimum height exceeds the page writing area. Reduce it using Table → Row Height before PDF export or printing."
+        }
         if lastEnd < layout.numberOfGlyphs && layoutWarning == nil { layoutWarning = "This document exceeds the current 2,000-page layout limit." }
         while textViews.count > required {
             let last = textViews.removeLast()

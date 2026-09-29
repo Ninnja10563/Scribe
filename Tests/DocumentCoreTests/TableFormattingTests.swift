@@ -22,6 +22,16 @@ final class TableFormattingTests: XCTestCase {
         XCTAssertEqual(document.tables[0].minimumRowHeights?.count, 1)
         XCTAssertNoThrow(try NativeFormat.validate(document))
     }
+    func testMinimumHeightFitsPageAndShrinksWithPageLayout() throws {
+        var document = ScribeDocument()
+        document.insertTable(rows: 1, columns: 1, after: document.paragraphs[0].id)
+        let id = document.tables[0].id
+        XCTAssertThrowsError(try document.setMinimumRowHeight(2000, row: 0, tableID: id))
+        try document.setMinimumRowHeight(500, row: 0, tableID: id)
+        var page = PageSettings(); page.height = 400
+        try document.applyPageLayout(page, sectionID: document.sections[0].id)
+        XCTAssertEqual(document.tables[0].minimumRowHeights?[0], page.contentHeight)
+    }
     func testInvalidFormattingDoesNotChangeModelAndV6Migrates() throws {
         var document = ScribeDocument()
         document.insertTable(rows: 2, columns: 2, after: document.paragraphs[0].id)

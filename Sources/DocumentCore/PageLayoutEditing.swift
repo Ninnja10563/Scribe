@@ -10,6 +10,7 @@ extension ScribeDocument {
         var result = self
         let tableIDs = Set(sections[section].paragraphs.compactMap { $0.tableCell?.tableID })
         for i in result.tables.indices where tableIDs.contains(result.tables[i].id) {
+            result.tables[i].minimumRowHeights = result.tables[i].minimumRowHeights?.map { $0.map { min($0, settings.contentHeight) } }
             let widths = result.tables[i].columnWidths, minimum = Double(widths.count) * 12
             guard minimum <= settings.contentWidth else { throw DocumentError.invalid("this page is too narrow for the document's tables") }
             let total = widths.reduce(0, +)

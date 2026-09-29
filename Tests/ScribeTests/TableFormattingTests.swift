@@ -65,6 +65,18 @@ import DocumentCore
         XCTAssertTrue(next.pages.first === page)
         XCTAssertGreaterThan(end.bounds(for: page).minY, next.bounds(for: page).maxY)
     }
+    func testImportedOversizedMinimumHeightBlocksPDFInsteadOfClipping() throws {
+        let document = ScribeFileDocument()
+        document.model.insertTable(rows: 1, columns: 1, after: document.model.paragraphs[0].id)
+        document.model.tables[0].minimumRowHeights = [2000]
+        let editor = PaginatedEditor(document: document)
+        XCTAssertNotNil(editor.layoutWarning)
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".pdf")
+        let original = Data("Existing output".utf8); try original.write(to: url)
+        defer { try? FileManager.default.removeItem(at: url) }
+        XCTAssertThrowsError(try PrintRenderer(editor: editor).exportPDF(to: url, title: "Oversized row", author: ""))
+        XCTAssertEqual(try Data(contentsOf: url), original)
+    }
     func testNativeCellDialogCanFormatAColumnAndUndo() throws {
         let document = ScribeFileDocument()
         document.model.insertTable(rows: 2, columns: 2, after: document.model.paragraphs[0].id)
