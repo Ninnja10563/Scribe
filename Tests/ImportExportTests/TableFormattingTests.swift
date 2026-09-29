@@ -28,6 +28,19 @@ final class TableFormattingTests: XCTestCase {
             try bytes.write(to: folder.appendingPathComponent("TableFormatting.docx"))
         }
     }
+    func testIndependentStyledTableFixture() throws {
+        let url = try XCTUnwrap(Bundle.module.url(forResource: "TableFormatting", withExtension: "docx", subdirectory: "Fixtures"))
+        let imported = try DOCX.decode(Data(contentsOf: url))
+        let table = try XCTUnwrap(imported.document.tables.first)
+        XCTAssertEqual(table.cellStyle(row: 0, column: 0)?.background, "#DDEEFF")
+        XCTAssertEqual(table.cellStyle(row: 0, column: 0)?.verticalAlignment, .center)
+        XCTAssertEqual(table.cellStyle(row: 1, column: 1)?.padding, 8)
+        XCTAssertEqual(table.cellStyle(row: 1, column: 1)?.borderWidth, 1.5)
+        XCTAssertEqual(table.cellStyle(row: 1, column: 1)?.borderColor, "#336699")
+        XCTAssertEqual(table.minimumRowHeights?[1], 90)
+        XCTAssertTrue(imported.document.plainText.contains("Cell 1,1: café 東京"))
+        XCTAssertTrue(imported.warnings.contains { $0.contains("minimum heights") })
+    }
     func testExactRowsAndAsymmetricPaddingDiscloseTheirApproximation() throws {
         let xml = "<w:document xmlns:w=\"\(DOCX.wordNS)\"><w:body><w:tbl><w:tblGrid><w:gridCol w:w=\"3000\"/></w:tblGrid><w:tr><w:trPr><w:trHeight w:val=\"1200\" w:hRule=\"exact\"/></w:trPr><w:tc><w:tcPr><w:tcMar><w:top w:w=\"80\" w:type=\"dxa\"/><w:left w:w=\"160\" w:type=\"dxa\"/></w:tcMar></w:tcPr><w:p><w:r><w:t>Retained cell text</w:t></w:r></w:p></w:tc></w:tr></w:tbl></w:body></w:document>"
         let imported = try DOCX.decode(ZipArchive.encode(["word/document.xml": Data(xml.utf8)]))

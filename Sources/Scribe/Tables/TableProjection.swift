@@ -37,6 +37,9 @@ import DocumentCore
                 block.backgroundColor = NSColor(hex: background)
             }
             if let heights = definition.minimumRowHeights, heights.indices.contains(reference.row), let height = heights[reference.row] {
+                // AppKit's table typesetter ignores minimumHeight alone. An explicit
+                // table-cell height supplies the floor; content still grows beyond it.
+                // Native PDF regressions cover both bottom alignment and long-cell growth.
                 let contentHeight = max(1, height - 2 * padding - 2 * border)
                 block.setValue(contentHeight, type: .absoluteValueType, for: .minimumHeight)
                 block.setValue(contentHeight, type: .absoluteValueType, for: .height)
