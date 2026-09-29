@@ -39,6 +39,11 @@ public extension ScribeDocument {
     mutating func deleteStyle(id: String) {
         guard let style = styles.first(where: { $0.id == id }), !style.isBuiltIn else { return }
         styles.removeAll { $0.id == id }
+        for note in notes.indices {
+            for paragraph in notes[note].paragraphs.indices where notes[note].paragraphs[paragraph].styleID == id {
+                notes[note].paragraphs[paragraph].styleID = "normal"
+            }
+        }
         for s in sections.indices {
             for p in sections[s].paragraphs.indices where sections[s].paragraphs[p].styleID == id {
                 sections[s].paragraphs[p].styleID = "normal"

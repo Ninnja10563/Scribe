@@ -43,6 +43,23 @@ final class NoteNumberingTests: XCTestCase {
         XCTAssertEqual(try NativeFormat.decode(source), legacy)
         XCTAssertNil((try JSONSerialization.jsonObject(with: source) as? [String: Any])?["notes"])
     }
+    func testNoteChangesAreAtomicAndStylesRemainValidAfterDeletion() throws {
+        var document = ScribeDocument()
+        var note = DocumentNote(kind: .footnote, text: "Original note")
+        let style = ParagraphStyle(id: "custom-note", name: "Custom note", size: 10)
+        document.styles.append(style); note.paragraphs[0].styleID = style.id
+        document.notes = [note]
+        var reference = TextRun("\u{FFFC}"); reference.noteID = note.id
+        document.sections[0].paragraphs[0].runs = [reference]
+        var invalid = note; invalid.paragraphs = []
+        XCTAssertThrowsError(try document.updateNote(invalid)); XCTAssertEqual(document.notes, [note])
+        var changed = note; changed.paragraphs[0].runs = [TextRun("Revised note")]
+        try document.updateNote(changed); XCTAssertEqual(document.notes[0].plainText, "Revised note")
+        document.deleteStyle(id: style.id)
+        XCTAssertEqual(document.notes[0].paragraphs[0].styleID, "normal"); try NativeFormat.validate(document)
+        document.sections[0].paragraphs[0].runs = [TextRun("Body without reference")]
+        document.reconcileNotes(); XCTAssertTrue(document.notes.isEmpty)
+    }
     func testOrphanedAndDuplicatedNoteReferencesCannotBeSaved() throws {
         var document = ScribeDocument()
         let note = DocumentNote(kind: .endnote, text: "A final reference.")
