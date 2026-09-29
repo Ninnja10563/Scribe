@@ -156,6 +156,12 @@ Native v9 adds optional crop fractions, clockwise rotation, opacity and original
 - The first clipboard test caught floating-point rounding producing 201 rather than 200 pixels; bitmap dimensions now round to the nearest pixel. The first independent Office render caught a 9-point image shift; explicit DrawingML inline text distances removed the unwanted gap. Neither failing candidate was tagged.
 - Hosted debug benchmarks in the candidate measured 256 pages at 0.953 seconds for initial layout and 6.3 ms for an end edit; 500 table cells at 87.7 ms initial layout and 10.8 ms for an end edit. These are scoped layout measurements, not physical-Mac input-latency guarantees.
 
+## Native Copy correction — 0.11.1
+
+Expanding the clipboard regression from an explicit RTFD write to the full AppKit-advertised Copy path exposed a 0.11.0 defect: AppKit requested the legacy `NeXT RTFD pasteboard type`, bypassing the adjusted-image serializer. Original source bytes could be pasted instead of the adjusted appearance. Both current and legacy type requests are now handled, and the full native Copy path is covered. Native saves, DOCX and PDF were unaffected.
+
+[Candidate 36513179858](https://github.com/Ninnja10563/Scribe/actions/runs/36513179858) and [release 36513528280](https://github.com/Ninnja10563/Scribe/actions/runs/36513528280) passed macOS tests, repeated lifecycle/Address Sanitizer tests, actual app launch and independent Office rendering. [v0.11.1](https://github.com/Ninnja10563/Scribe/releases/tag/v0.11.1) was published; its DMG was downloaded and its published SHA-256 checksum verified. The 0.11.0 release notes identify the issue and point to the correction.
+
 ## Style and paragraph editing in development
 
 The style-controls branch adds native definition controls and preview, creation from selected formatting, one-step creation/application undo, duplicate-name validation and empty-paragraph geometry undo/save tracking. [Run 36513208132](https://github.com/Ninnja10563/Scribe/actions/runs/36513208132) passed the native controls, initial typing and paragraph persistence regressions, repeated lifecycle/Address Sanitizer checks and Office rendering. Both native style-dialog tabs were visually inspected. The first dialog test exposed a stale style-picker value after navigation; the picker now reads the actual selection's stored style.
@@ -163,3 +169,4 @@ The style-controls branch adds native definition controls and preview, creation 
 Further inheritance tests found that capture could turn inherited highlight/baseline values into direct overrides, and could not preserve explicit removal of an inherited highlight. Native v10 introduces an optional clear-highlight override; DOCX writes explicit shading/baseline resets. Portable testing passes 93 tests with one additional AppKit-only skip; the exported style-override package passes Microsoft Open XML SDK validation. The new native/LibreOffice rendered inheritance checks are pending; 0.12 is not released yet.
 
 The first rendered-highlight assertion included pixels beyond the final glyph and sampled TextKit's adjacent highlighted paragraph separator. Inspection confirmed that the explicitly cleared text itself is white in both native and LibreOffice PDFs. The check now samples strictly inside the text bounds. TextKit can extend a highlighted newline through the remaining line width; closer paragraph-mark background fidelity is still needed. This is separate from the corrected semantic highlight inheritance.
+
