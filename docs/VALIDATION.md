@@ -573,3 +573,5 @@ Full line-height CI run 36602269058 at 25b28fb passed native tests/repeats, Addr
 ## Floating-image model development
 
 The isolated floating-image branch adds native v16 placement data and preserves v15 inline images through migration. All 230 portable tests pass (one platform placeholder skipped), including original asset preservation, three placement modes, invalid geometry and duplicate floating-anchor refusal. Native opening/recovery and DOCX export remain gated for floating content until its rendering and interchange paths are implemented. No floating-layout or editing claim is made yet.
+
+Floating projection follow-up: 231 portable tests pass (one platform skip). Existing image UUIDs can identify repeated asset occurrences, so the initial duplicate-ID restriction was removed; a regression now verifies separate placements for repeated assets. The native behind/front drawing prototype, zero-size anchors and clipboard v4 have macOS tests but are not yet validated or exposed. Square wrapping still blocks output.

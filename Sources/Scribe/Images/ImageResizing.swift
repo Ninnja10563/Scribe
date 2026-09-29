@@ -8,6 +8,7 @@ extension ScribeTextView {
         guard range.length == 1, let storage = textStorage, range.location < storage.length,
               storage.attribute(.attachment, at: range.location, effectiveRange: nil) != nil,
               let layoutManager, let textContainer else { return nil }
+        if (storage.attribute(.attachment, at: range.location, effectiveRange: nil) as? NSTextAttachment)?.attachmentCell is FloatingImageAnchorCell { return nil }
         let glyphs = layoutManager.glyphRange(forCharacterRange: range, actualCharacterRange: nil)
         guard glyphs.length > 0, layoutManager.textContainer(forGlyphAt: glyphs.location, effectiveRange: nil) === textContainer else { return nil }
         return layoutManager.boundingRect(forGlyphRange: glyphs, in: textContainer).offsetBy(dx: textContainerOrigin.x, dy: textContainerOrigin.y)

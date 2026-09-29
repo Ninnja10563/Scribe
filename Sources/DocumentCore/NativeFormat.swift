@@ -122,7 +122,6 @@ public enum NativeFormat {
         for comment in document.comments where comment.isDetached != true {
             guard textIndex.range(for: comment.anchor) != nil else { throw DocumentError.invalid("invalid comment anchor") }
         }
-        var floatingIDs = Set<UUID>()
         for p in paragraphs {
             if let toc = p.toc {
                 guard tocIDs.contains(toc.tableID), p.tableCell == nil else { throw DocumentError.invalid("missing table of contents definition") }
@@ -150,8 +149,8 @@ public enum NativeFormat {
                 if let image = run.image {
                     if let placement = image.placement {
                         try placement.validate()
-                        guard p.tableCell == nil, p.toc == nil, floatingIDs.insert(image.id).inserted else {
-                            throw DocumentError.invalid("floating images require a unique body anchor outside tables and generated contents")
+                        guard p.tableCell == nil, p.toc == nil else {
+                            throw DocumentError.invalid("floating images require a body anchor outside tables and generated contents")
                         }
                     }
                     if let adjustments = image.adjustments {

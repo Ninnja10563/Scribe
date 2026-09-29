@@ -14,3 +14,5 @@ Implementation sequence:
 6. Test page-boundary typing, anchor deletion/Undo, notes sharing a page, multiple objects, pagination stability, close lifetime and large documents before removing gates or publishing a release.
 
 Current layout batches only ordinary body flow. Complex floating layout may initially use a complete pass, as notes and tables currently do. Virtualization and tight contours remain separate work. This is a development plan, not an implemented floating-layout claim.
+
+The initial native prototype uses zero-size attachment cells to retain text anchors and cache source images. Behind/front page drawing and PDF drawing use the same resolved frames; square mode still blocks output until exclusions are implemented. Floating clipboard payloads use v4; external RTFD copies contain a visible inline rendering. Each text occurrence is its own layout anchor. Image asset UUIDs may repeat, matching existing copy behavior, so shared asset identity must not be mistaken for a duplicate anchor. Native projection, frame, clipboard and PDF tests are awaiting macOS execution.

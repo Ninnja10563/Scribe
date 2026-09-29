@@ -34,13 +34,19 @@ final class FloatingImageTests: XCTestCase {
             XCTAssertEqual(decoded.paragraphs[0].runs[0].image?.altText, original?.altText)
         }
     }
-    func testInvalidGeometryAndDuplicateAnchorsAreRejected() throws {
+    func testInvalidGeometryIsRejected() throws {
         for position in [FloatingImagePlacement(x: -.infinity, y: 0), .init(x: -1, y: 0), .init(x: 0, y: 4001), .init(x: 0, y: 0, textDistance: .nan), .init(x: 0, y: 0, zOrder: -1)] {
             var value = document(); value.sections[0].paragraphs[0].runs[0].image?.placement = position
             XCTAssertThrowsError(try NativeFormat.encode(value))
         }
+    }
+    func testRepeatedAssetIdentityKeepsIndependentTextAnchorsAndPlacements() throws {
         var value = document(); value.sections[0].paragraphs[0].runs[0].image?.placement = .init(x: 0, y: 0)
-        value.sections[0].paragraphs[0].runs.append(value.paragraphs[0].runs[0])
-        XCTAssertThrowsError(try NativeFormat.encode(value))
+        var second = value.paragraphs[0].runs[0]; second.image?.placement?.x = 150
+        value.sections[0].paragraphs[0].runs.append(second)
+        let restored = try NativeFormat.decode(NativeFormat.encode(value))
+        XCTAssertEqual(restored.paragraphs[0].runs[0].image?.id, restored.paragraphs[0].runs[1].image?.id)
+        XCTAssertEqual(restored.paragraphs[0].runs[0].image?.placement?.x, 0)
+        XCTAssertEqual(restored.paragraphs[0].runs[1].image?.placement?.x, 150)
     }
 }

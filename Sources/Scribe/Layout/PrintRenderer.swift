@@ -46,6 +46,7 @@ import DocumentCore
         let p = editor.canvas.pageSettings
         NSColor.white.setFill(); NSRect(x: 0, y: 0, width: p.width, height: p.height).fill()
         let origin = NSPoint(x: p.left, y: p.top)
+        editor.floatingImages.draw(page: index, behindText: true, origin: origin, writingWidth: p.contentWidth)
         if index < editor.textViews.count {
             let range = editor.layout.glyphRange(for: editor.layout.textContainers[index])
             withLinkPresentation(on: index) {
@@ -54,6 +55,7 @@ import DocumentCore
                 if showsReviewMarkup { editor.drawStructuralReview(on: index, at: origin) }
             }
         } else { editor.canvas.endnotes?.draw(page: index - editor.textViews.count, at: origin, showsReviewMarkup: showsReviewMarkup) }
+        editor.floatingImages.draw(page: index, behindText: false, origin: origin, writingWidth: p.contentWidth)
         if let notes = editor.canvas.footnotes[index] {
             notes.draw(at: NSPoint(x: p.left, y: p.height - p.bottom - notes.height), width: p.contentWidth, showsReviewMarkup: showsReviewMarkup)
         }

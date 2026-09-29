@@ -30,6 +30,7 @@ import DocumentCore
             shadow.shadowBlurRadius = 3; shadow.shadowOffset = NSSize(width: 0, height: -1); shadow.set()
             NSColor.white.setFill(); rect.fill()
             NSGraphicsContext.restoreGraphicsState()
+            editor?.floatingImages.draw(page: i, behindText: true, origin: NSPoint(x: rect.minX + pageSettings.left, y: rect.minY + pageSettings.top), writingWidth: pageSettings.contentWidth)
             RunningContentLayout.draw(runningText(isHeader: true, pageIndex: i), at: NSPoint(x: rect.minX + pageSettings.left, y: rect.minY + 30), width: pageSettings.contentWidth)
             RunningContentLayout.draw(runningText(isHeader: false, pageIndex: i), at: NSPoint(x: rect.minX + pageSettings.left, y: rect.maxY - 38), width: pageSettings.contentWidth)
             drawPageNumber(index: i, origin: rect.origin)
@@ -74,6 +75,8 @@ import DocumentCore
     private let reviewDrawing = ReviewDrawingAttributes()
     let canvas = PageCanvas()
     let noteControls = PageNoteControls()
+    let floatingImages = FloatingImageLayout()
+    private let floatingLayer = FloatingImageLayer()
     let reviewEditing = NativeReviewEditing()
     let scrollView = NSScrollView()
     private(set) var paragraphRuler: ParagraphRuler?
@@ -90,6 +93,7 @@ import DocumentCore
     private var relayout: DispatchWorkItem?
     private var isLayingOut = false
     private var noteReferencesMayExist = false
+    private var floatingReferencesMayExist = false
     private var firstDirtyPage = 0
     private var pageCharacterRanges: [NSRange] = []
     private var paginationStability = PaginationStability()
@@ -120,7 +124,7 @@ import DocumentCore
     init(document: ScribeFileDocument, projectedContent: NSAttributedString? = nil) {
         owner = document
         super.init()
-        canvas.editor = self
+        canvas.editor = self; floatingLayer.editor = self
         if let manager = document.undoManager {
             NotificationCenter.default.addObserver(self, selector: #selector(prepareReviewUndo), name: .NSUndoManagerWillUndoChange, object: manager)
             NotificationCenter.default.addObserver(self, selector: #selector(prepareReviewUndo), name: .NSUndoManagerWillRedoChange, object: manager)
@@ -160,6 +164,7 @@ import DocumentCore
     func prepareForClose() {
         relayout?.cancel(); onChange = nil; onSelection = nil; onLayout = nil
         noteControls.clear()
+        floatingLayer.editor = nil; floatingLayer.removeFromSuperview(); floatingImages.clear()
         paragraphRuler?.editor = nil; paragraphRuler?.clientView = nil
         NotificationCenter.default.removeObserver(self)
         for view in textViews { view.cancelSpellingCheck(); view.delegate = nil; view.editor = nil }
@@ -230,7 +235,7 @@ import DocumentCore
         let hadNotes = !canvas.footnotes.isEmpty
         // Note reservation and table overflow currently require a complete
         // pass. Ordinary body reflow can resume at a completed page boundary.
-        let mayYield = pageBudget != nil && !hasNotes && !hadNotes && canvas.endnotes == nil && owner?.model.tables.isEmpty == true
+        let mayYield = pageBudget != nil && !floatingReferencesMayExist && !hasNotes && !hadNotes && canvas.endnotes == nil && owner?.model.tables.isEmpty == true
         if hasNotes || hadNotes {
             for container in layout.textContainers {
                 container.containerSize.height = canvas.pageSettings.contentHeight
@@ -338,6 +343,11 @@ import DocumentCore
             do { canvas.endnotes = try EndnoteLayout(notes: notes, styles: owner?.model.styles ?? ParagraphStyle.defaults, page: canvas.pageSettings, maximumPages: 2000 - textViews.count) }
             catch { layoutWarning = error.localizedDescription }
         }
+        if floatingReferencesMayExist {
+            let warning = floatingImages.update(storage: storage, layout: layout, page: canvas.pageSettings)
+            if layoutWarning == nil { layoutWarning = warning }
+            floatingReferencesMayExist = !floatingImages.entries.isEmpty
+        }
         canvas.bodyPageCount = textViews.count
         canvas.pageCount = textViews.count + (canvas.endnotes?.containers.count ?? 0); resizeCanvas()
         if let selection = focusedSelection, let attributes = focusedTypingAttributes {
@@ -361,6 +371,11 @@ import DocumentCore
             if view.frame.origin != frame.origin { view.setFrameOrigin(frame.origin) }
             if view.frame.size != frame.size { view.setFrameSize(frame.size) }
         }
+        if !floatingImages.entries.isEmpty {
+            floatingLayer.frame = canvas.bounds
+            canvas.addSubview(floatingLayer, positioned: .above, relativeTo: nil)
+            floatingLayer.needsDisplay = true
+        } else { floatingLayer.removeFromSuperview() }
         noteControls.update(in: canvas)
         canvas.needsDisplay = true
         paragraphRuler?.updateGeometry()
@@ -381,12 +396,18 @@ import DocumentCore
                     if value != nil { self.noteReferencesMayExist = true; stop.pointee = true }
                 }
             }
+            if !floatingReferencesMayExist {
+                let range = NSIntersectionRange(editedRange, NSRange(location: 0, length: textStorage.length))
+                textStorage.enumerateAttribute(.attachment, in: range) { value, _, stop in
+                    if (value as? NSTextAttachment)?.attachmentCell is FloatingImageAnchorCell { self.floatingReferencesMayExist = true; stop.pointee = true }
+                }
+            }
             let ends = paginationStability.expectedEnds ?? pageCharacterRanges.map(NSMaxRange)
             let page = ends.firstIndex { $0 >= editedRange.location } ?? max(0, textViews.count - 1)
             let isInsertion = editedMask.contains(.editedCharacters) && delta > 0 && delta <= 128 && editedRange.length == delta && NSMaxRange(editedRange) <= textStorage.length
             let text = isInsertion ? (textStorage.string as NSString).substring(with: editedRange) : ""
             let hasFlowControl = text.unicodeScalars.contains { CharacterSet.controlCharacters.contains($0) || $0.value == 0x2028 || $0.value == 0x2029 || $0.value == 0xfffc }
-            if isInsertion && !hasFlowControl && layoutWarning == nil && owner?.model.tables.isEmpty == true && !noteReferencesMayExist {
+            if isInsertion && !hasFlowControl && layoutWarning == nil && owner?.model.tables.isEmpty == true && !noteReferencesMayExist && !floatingReferencesMayExist {
                 paginationStability.insert(at: editedRange.location, length: delta, previousEnds: ends, startingClean: firstDirtyPage == Int.max)
             } else { paginationStability.invalidate() }
             firstDirtyPage = min(firstDirtyPage, max(0, page - 1))

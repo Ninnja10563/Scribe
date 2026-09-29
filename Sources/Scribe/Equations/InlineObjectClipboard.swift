@@ -32,7 +32,8 @@ import DocumentCore
         }
         guard !tooMany else { throw DocumentError.invalid("too many clipboard objects") }
         let hasLineHeight = objects.contains { $0.note?.paragraphs.contains { $0.formatting?.lineHeight != nil } == true }
-        let payload = Payload(version: hasLineHeight ? 3 : objects.contains { $0.note != nil } ? 2 : 1, text: value.string, objects: objects)
+        let hasFloating = objects.contains { $0.image?.placement != nil }
+        let payload = Payload(version: hasFloating ? 4 : hasLineHeight ? 3 : objects.contains { $0.note != nil } ? 2 : 1, text: value.string, objects: objects)
         try validate(payload)
         let data = try JSONEncoder().encode(payload)
         guard data.count <= NativeFormat.maximumBytes else { throw DocumentError.tooLarge }
@@ -75,7 +76,7 @@ import DocumentCore
     }
     private static func validate(_ payload: Payload) throws {
         let text = payload.text as NSString
-        guard [1, 2, 3].contains(payload.version), payload.objects.count <= 10000,
+        guard [1, 2, 3, 4].contains(payload.version), payload.objects.count <= 10000,
               payload.text.utf8.count <= NativeFormat.maximumBytes,
               Set(payload.objects.map(\.location)).count == payload.objects.count else { throw DocumentError.invalid("invalid clipboard object list") }
         var estimatedBytes = payload.text.utf8.count

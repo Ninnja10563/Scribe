@@ -4,7 +4,14 @@ import ImageIO
 import DocumentCore
 
 @MainActor enum ImageProjection {
-    static func attachment(_ image: InlineImage) -> NSTextAttachment? {
+    static func attachment(_ image: InlineImage, forceInline: Bool = false) -> NSTextAttachment? {
+        if image.placement != nil, !forceInline {
+            let wrapper = FileWrapper(regularFileWithContents: image.data)
+            wrapper.preferredFilename = "\(image.id).\(image.fileExtension)"
+            let attachment = NSTextAttachment(fileWrapper: wrapper)
+            attachment.attachmentCell = FloatingImageAnchorCell(image)
+            return attachment
+        }
         let bitmap: NSImage
         if validPixelSize(image.data), let decoded = NSImage(data: image.data) {
             if let adjustments = image.adjustments {

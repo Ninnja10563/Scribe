@@ -9,7 +9,7 @@ import DocumentCore
         var replacements: [(NSRange, NSTextAttachment)] = []
         var failure: Error?
         value.enumerateAttribute(.scribeImage, in: NSRange(location: 0, length: value.length)) { encoded, range, stop in
-            guard let data = encoded as? Data, let image = try? JSONDecoder().decode(InlineImage.self, from: data), image.adjustments != nil else { return }
+            guard let data = encoded as? Data, let image = try? JSONDecoder().decode(InlineImage.self, from: data), image.adjustments != nil || image.placement != nil else { return }
             do { replacements.append((range, try flattenedAttachment(image))) }
             catch { failure = error; stop.pointee = true }
         }
@@ -19,7 +19,7 @@ import DocumentCore
         return result
     }
     static func flattenedAttachment(_ image: InlineImage) throws -> NSTextAttachment {
-        guard let attachment = ImageProjection.attachment(image), let cell = attachment.attachmentCell as? NSTextAttachmentCell, let bitmap = cell.image else { throw DocumentError.invalid("could not prepare the image for rich-text copying") }
+        guard let attachment = ImageProjection.attachment(image, forceInline: true), let cell = attachment.attachmentCell as? NSTextAttachmentCell, let bitmap = cell.image else { throw DocumentError.invalid("could not prepare the image for rich-text copying") }
         // External copies use 144 dpi, limited to 16 million pixels. Native/PDF/DOCX retain source resolution.
         let scale = min(2, sqrt(16_000_000 / (image.width * image.height)))
         let width = max(1, Int((image.width * scale).rounded())), height = max(1, Int((image.height * scale).rounded()))
