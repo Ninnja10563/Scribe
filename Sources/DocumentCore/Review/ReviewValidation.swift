@@ -39,7 +39,8 @@ extension NativeFormat {
                         try validateText(change.before); try validateText(change.after)
                         effective = effective.applyingDifference(from: change.before, to: change.after)
                     }
-                    guard effective == run.format else { throw DocumentError.invalid("revision formatting does not match its history") }
+                    let inherited = document.style(for: paragraph).text
+                    guard effective.materialized(over: inherited) == run.format.materialized(over: inherited) else { throw DocumentError.invalid("revision formatting does not match its history") }
                 }
             }
         }

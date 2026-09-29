@@ -21,6 +21,24 @@ import DocumentCore
             XCTAssertNil(rendered.attribute(.scribeBreakReview, at: index, effectiveRange: nil), "Separator metadata must not leak into text")
         }
     }
+    func testMergedParagraphRetainsPendingFormattingAfterNativeNormalization() throws {
+        _ = NSApplication.shared
+        var document = ScribeDocument(), first = Paragraph("Body "), second = Paragraph("Heading", style: "heading1")
+        var review = RunReview(); review.deletion = RevisionIdentity(author: .init(name: "Reviewer")); first.breakReview = review
+        let italic = RevisionIdentity(author: .init(name: "Reviewer"))
+        var text = RevisionText(runs: second.runs)
+        try text.format(NSRange(location: 0, length: 7), identity: italic) { var format = $0; format.italic = true; return format }
+        second.runs = text.runs; document.sections[0].paragraphs = [first, second]
+        try document.resolveRevision(review.deletion!.id, accepting: true)
+        document = AttributedDocument.capture(AttributedDocument.render(document), preserving: document)
+        try NativeFormat.validate(document)
+        try document.resolveRevision(italic.id, accepting: false)
+        let rendered = AttributedDocument.render(document)
+        let font = try XCTUnwrap(rendered.attribute(.font, at: (rendered.string as NSString).range(of: "Heading").location, effectiveRange: nil) as? NSFont)
+        XCTAssertEqual(font.pointSize, 22)
+        XCTAssertTrue(NSFontManager.shared.traits(of: font).contains(.boldFontMask))
+        XCTAssertFalse(NSFontManager.shared.traits(of: font).contains(.italicFontMask))
+    }
     func testMergedHeadingKeepsRenderedFontWhileItsParagraphStyleChanges() throws {
         _ = NSApplication.shared
         var document = ScribeDocument(), first = Paragraph("Body "), second = Paragraph("Heading", style: "heading1")
