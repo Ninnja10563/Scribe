@@ -90,37 +90,6 @@ extension EditorWindowController {
             fileDocument.performEdit("Headers and Footers") { $0.sections[0].header = header.stringValue; $0.sections[0].footer = footer.stringValue }
         }
     }
-    @objc func editStyle() {
-        let index = stylePicker.indexOfSelectedItem
-        guard fileDocument.model.styles.indices.contains(index) else { return }
-        var style = fileDocument.model.styles[index]
-        let alert = NSAlert(); alert.messageText = "Modify \(style.name)"
-        alert.informativeText = "All paragraphs using this style update together. Direct formatting is preserved."
-        let name = NSTextField(string: style.name), family = NSTextField(string: style.text.fontFamily ?? "Helvetica Neue")
-        let size = NSTextField(string: String(style.text.fontSize ?? 12))
-        let after = NSTextField(string: String(style.paragraph.spaceAfter))
-        let stack = NSStackView(); stack.orientation = .vertical; stack.alignment = .leading; stack.spacing = 8
-        for (label, field) in zip(["Name", "Font family", "Font size", "Spacing after"], [name, family, size, after]) {
-            field.widthAnchor.constraint(equalToConstant: 180).isActive = true
-            stack.addArrangedSubview(NSStackView(views: [NSTextField(labelWithString: label), field]))
-        }
-        stack.frame = NSRect(x: 0, y: 0, width: 320, height: 150); alert.accessoryView = stack
-        alert.addButton(withTitle: "Apply"); alert.addButton(withTitle: "Cancel")
-        guard alert.runModal() == .alertFirstButtonReturn else { return }
-        guard let points = Double(size.stringValue), (1...200).contains(points), let spacing = Double(after.stringValue), (0...200).contains(spacing), !name.stringValue.isEmpty else { return }
-        if family.stringValue != style.text.fontFamily { style.text.fontFace = nil }
-        style.name = name.stringValue; style.text.fontFamily = family.stringValue; style.text.fontSize = points; style.paragraph.spaceAfter = spacing
-        fileDocument.performEdit("Modify Style") { $0.updateStyle(style) }
-    }
-    @objc func createStyle() {
-        let alert = NSAlert(); alert.messageText = "Create Paragraph Style"
-        let name = NSTextField(string: "Custom Style"); name.frame = NSRect(x: 0, y: 0, width: 260, height: 24)
-        alert.accessoryView = name; alert.addButton(withTitle: "Create"); alert.addButton(withTitle: "Cancel")
-        guard alert.runModal() == .alertFirstButtonReturn, !name.stringValue.isEmpty else { return }
-        let style = ParagraphStyle(id: UUID().uuidString, name: name.stringValue)
-        fileDocument.performEdit("Create Style") { $0.updateStyle(style) }
-        editor.applyStyle(style.id)
-    }
     @objc func deleteStyle() {
         let index = stylePicker.indexOfSelectedItem; guard fileDocument.model.styles.indices.contains(index) else { return }
         let style = fileDocument.model.styles[index]

@@ -3,7 +3,7 @@ import AppKit
 import DocumentCore
 
 extension PaginatedEditor {
-    private func selectedParagraphIndices() -> Set<Int> {
+    func selectedParagraphIndices() -> Set<Int> {
         let selection = activeTextView.selectedRange()
         var offset = 0, selected: Set<Int> = []
         for (index, component) in storage.string.components(separatedBy: "\n").enumerated() {
