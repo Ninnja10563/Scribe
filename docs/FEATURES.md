@@ -1,14 +1,14 @@
-# Feature status — Scribe 0.11 (latest release: 0.11)
+# Feature status — Scribe 0.12 development (latest release: 0.11; clipboard fix 0.11.1 publishing)
 
 This is a foundation release. “Implemented” means there is working code and an exposed editing path, not that the feature has the interoperability coverage of a mature word processor.
 
 | Area | Implemented | Still needed |
 | --- | --- | --- |
 | Native application | Swift/AppKit, arm64 bundle, document windows and tabs, menus, native spelling with per-document language, title/author properties, focus mode, persistent Fit Page/Fit Width and fixed zoom, light/dark chrome | Physical-Mac keyboard/IME/VoiceOver audit, mixed-language runs, richer preferences |
-| Document model | Versioned semantic paragraphs/runs, sections, styles, tables/cell references, inline images, IDs; v1–v8→v9 migrations; TOC definitions and entries | More block types, independent section editing, preservation of future extension payloads |
+| Document model | Versioned semantic paragraphs/runs, sections, styles, tables/cell references, inline images, IDs; v1–v9→v10 migrations; TOC definitions and entries | More block types, independent section editing, preservation of future extension payloads |
 | Pagination | Shared TextKit layout across actual page containers; A4/Letter/Legal, custom dimensions, orientation, fractional margins, page breaks | Virtualization, widow/orphan controls, configurable hyphenation, typography audit |
 | Formatting | Fonts/size and concrete faces/weights via native panel, common traits, color/highlight, super/subscript, alignment, spacing and indents | Draggable ruler, dedicated inline font-weight controls |
-| Styles | Built-in headings/title/body/quote/caption, custom creation/modification/deletion, live definition updates, outline navigation | Style inheritance editor, collapsible heading content |
+| Styles | Built-in headings/title/body/quote/caption, creation from current text, font family/face/traits/color controls, paragraph spacing/indents/alignment/outline levels, preview, custom rename/deletion, live definition updates, outline navigation | Style inheritance editor, collapsible heading content |
 | Lists | Bullets, decimal/letter/Roman numbering, independent series, restart/continuation commands, nesting, Return split/empty-item exit, Backspace outdent | Physical-Mac input audit, custom compound markers, selection spanning multiple list items |
 | Tables | Editable cells, insertion, add/delete rows/columns, Tab navigation, column widths, cell backgrounds/borders/padding/vertical alignment, minimum row heights, header shading, rectangular merge/split and span-aware grid edits; TextKit layout | Drag sizing, cell-range selection, nested tables, cells taller than one page (PDF/print blocked when text overflows) |
 | Images | PNG/JPEG/HEIC/TIFF insertion, Finder drop, image paste, inline layout, proportional resizing by handles or dialog, alt text; reversible crop, clockwise rotation and opacity | Floating placement/wrapping, visual crop handles |

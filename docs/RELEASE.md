@@ -1,9 +1,12 @@
-Scribe 0.11.1 fixes adjusted-image copying.
+Scribe 0.12.0 expands native paragraph-style editing.
 
-Ordinary macOS Copy requested a legacy RTFD type name that bypassed the 0.11 image exporter. Copies could paste the original, uncropped image. Scribe now handles both current and legacy RTFD requests, and regression tests exercise the full native Copy path. Native documents, DOCX and PDF were unaffected.
+- Create styles from the current text formatting. A native two-tab editor provides font family and face, traits, colors, spacing, indents, alignment and outline level, with a preview.
+- Creating and applying a style is one undoable operation. Duplicate style names are rejected. Definition changes update inherited formatting while preserving direct overrides.
+- Native format v10 distinguishes explicitly removed highlighting from inherited highlighting; DOCX retains highlight and superscript/subscript resets. Earlier native versions migrate in memory.
+- The style picker now follows the actual selected paragraph, including immediately after outline navigation. Initial typing inherits the opening paragraph’s formatting.
+- Paragraph spacing and indentation changes are undoable and mark empty documents for autosave. Invalid geometry remains in the dialog for correction.
+- Includes the 0.11.1 native rich-clipboard image correction.
 
-This release includes the reversible crop, clockwise rotation and opacity controls introduced in 0.11.0. Rich-text clipboard images are flattened at 144 dpi, bounded to 16 megapixels; original source data remains in the Scribe document.
-
-This remains a development release. Floating image wrapping, independent sections, track changes, footnotes/endnotes, equations and shapes remain unfinished. Tall cells cannot continue across pages; unsafe PDF/print output is blocked. See docs/FEATURES.md and docs/VALIDATION.md.
+This remains a development release. A draggable ruler, style-parent editor, floating images, independent sections, track changes, footnotes/endnotes, equations and shapes remain unfinished. Tall cells cannot continue across pages; unsafe PDF/print output is blocked. See docs/FEATURES.md and docs/VALIDATION.md.
 
 For Apple Silicon, macOS 14+. Development builds are ad-hoc signed, not notarized. Physical-Mac input/accessibility and manual Word/Pages validation remain pending.

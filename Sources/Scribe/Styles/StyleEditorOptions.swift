@@ -2,11 +2,13 @@
 import AppKit
 import DocumentCore
 
-@MainActor final class StyleEditorOptions: NSObject {
+@MainActor final class StyleEditorOptions: NSObject, NSTextFieldDelegate {
     let original: ParagraphStyle
     let name: NSTextField
     let family = NSPopUpButton(), face = NSPopUpButton(), alignment = NSPopUpButton(), outline = NSPopUpButton()
     let size: NSTextField
+    let bold = NSButton(checkboxWithTitle: "Bold", target: nil, action: nil)
+    let italic = NSButton(checkboxWithTitle: "Italic", target: nil, action: nil)
     let underline = NSButton(checkboxWithTitle: "Underline", target: nil, action: nil)
     let strike = NSButton(checkboxWithTitle: "Strikethrough", target: nil, action: nil)
     let foreground = NSColorWell(), highlight = NSColorWell()
@@ -26,7 +28,9 @@ import DocumentCore
         if !families.contains(current) { families.append(current) }
         family.addItems(withTitles: families.sorted { $0.localizedCaseInsensitiveCompare($1) == .orderedAscending })
         family.selectItem(withTitle: current); family.target = self; family.action = #selector(familyChanged)
-        populateFaces(selected: style.text.fontFace)
+        bold.state = style.text.bold == true ? .on : .off; italic.state = style.text.italic == true ? .on : .off
+        populateFaces(selected: style.text.fontFace); updateTraits()
+        face.toolTip = "A concrete face defines weight and slant. Automatic uses the Bold and Italic controls."
         underline.state = style.text.underline == true ? .on : .off
         strike.state = style.text.strikethrough == true ? .on : .off
         foreground.color = NSColor(hex: style.text.foreground ?? "#1D1D1F")
@@ -37,7 +41,7 @@ import DocumentCore
         outline.addItems(withTitles: ["Body text"] + (1...9).map { "Heading level \($0)" })
         outline.selectItem(at: style.headingLevel ?? 0)
         let tabs = NSTabView(); tabs.translatesAutoresizingMaskIntoConstraints = false
-        let text = grid([("Font family", family), ("Font face", face), ("Size (pt)", size), ("Text color", foreground), ("", underline), ("", strike), ("", useHighlight), ("Highlight color", highlight)])
+        let text = grid([("Font family", family), ("Font face", face), ("Size (pt)", size), ("Traits", NSStackView(views: [bold, italic])), ("Text color", foreground), ("", underline), ("", strike), ("", useHighlight), ("Highlight color", highlight)])
         let paragraph = grid([("Alignment", alignment), ("Outline", outline)] + zip(["Additional line spacing", "Space before", "Space after", "First line indent", "Left indent", "Right indent"], spacing).map { ($0.0, $0.1 as NSView) })
         for (label, content) in [("Text", text), ("Paragraph", paragraph)] {
             let item = NSTabViewItem(identifier: label); item.label = label
@@ -49,10 +53,11 @@ import DocumentCore
         let title = grid([("Style name", name)])
         view.addArrangedSubview(title); view.addArrangedSubview(tabs); view.addArrangedSubview(preview)
         preview.setAccessibilityLabel("Style preview"); preview.heightAnchor.constraint(equalToConstant: 44).isActive = true
-        for control in [face, size, underline, strike, foreground, highlight, useHighlight] as [NSControl] { control.target = self; control.action = #selector(updatePreview) }
+        for control in [size, bold, italic, underline, strike, foreground, highlight, useHighlight] as [NSControl] { control.target = self; control.action = #selector(updatePreview) }
+        face.target = self; face.action = #selector(faceChanged); size.delegate = self
         updatePreview()
-        NSLayoutConstraint.activate([title.widthAnchor.constraint(equalToConstant: 450), tabs.widthAnchor.constraint(equalToConstant: 450), tabs.heightAnchor.constraint(equalToConstant: 345)])
-        view.frame = NSRect(x: 0, y: 0, width: 450, height: 445)
+        NSLayoutConstraint.activate([title.widthAnchor.constraint(equalToConstant: 450), tabs.widthAnchor.constraint(equalToConstant: 450), tabs.heightAnchor.constraint(equalToConstant: 365)])
+        view.frame = NSRect(x: 0, y: 0, width: 450, height: 465)
     }
     private func grid(_ rows: [(String, NSView)]) -> NSGridView {
         for (label, control) in rows where !label.isEmpty { control.setAccessibilityLabel(label); control.identifier = NSUserInterfaceItemIdentifier(label) }
@@ -61,7 +66,17 @@ import DocumentCore
         for index in rows.indices { grid.row(at: index).height = 24 }
         return grid
     }
-    @objc private func familyChanged() { populateFaces(selected: nil); updatePreview() }
+    @objc private func familyChanged() { populateFaces(selected: nil); updateTraits(); updatePreview() }
+    @objc private func faceChanged() { updateTraits(); updatePreview() }
+    func controlTextDidChange(_ notification: Notification) { updatePreview() }
+    private func updateTraits() {
+        let selected = faceNames.indices.contains(face.indexOfSelectedItem) ? faceNames[face.indexOfSelectedItem] : nil
+        bold.isEnabled = selected == nil; italic.isEnabled = selected == nil
+        if let selected, let font = NSFont(name: selected, size: 12) {
+            let traits = NSFontManager.shared.traits(of: font)
+            bold.state = traits.contains(.boldFontMask) ? .on : .off; italic.state = traits.contains(.italicFontMask) ? .on : .off
+        }
+    }
     @objc private func updatePreview() {
         highlight.isEnabled = useHighlight.state == .on
         guard let style = try? value(contentWidth: 10000) else { return }
@@ -87,10 +102,7 @@ import DocumentCore
               let points = Double(size.stringValue), points.isFinite, (1...1000).contains(points) else { throw DocumentError.invalid("enter a style name and a font size from 1 to 1000 points") }
         result.text.fontSize = points; result.text.fontFamily = family.titleOfSelectedItem
         result.text.fontFace = faceNames.indices.contains(face.indexOfSelectedItem) ? faceNames[face.indexOfSelectedItem] : nil
-        if result.text.fontFace != original.text.fontFace, let selected = result.text.fontFace, let font = NSFont(name: selected, size: points) {
-            let traits = NSFontManager.shared.traits(of: font)
-            result.text.bold = traits.contains(.boldFontMask); result.text.italic = traits.contains(.italicFontMask)
-        }
+        result.text.bold = bold.state == .on; result.text.italic = italic.state == .on
         result.text.underline = underline.state == .on; result.text.strikethrough = strike.state == .on
         result.text.clearHighlight = nil
         result.text.foreground = foreground.color.hex; result.text.highlight = useHighlight.state == .on ? highlight.color.hex : nil
