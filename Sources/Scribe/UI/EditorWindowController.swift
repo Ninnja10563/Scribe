@@ -14,6 +14,7 @@ import DocumentCore
     let zoomPicker = NSPopUpButton()
     let toolbar = NSStackView()
     let searchBar = SearchBar()
+    lazy var reviewNavigation = ReviewNavigation(owner: self)
     private let outlineHint = NSTextField(wrappingLabelWithString: "Apply heading styles to build your document outline.")
     var isFocused = false
     private var statsWork: DispatchWorkItem?
