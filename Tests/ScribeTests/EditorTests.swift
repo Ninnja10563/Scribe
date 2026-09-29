@@ -156,6 +156,7 @@ import DocumentCore
                 editor.storage.replaceCharacters(in: NSRange(location: index, length: 0), with: "x")
                 editor.paginate()
                 result[position + "EditSeconds"] = Date().timeIntervalSince(editStart)
+                result[position + "VisitedPages"] = editor.lastPaginationVisitedPages
                 XCTAssertTrue(editor.textViews[0] === first)
                 var covered = 0
                 for container in editor.layout.textContainers {

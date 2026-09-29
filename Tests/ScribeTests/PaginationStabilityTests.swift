@@ -56,6 +56,30 @@ import PDFKit
         XCTAssertEqual(pdf.pageCount, editor.textViews.count)
         for index in 1..<160 { XCTAssertEqual(text.components(separatedBy: "Entry \(index):").count - 1, 1) }
     }
+    func testWrappingAtPageBoundariesAndFallbackEditsMatchFullLayout() throws {
+        let document = ScribeFileDocument()
+        document.model.sections[0].paragraphs = (0..<90).map { index in
+            var paragraph = Paragraph("Paragraph \(index). " + String(repeating: "Wrapping must retain every line and page. ", count: 7), style: index % 9 == 0 ? "heading2" : "normal")
+            paragraph.pageBreakBefore = index > 0 && index % 23 == 0
+            return paragraph
+        }
+        let editor = PaginatedEditor(document: document); defer { editor.prepareForClose() }
+        for iteration in 0..<12 {
+            let page = min(editor.textViews.count - 1, iteration)
+            let glyphs = editor.layout.glyphRange(for: editor.layout.textContainers[page])
+            let range = editor.layout.characterRange(forGlyphRange: glyphs, actualGlyphRange: nil)
+            let position = max(0, NSMaxRange(range) - 1)
+            let inserted = iteration % 2 == 0 ? "x" : String(repeating: " measured ", count: 12)
+            editor.storage.replaceCharacters(in: NSRange(location: position, length: 0), with: inserted)
+            editor.paginate(); try compareWithFullLayout(editor, document: document)
+        }
+        editor.storage.replaceCharacters(in: NSRange(location: 0, length: 3), with: "")
+        editor.paginate(); try compareWithFullLayout(editor, document: document)
+        editor.storage.replaceCharacters(in: NSRange(location: 0, length: 0), with: "New ")
+        document.model.sections[0].page.left += 24
+        editor.setPageSettings(document.model.sections[0].page)
+        try compareWithFullLayout(editor, document: document)
+    }
     private func compareWithFullLayout(_ editor: PaginatedEditor, document: ScribeFileDocument, phase: String = "Edited") throws {
         let fresh = PaginatedEditor(document: document); defer { fresh.prepareForClose() }
         fresh.storage.setAttributedString(editor.storage); fresh.paginate()
