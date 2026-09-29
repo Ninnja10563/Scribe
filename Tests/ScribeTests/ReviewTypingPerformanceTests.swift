@@ -23,7 +23,7 @@ import DocumentCore
             let typed = Date(); editor.paginate()
             let result: [String: Any] = ["position": position, "pages": editor.canvas.pageCount,
                 "typingSeconds": typed.timeIntervalSince(began), "layoutSeconds": Date().timeIntervalSince(typed),
-                "visitedPages": editor.lastPaginationVisitedPages,
+                "visitedPages": editor.lastPaginationVisitedPages, "validatedUTF16Length": editor.reviewEditing.lastValidationLength,
                 "addressSanitizer": ProcessInfo.processInfo.environment["ASAN_OPTIONS"] != nil]
             measurements.append(result)
             var end = 0

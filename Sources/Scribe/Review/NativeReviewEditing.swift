@@ -7,6 +7,7 @@ import DocumentCore
 @MainActor final class NativeReviewEditing {
     var author: RevisionAuthor? { didSet { if author != oldValue { resetGrouping() } } }
     func resetGrouping() { lastInsertion = nil }
+    private(set) var lastValidationLength = 0
     private var lastInsertion: (identity: RevisionIdentity, caret: Int, date: Date)?
     func replacement(in editor: PaginatedEditor, range: NSRange, with value: NSAttributedString) throws -> NSAttributedString? {
         guard let author else { return nil }
@@ -28,10 +29,7 @@ import DocumentCore
         } else {
             replacement = try ReviewTextProjection.replacing(original, with: value, insertion: insertion, deletion: RevisionIdentity(author: author, date: now))
         }
-        let proposed = NSMutableAttributedString(attributedString: editor.storage)
-        proposed.replaceCharacters(in: range, with: replacement)
-        guard let owner = editor.owner else { return nil }
-        try NativeFormat.validate(AttributedDocument.capture(proposed, preserving: owner.snapshot()))
+        lastValidationLength = try ReviewEditValidation.validate(replacement, replacing: range, in: editor)
         lastInsertion = range.length == 0 && value.length > 0 && !value.string.contains("\n") ? (insertion, range.location + replacement.length, now) : nil
         return replacement
     }
