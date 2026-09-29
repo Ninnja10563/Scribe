@@ -61,6 +61,29 @@ import DocumentCore
         try model.resolveAllRevisions(accepting: true)
         XCTAssertEqual(model.paragraphs[0].text, "\tX.\tBody")
     }
+    func testMarkedInputInsideListMarkerPreservesNumberDuringComposeCommitAndCancel() throws {
+        for commit in [false, true] {
+            let document = document("Body"); defer { document.close() }
+            let editor = document.editorController!.editor, before = document.snapshot()
+            editor.select(NSRange(location: 1, length: 1))
+            let view = editor.activeTextView
+            view.setMarkedText("語", selectedRange: NSRange(location: 1, length: 0), replacementRange: NSRange(location: NSNotFound, length: 0))
+            XCTAssertTrue(editor.storage.string.hasPrefix("\t4.\t"))
+            XCTAssertEqual(document.snapshot(), before)
+            if commit {
+                view.unmarkText()
+                let changed = document.snapshot()
+                XCTAssertEqual(changed.paragraphs[0].text, "語Body")
+                XCTAssertTrue(changed.hasPendingRevisions)
+                try NativeFormat.validate(changed)
+                document.undoManager?.undo(); XCTAssertEqual(document.snapshot().paragraphs, before.paragraphs)
+            } else {
+                view.cancelOperation(nil)
+                XCTAssertEqual(document.snapshot(), before)
+                XCTAssertFalse(document.undoManager?.canUndo ?? true)
+            }
+        }
+    }
     func testNativeReturnTracksSeparatorWithoutNumberingTextAndUndoRestores() throws {
         let document = document("First second"); defer { document.close() }
         let editor = document.editorController!.editor, before = document.snapshot()

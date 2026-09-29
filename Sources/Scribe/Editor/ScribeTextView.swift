@@ -95,15 +95,18 @@ import DocumentCore
         guard editor?.reviewEditing.author != nil, !applyingReviewReplacement, let storage = textStorage else {
             super.setMarkedText(string, selectedRange: selectedRange, replacementRange: replacementRange); return
         }
+        var replacement = replacementRange
         if reviewComposition == nil {
-            let range = replacementRange.location == NSNotFound ? self.selectedRange() : replacementRange
+            let requested = replacementRange.location == NSNotFound ? self.selectedRange() : replacementRange
+            let range = editableListRange(requested)
+            if range != requested { replacement = range; setSelectedRange(range) }
             reviewComposition = ReviewComposition(storage: storage, range: range, typingAttributes: typingAttributes)
         }
         applyingReviewReplacement = true
         let manager = undoManager, registering = undoManager?.isUndoRegistrationEnabled == true
         if registering { manager?.disableUndoRegistration() }
         defer { if registering { manager?.enableUndoRegistration() }; applyingReviewReplacement = false }
-        super.setMarkedText(string, selectedRange: selectedRange, replacementRange: replacementRange)
+        super.setMarkedText(string, selectedRange: selectedRange, replacementRange: replacement)
         if hasMarkedText() { reviewComposition?.markedRange = markedRange() }
         else if let composition = reviewComposition {
             let length = (string as? NSAttributedString)?.length ?? ((string as? String ?? "") as NSString).length
