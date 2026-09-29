@@ -101,7 +101,11 @@ import DocumentCore
             guard let replacement = try editor.reviewEditing.replacement(in: editor, range: range, with: value) else { return }
             applyingReviewReplacement = true
             defer { applyingReviewReplacement = false }
-            setSelectedRange(range); replaceSelection(replacement, action: action)
+            if action == "Typing" {
+                super.insertText(replacement, replacementRange: range)
+            } else {
+                setSelectedRange(range); replaceSelection(replacement, action: action)
+            }
         } catch { presentError(error) }
     }
     override func menu(for event: NSEvent) -> NSMenu? {
