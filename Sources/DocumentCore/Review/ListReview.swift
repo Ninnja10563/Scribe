@@ -78,3 +78,21 @@ public extension ScribeDocument {
         return target
     }
 }
+
+public extension ScribeDocument {
+    /// Revise one draft boundary without rejecting other separators or text
+    /// sharing the original insertion identity (for example, a multi-item paste).
+    @discardableResult mutating func removeOwnInsertedSeparator(after paragraphID: UUID, authorID: UUID) throws -> Bool {
+        guard let section = sections.firstIndex(where: { $0.paragraphs.contains { $0.id == paragraphID } }),
+              let index = sections[section].paragraphs.firstIndex(where: { $0.id == paragraphID }),
+              let original = sections[section].paragraphs[index].breakReview,
+              let insertion = original.insertion, insertion.author.id == authorID, original.deletion == nil else { return false }
+        try NativeFormat.validate(self)
+        var candidate = self
+        let isolated = RevisionIdentity(author: insertion.author, date: insertion.date)
+        candidate.sections[section].paragraphs[index].breakReview?.insertion = isolated
+        try candidate.resolveRevision(isolated.id, accepting: false)
+        self = candidate
+        return true
+    }
+}

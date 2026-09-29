@@ -43,6 +43,42 @@ import DocumentCore
         try model.resolveRevision(split, accepting: false)
         XCTAssertEqual(model.paragraphs[0].text, "AB"); XCTAssertEqual(model.pendingRevisionIDs, [format])
     }
+    func testForwardDeleteOwnListSeparatorRemovesGeneratedMarkerAndCanUndo() async throws {
+        let document = document("AB"); defer { document.close() }
+        let editor = document.editorController!.editor
+        editor.selectListContent(id: document.model.paragraphs[0].id)
+        let start = try XCTUnwrap(editor.activeTextView.listContext()?.contentStart)
+        editor.select(NSRange(location: start + 1, length: 0)); editor.activeTextView.insertNewline(nil)
+        let split = document.snapshot(); try NativeFormat.validate(split)
+        try await Task.sleep(nanoseconds: 30_000_000)
+        let separator = (editor.storage.string as NSString).range(of: "\n").location
+        editor.select(NSRange(location: separator, length: 0)); editor.activeTextView.deleteForward(nil)
+        try await Task.sleep(nanoseconds: 30_000_000)
+        let joined = document.snapshot(); try NativeFormat.validate(joined)
+        XCTAssertEqual(joined.paragraphs.map(\.text), ["AB"])
+        XCTAssertFalse(editor.storage.string.contains("\t5.\t"))
+        XCTAssertFalse(joined.hasPendingRevisions)
+        document.undoManager?.undo(); XCTAssertEqual(document.snapshot().paragraphs, split.paragraphs)
+        document.undoManager?.redo(); XCTAssertEqual(document.snapshot().paragraphs, joined.paragraphs)
+    }
+    func testRepeatedForwardDeleteSkipsGeneratedMarkerAfterRetainedBoundary() throws {
+        let document = document("A"); defer { document.close() }
+        let editor = document.editorController!.editor
+        document.performEdit("Fixture", recordReview: false) { model in
+            var next = Paragraph("B"); next.list = .init(kind: .decimal)
+            model.sections[0].paragraphs.append(next)
+        }
+        let separator = (editor.storage.string as NSString).range(of: "\n").location
+        editor.select(NSRange(location: separator, length: 0)); editor.activeTextView.deleteForward(nil)
+        XCTAssertEqual(editor.activeTextView.selectedRange().location, editor.activeTextView.listContext()?.contentStart)
+        editor.activeTextView.deleteForward(nil)
+        var model = document.snapshot(); try NativeFormat.validate(model)
+        XCTAssertEqual(model.paragraphs.map(\.text), ["A", "B"])
+        XCTAssertEqual(model.pendingRevisionIDs.count, 2)
+        XCTAssertEqual(RevisionText(runs: model.paragraphs[1].runs).finalText, "")
+        try model.resolveAllRevisions(accepting: true)
+        XCTAssertEqual(model.paragraphs.map(\.text), ["A"])
+    }
     func testEmptyListReturnTracksExitAndUndo() throws {
         let document = document(""); defer { document.close() }
         let editor = document.editorController!.editor

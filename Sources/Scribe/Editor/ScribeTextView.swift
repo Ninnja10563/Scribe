@@ -183,9 +183,15 @@ import DocumentCore
     override func shouldChangeText(in affectedCharRange: NSRange, replacementString: String?) -> Bool {
         if replacementString == "", affectedCharRange.length > 0, editor?.reviewEditing.author != nil,
            !applyingReviewReplacement, undoManager?.isUndoing != true, undoManager?.isRedoing != true {
+            if removeOwnTrackedSeparator(in: affectedCharRange) { return false }
             let selection = selectedRange()
             applyTrackedReplacement(NSAttributedString(string: ""), range: affectedCharRange, action: "Delete")
             if selection.length == 0, NSMaxRange(affectedCharRange) == selection.location { setSelectedRange(NSRange(location: affectedCharRange.location, length: 0)) }
+            else if selection.length == 0, let storage = textStorage, selectedRange().location < storage.length,
+                    storage.attribute(.scribeList, at: selectedRange().location, effectiveRange: nil) != nil,
+                    let context = listContext(), selectedRange().location < context.contentStart {
+                setSelectedRange(NSRange(location: context.contentStart, length: 0))
+            }
             return false
         }
         return super.shouldChangeText(in: affectedCharRange, replacementString: replacementString)

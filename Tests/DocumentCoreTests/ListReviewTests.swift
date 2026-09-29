@@ -60,6 +60,18 @@ final class ListReviewTests: XCTestCase {
         XCTAssertEqual(document.paragraphs.count, 1)
         XCTAssertEqual(document.paragraphs[0].text, "")
     }
+    func testRemovingOneOwnSeparatorDoesNotRejectSharedInsertionIdentity() throws {
+        var document = document("A"), second = Paragraph("B"), third = Paragraph("C")
+        second.list = document.paragraphs[0].list; third.list = second.list
+        var review = RunReview(); review.insertion = .init(author: author)
+        document.sections[0].paragraphs[0].breakReview = review; second.breakReview = review
+        document.sections[0].paragraphs += [second, third]
+        XCTAssertFalse(try document.removeOwnInsertedSeparator(after: document.paragraphs[0].id, authorID: UUID()))
+        XCTAssertTrue(try document.removeOwnInsertedSeparator(after: document.paragraphs[0].id, authorID: author.id))
+        XCTAssertEqual(document.paragraphs.map(\.text), ["AB", "C"])
+        XCTAssertEqual(document.paragraphs[0].breakReview, review)
+        XCTAssertEqual(document.pendingRevisionIDs, [review.insertion!.id])
+    }
     func testEmptyReturnTracksOutdentAndInvalidUnicodeIsAtomic() throws {
         var document = document("")
         let original = document
