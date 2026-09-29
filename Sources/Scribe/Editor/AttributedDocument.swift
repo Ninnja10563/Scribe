@@ -24,6 +24,7 @@ extension NSAttributedString.Key {
         for (index, paragraph) in paragraphs.enumerated() {
             let style = document.style(for: paragraph)
             var base = attributes(style: style, paragraph: paragraph, contentWidth: document.sections[0].page.contentWidth)
+            if paragraph.text.isEmpty, let run = paragraph.runs.first { apply(run.format, over: style.text, to: &base) }
             if let cell = paragraph.tableCell { tables.apply(cell, to: &base) }
             let start = result.length
             if paragraph.pageBreakBefore {
@@ -65,10 +66,10 @@ extension NSAttributedString.Key {
             else if offset == storage.length, component.isEmpty, let last = originalParagraphs.last, last.text.isEmpty {
                 // An empty final paragraph has no character to carry its attributes.
                 // Preserve its model identity/style when focus has moved elsewhere.
-                attrs = attributes(style: original.style(for: last), paragraph: last)
+                attrs = editingAttributes(for: last, in: original)
             }
             else if storage.length > 0 { attrs = storage.attributes(at: min(offset, storage.length - 1), effectiveRange: nil) }
-            else { attrs = attributes(style: original.style(for: original.paragraphs[0]), paragraph: original.paragraphs[0]) }
+            else { attrs = editingAttributes(for: original.paragraphs[0], in: original) }
             var p = Paragraph()
             if storage.length == 0 { p.id = original.paragraphs[0].id }
             if let idString = attrs[.scribeParagraphID] as? String, let id = UUID(uuidString: idString), !usedIDs.contains(id) { p.id = id }
@@ -96,34 +97,7 @@ extension NSAttributedString.Key {
                 storage.enumerateAttributes(in: NSRange(location: offset + prefix, length: length - prefix)) { attributes, range, _ in
                     let value = text.substring(with: range)
                     guard !value.isEmpty else { return }
-                    var format = TextFormatting()
-                    if let font = ScriptProjection.logicalFont(in: attributes) {
-                        let inheritedFont = FontProjection.font(TextFormatting(), over: style.text)
-                        let inheritedTraits = NSFontManager.shared.traits(of: inheritedFont)
-                        if font.familyName != inheritedFont.familyName { format.fontFamily = font.familyName }
-                        if Double(font.pointSize) != style.text.fontSize { format.fontSize = Double(font.pointSize) }
-                        let traits = NSFontManager.shared.traits(of: font)
-                        if traits.contains(.boldFontMask) != inheritedTraits.contains(.boldFontMask) { format.bold = traits.contains(.boldFontMask) }
-                        if traits.contains(.italicFontMask) != inheritedTraits.contains(.italicFontMask) { format.italic = traits.contains(.italicFontMask) }
-                        let inferred = FontProjection.font(format, over: style.text)
-                        if inferred.fontName != font.fontName { format.fontFace = font.fontName }
-                        // A missing installed face renders with a fallback, but remains in the
-                        // document until the user actually chooses a different font.
-                        if let requested = attributes[.scribeFontFace] as? String,
-                           attributes[.scribeRenderedFace] as? String == font.fontName {
-                            format.fontFace = requested == style.text.fontFace ? nil : requested
-                        }
-                    }
-                    let underline = (attributes[.underlineStyle] as? Int ?? 0) != 0
-                    if underline != (style.text.underline ?? false) { format.underline = underline }
-                    let strike = (attributes[.strikethroughStyle] as? Int ?? 0) != 0
-                    if strike != (style.text.strikethrough ?? false) { format.strikethrough = strike }
-                    if let color = attributes[.foregroundColor] as? NSColor, let hex = color.hex, hex != (style.text.foreground ?? "#1D1D1F") { format.foreground = hex }
-                    if let color = attributes[.backgroundColor] as? NSColor {
-                        if color.hex != style.text.highlight { format.highlight = color.hex }
-                    } else if style.text.highlight != nil { format.clearHighlight = true }
-                    let baseline = ScriptProjection.level(in: attributes)
-                    if baseline != (style.text.baseline ?? 0) { format.baseline = baseline }
+                    let format = captureTextFormat(attributes, style: style)
                     let link = (attributes[.link] as? URL)?.absoluteString ?? attributes[.link] as? String
                     var run = TextRun(value, format: format, link: link)
                     if let attachment = attributes[.attachment] as? NSTextAttachment {
@@ -135,7 +109,7 @@ extension NSAttributedString.Key {
                     p.runs.append(run)
                 }
             }
-            if p.runs.isEmpty { p.runs = [TextRun("")] }
+            if p.runs.isEmpty { p.runs = [TextRun("", format: captureTextFormat(attrs, style: style))] }
             paragraphs.append(p); offset += length + 1
         }
         document.sections[0].paragraphs = paragraphs

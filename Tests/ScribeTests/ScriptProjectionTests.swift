@@ -7,6 +7,31 @@ import DocumentCore
 
 @MainActor final class ScriptProjectionTests: XCTestCase {
     override func setUp() { super.setUp(); _ = NSApplication.shared }
+    func testEmptyParagraphCharacterFormattingIsUndoableAndSurvivesReopening() throws {
+        let document = ScribeFileDocument()
+        document.makeWindowControllers(); defer { document.close() }
+        let view = document.editorController!.editor.activeTextView
+        document.undoManager?.removeAllActions()
+        view.transformLogicalFonts(action: "Font Size") { NSFontManager.shared.convert($0, toSize: 24) }
+        XCTAssertTrue(document.isDocumentEdited)
+        XCTAssertEqual(document.snapshot().paragraphs[0].runs[0].format.fontSize, 24)
+        document.undoManager?.undo(); XCTAssertNil(document.snapshot().paragraphs[0].runs[0].format.fontSize)
+        document.undoManager?.redo(); XCTAssertEqual(document.snapshot().paragraphs[0].runs[0].format.fontSize, 24)
+        view.superscript(nil)
+        let restored = ScribeFileDocument()
+        restored.model = try NativeFormat.decode(document.data(ofType: "org.scribe.document"))
+        restored.makeWindowControllers(); defer { restored.close() }
+        let reopenedView = restored.editorController!.editor.activeTextView
+        XCTAssertEqual(ScriptProjection.logicalFont(in: reopenedView.typingAttributes)?.pointSize, 24)
+        XCTAssertEqual(ScriptProjection.level(in: reopenedView.typingAttributes), 1)
+        reopenedView.insertText("Raised", replacementRange: NSRange(location: 0, length: 0))
+        XCTAssertEqual(restored.snapshot().paragraphs[0].runs[0].format.fontSize, 24)
+        XCTAssertEqual(restored.snapshot().paragraphs[0].runs[0].format.baseline, 1)
+        reopenedView.unscript(nil)
+        reopenedView.insertText(" normal", replacementRange: reopenedView.selectedRange())
+        XCTAssertEqual(restored.snapshot().paragraphs[0].runs.last?.format.baseline, nil)
+        XCTAssertEqual(restored.snapshot().paragraphs[0].runs.last?.format.fontSize, 24)
+    }
     func testProjectionKeepsLogicalFontSizeAndRendersRaisedAndLoweredGlyphs() throws {
         let document = ScribeFileDocument()
         document.model.styles[0].text.fontSize = 20

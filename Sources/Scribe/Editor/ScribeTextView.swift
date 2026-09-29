@@ -136,7 +136,9 @@ import DocumentCore
         let color = NSColor(srgbRed: 1, green: 0.92, blue: 0.5, alpha: 1)
         let enabled = typingAttributes[.backgroundColor] == nil
         if selectedRange().length == 0 {
-            if enabled { typingAttributes[.backgroundColor] = color } else { typingAttributes.removeValue(forKey: .backgroundColor) }
+            var attributes = typingAttributes
+            if enabled { attributes[.backgroundColor] = color } else { attributes.removeValue(forKey: .backgroundColor) }
+            applyTypingAttributes(attributes, action: "Highlight")
         } else {
             transformSelection(action: "Highlight") { value in
                 let range = NSRange(location: 0, length: value.length)

@@ -128,7 +128,7 @@ import DocumentCore
             for key in [NSAttributedString.Key.attachment, .scribeImage, .scribePageBreakMarker] { attributes.removeValue(forKey: key) }
             view.typingAttributes = attributes
         } else if let document = owner?.model, let paragraph = document.paragraphs.first {
-            view.typingAttributes = AttributedDocument.attributes(style: document.style(for: paragraph), paragraph: paragraph)
+            view.typingAttributes = AttributedDocument.editingAttributes(for: paragraph, in: document)
         } else { view.typingAttributes = AttributedDocument.attributes(style: .normal) }
         view.setAccessibilityLabel("Document page \(textViews.count + 1)")
         textViews.append(view); canvas.addSubview(view)

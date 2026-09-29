@@ -6,7 +6,7 @@ extension ScribeTextView {
         let name = level > 0 ? "Superscript" : level < 0 ? "Subscript" : "Normal Baseline"
         if selectedRange().length == 0 {
             var attributes = typingAttributes
-            ScriptProjection.setLevel(level, in: &attributes); typingAttributes = attributes
+            ScriptProjection.setLevel(level, in: &attributes); applyTypingAttributes(attributes, action: name)
         } else {
             transformSelection(action: name) { value in
                 value.enumerateAttributes(in: NSRange(location: 0, length: value.length)) { existing, range, _ in
@@ -21,7 +21,7 @@ extension ScribeTextView {
         if selectedRange().length == 0 {
             var attributes = typingAttributes
             guard let font = ScriptProjection.logicalFont(in: attributes) else { return }
-            ScriptProjection.setFont(transform(font), in: &attributes); typingAttributes = attributes
+            ScriptProjection.setFont(transform(font), in: &attributes); applyTypingAttributes(attributes, action: action)
         } else {
             transformSelection(action: action) { value in
                 value.enumerateAttributes(in: NSRange(location: 0, length: value.length)) { existing, range, _ in

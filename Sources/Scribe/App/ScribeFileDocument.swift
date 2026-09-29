@@ -103,7 +103,7 @@ import ImportExport
                 if editor.storage.length > 0, selection.location < editor.storage.length {
                     editor.activeTextView.typingAttributes = editor.storage.attributes(at: selection.location, effectiveRange: nil)
                 } else {
-                    editor.activeTextView.typingAttributes = AttributedDocument.attributes(style: value.style(for: paragraph), paragraph: paragraph)
+                    editor.activeTextView.typingAttributes = AttributedDocument.editingAttributes(for: paragraph, in: value)
                 }
             }
         }
