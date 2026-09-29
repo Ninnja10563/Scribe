@@ -18,6 +18,7 @@ build = args.build.resolve()
 output = build / 'office-render'
 output.mkdir(parents=True, exist_ok=True)
 sources = [build / 'smoke/Smoke.docx', build / 'schema/MergedTable.docx', build / 'schema/DocumentProperties.docx', build / 'schema/ImageAdjustments.docx', build / 'schema/ImageRotation.docx', build / 'schema/StyleOverrides.docx', build / 'schema/ScriptTypography.docx', build / 'schema/ParagraphIndents.docx', build / 'schema/RunningContent.docx', build / 'schema/RunningContentStandard.docx', build / 'schema/Equations.docx', build / 'schema/Notes.docx', build / 'schema/TextRevisions.docx', build / 'schema/NoteTextRevisions.docx', build / 'schema/CommentTextRevisions.docx', build / 'schema/OverlappingTextRevisions.docx', build / 'schema/ObjectRevisions.docx', build / 'schema/ParagraphInsertionRevisions.docx', build / 'schema/ParagraphDeletionRevisions.docx']
+sources += [build / 'schema/NoteParagraphFormattingRevisions.docx']
 sources += [build / ("schema/LineHeight-" + mode + ".docx") for mode in ("natural", "multiple", "minimum", "exact")]
 result = subprocess.run([
     'libreoffice', '-env:UserInstallation=' + (output / 'profile').as_uri(),
@@ -46,6 +47,8 @@ for source in sources:
         assert 'Before' in text and 'After' in text, 'Revision package lost surrounding text'
     elif source.stem == 'NoteTextRevisions':
         assert 'footnote' in text and 'endnote' in text, 'Revision package lost note bodies'
+    elif source.stem == 'NoteParagraphFormattingRevisions':
+        assert 'Reviewed citation' in text, 'Paragraph formatting history lost the note content'
     elif source.stem == 'MergedTable':
         assert len(pdf) == 1
         for row in range(3):

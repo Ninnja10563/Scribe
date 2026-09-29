@@ -69,6 +69,30 @@ final class ParagraphFormattingInterchangeTests: XCTestCase {
         XCTAssertTrue(imported.warnings.contains { $0.contains("Style-definition revisions") })
         XCTAssertThrowsError(try DOCX.decodePreservingRevisions(bytes))
     }
+    func testNoteParagraphHistorySharesTheDecisionWorkflow() throws {
+        var source = ScribeDocument(), note = DocumentNote(kind: .footnote, text: "Reviewed citation")
+        var format = ParagraphFormatting(); format.lineSpacing = 0; format.lineHeight = .init(rule: .multiple, value: 1.5)
+        note.paragraphs[0].formatting = format; source.notes = [note]
+        var reference = TextRun("\u{fffc}"); reference.noteID = note.id
+        source.sections[0].paragraphs[0].runs = [TextRun("Source "), reference]
+        let before = source
+        format.lineHeight = .init(rule: .exact, value: 24); format.headIndent = 12; format.firstLineIndent = 12
+        source.notes[0].paragraphs[0].formatting = format
+        try source.recordParagraphFormattingChanges(from: before, identity: .init(author: .init(name: "Note editor")))
+        let bytes = try DOCXWriter(source, revisions: .runChanges).encode()
+        var imported = try DOCX.decodePreservingRevisions(bytes).document
+        XCTAssertEqual(imported.notes[0].paragraphs[0].formatting, format)
+        XCTAssertEqual(imported.notes[0].paragraphs[0].formattingReview?.changes[0].identity.author.name, "Note editor")
+        try imported.resolveAllRevisions(accepting: false)
+        XCTAssertEqual(imported.notes[0].paragraphs[0].formatting, before.notes[0].paragraphs[0].formatting)
+        XCTAssertEqual(imported.notes[0].plainText, "Reviewed citation")
+        try NativeFormat.validate(imported)
+        if let directory = ProcessInfo.processInfo.environment["SCRIBE_SCHEMA_OUTPUT"] {
+            let folder = URL(fileURLWithPath: directory, isDirectory: true)
+            try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+            try bytes.write(to: folder.appendingPathComponent("NoteParagraphFormattingRevisions.docx"), options: .atomic)
+        }
+    }
     func testInheritedPreviousStyleRestoresItsLiveDefinition() throws {
         var source = ScribeDocument()
         source.sections[0].paragraphs = [Paragraph("Style history", style: "heading1")]
