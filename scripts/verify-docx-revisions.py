@@ -55,4 +55,14 @@ with ZipFile(folder / 'CommentTextRevisions.docx') as package:
     end = paragraph.find(W + 'commentRangeEnd')
     assert start.get(W + 'id') == end.get(W + 'id')
     assert projected(start.getnext(), True) == '😀'
+with ZipFile(folder / 'FormattingRevisions.docx') as package:
+    root = etree.fromstring(package.read('word/document.xml'))
+    current = root.find('.//' + W + 'rPr')
+    previous = current.find(W + 'rPrChange/' + W + 'rPr')
+    assert current.find(W + 'sz').get(W + 'val') == '36'
+    assert previous.find(W + 'sz').get(W + 'val') == '28'
+    assert current.find(W + 'b') is not None and previous.find(W + 'b') is None
+    assert current.find(W + 'i') is not None and previous.find(W + 'i') is not None
+    assert current.find(W + 'color').get(W + 'val') == '654321'
+    assert previous.find(W + 'color').get(W + 'val') == '123456'
 print('DOCX text revisions: authors, dates, accepted/rejected Unicode text, links and note parts verified')

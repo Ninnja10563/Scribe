@@ -22,7 +22,7 @@ final class RevisionExportTests: XCTestCase {
         let original = document
         XCTAssertThrowsError(try DOCX.encode(document))
         XCTAssertThrowsError(try DOCXWriter(document).encode())
-        let bytes = try DOCXWriter(document, revisions: .textChanges).encode()
+        let bytes = try DOCXWriter(document, revisions: .runChanges).encode()
         let parts = try ZipArchive.decode(bytes)
         let xml = try XCTUnwrap(parts["word/document.xml"]).string
         XCTAssertTrue(xml.contains("<w:ins w:id=\"0\""))
@@ -53,7 +53,7 @@ final class RevisionExportTests: XCTestCase {
             document.sections[0].paragraphs[0].runs.append(reference)
         }
         XCTAssertThrowsError(try DOCX.encode(document))
-        let bytes = try DOCXWriter(document, revisions: .textChanges).encode()
+        let bytes = try DOCXWriter(document, revisions: .runChanges).encode()
         let parts = try ZipArchive.decode(bytes)
         let imported = try DOCX.decode(bytes)
         XCTAssertEqual(imported.document.notes.map(\.plainText), ["footnote new", "endnote new"])
@@ -74,7 +74,7 @@ final class RevisionExportTests: XCTestCase {
         var document = ScribeDocument()
         document.sections[0].paragraphs[0].runs = [changed("A😀BC")]
         document.comments = [Comment(anchor: .init(paragraphID: document.paragraphs[0].id, offset: 1, length: 2), text: "Emoji", author: "Editor")]
-        let bytes = try DOCXWriter(document, revisions: .textChanges).encode()
+        let bytes = try DOCXWriter(document, revisions: .runChanges).encode()
         let xml = try XCTUnwrap(ZipArchive.decode(bytes)["word/document.xml"]).string
         for id in 0..<3 { XCTAssertTrue(xml.contains("<w:ins w:id=\"\(id)\"")) }
         XCTAssertTrue(xml.contains("</w:ins><w:commentRangeStart"))
@@ -90,20 +90,23 @@ final class RevisionExportTests: XCTestCase {
         try text.format(NSRange(location: 0, length: 4), identity: identity) { original in
             var result = original; result.bold = true; return result
         }
+        try text.format(NSRange(location: 0, length: 4), identity: .init(author: identity.author)) { original in
+            var result = original; result.italic = true; return result
+        }
         document.sections[0].paragraphs[0].runs = text.runs
         try NativeFormat.validate(document)
-        XCTAssertThrowsError(try DOCXWriter(document, revisions: .textChanges).encode())
+        XCTAssertThrowsError(try DOCXWriter(document, revisions: .runChanges).encode())
         document.sections[0].paragraphs = [Paragraph("First"), Paragraph("Second")]
         var separator = RunReview(); separator.insertion = identity
         document.sections[0].paragraphs[0].breakReview = separator
         try NativeFormat.validate(document)
-        XCTAssertThrowsError(try DOCXWriter(document, revisions: .textChanges).encode())
+        XCTAssertThrowsError(try DOCXWriter(document, revisions: .runChanges).encode())
         var equation = changed("\u{fffc}")
         equation.equation = try Equation(source: "x+1")
         document.sections[0].paragraphs = [Paragraph("")]
         document.sections[0].paragraphs[0].runs = [equation]
         try NativeFormat.validate(document)
-        XCTAssertThrowsError(try DOCXWriter(document, revisions: .textChanges).encode())
+        XCTAssertThrowsError(try DOCXWriter(document, revisions: .runChanges).encode())
     }
 
     func testInvalidXMLAuthorAndOutOfRangeDateFailBeforeWritingPackage() throws {
@@ -112,7 +115,7 @@ final class RevisionExportTests: XCTestCase {
             var document = ScribeDocument(), run = TextRun("Text"), review = RunReview()
             review.insertion = identity; run.review = review
             document.sections[0].paragraphs[0].runs = [run]
-            XCTAssertThrowsError(try DOCXWriter(document, revisions: .textChanges).encode())
+            XCTAssertThrowsError(try DOCXWriter(document, revisions: .runChanges).encode())
         }
     }
 
@@ -122,13 +125,13 @@ final class RevisionExportTests: XCTestCase {
         run.review?.deletion = .init(author: .init(name: "Other reviewer"))
         document.sections[0].paragraphs[0].runs = [run]
         try NativeFormat.validate(document)
-        XCTAssertThrowsError(try DOCXWriter(document, revisions: .textChanges).encode())
+        XCTAssertThrowsError(try DOCXWriter(document, revisions: .runChanges).encode())
         document.sections[0].paragraphs[0].runs = [TextRun("Heading")]
         let before = document
         document.sections[0].paragraphs[0].styleID = "heading1"
         try document.recordParagraphFormattingChanges(from: before, identity: identity)
         try NativeFormat.validate(document)
-        XCTAssertThrowsError(try DOCXWriter(document, revisions: .textChanges).encode())
+        XCTAssertThrowsError(try DOCXWriter(document, revisions: .runChanges).encode())
     }
 }
 

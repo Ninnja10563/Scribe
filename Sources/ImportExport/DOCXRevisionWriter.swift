@@ -5,7 +5,7 @@ import DocumentCore
 /// pending revisions until the complete review workflow can round-trip them.
 enum DOCXRevisionExport {
     case disabled
-    case textChanges
+    case runChanges
 }
 
 final class DOCXRevisionWriter {
@@ -14,7 +14,7 @@ final class DOCXRevisionWriter {
 
     static func validate(_ document: ScribeDocument, mode: DOCXRevisionExport) throws {
         guard document.hasPendingRevisions else { return }
-        guard mode == .textChanges else {
+        guard mode == .runChanges else {
             throw DocumentError.invalid("tracked-change DOCX export is still being implemented")
         }
         for paragraph in document.paragraphs + document.notes.flatMap(\.paragraphs) {
@@ -24,14 +24,14 @@ final class DOCXRevisionWriter {
             }
             for run in paragraph.runs {
                 guard let review = run.review, !review.isEmpty else { continue }
-                for identity in [review.insertion, review.deletion].compactMap({ $0 }) {
+                for identity in [review.insertion, review.deletion].compactMap({ $0 }) + review.formatting.map(\.identity) {
                     try DocumentMetadata.validateText(identity.author.name)
                     guard (-62_135_596_800..<253_402_300_800).contains(identity.date.timeIntervalSince1970) else {
                         throw DocumentError.invalid("DOCX revision dates must be within years 1 through 9999")
                     }
                 }
-                guard review.formatting.isEmpty else {
-                    throw DocumentError.invalid("DOCX formatting revision export is not yet supported")
+                guard review.formatting.count <= 1 else {
+                    throw DocumentError.invalid("DOCX layered formatting revision export is not yet supported")
                 }
                 guard review.insertion == nil || review.deletion == nil else {
                     throw DocumentError.invalid("DOCX overlapping insertion and deletion export is not yet supported")
@@ -49,11 +49,23 @@ final class DOCXRevisionWriter {
     func wrap(_ content: String, review: RunReview?) -> String {
         guard let identity = review?.deletion ?? review?.insertion else { return content }
         let tag = review?.deletion == nil ? "ins" : "del"
+        return "<w:\(tag) \(attributes(identity))>\(content)</w:\(tag)>"
+    }
+
+    func properties(_ run: TextRun) -> String {
+        var properties = DOCX.runProperties(run.format)
+        if let change = run.review?.formatting.first {
+            properties += "<w:rPrChange \(attributes(change.identity))><w:rPr>\(DOCX.runProperties(change.before))</w:rPr></w:rPrChange>"
+        }
+        return properties
+    }
+
+    private func attributes(_ identity: RevisionIdentity) -> String {
         let id = nextID; nextID += 1
         let author = DOCX.xml(identity.author.name)
             .replacingOccurrences(of: "\t", with: "&#9;")
             .replacingOccurrences(of: "\n", with: "&#10;")
             .replacingOccurrences(of: "\r", with: "&#13;")
-        return "<w:\(tag) w:id=\"\(id)\" w:author=\"\(author)\" w:date=\"\(dates.string(from: identity.date))\">\(content)</w:\(tag)>"
+        return "w:id=\"\(id)\" w:author=\"\(author)\" w:date=\"\(dates.string(from: identity.date))\""
     }
 }

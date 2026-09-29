@@ -151,7 +151,7 @@ final class DOCXWriter {
                 .replacingOccurrences(of: "\t", with: close + "<w:tab/>" + open)
                 .replacingOccurrences(of: "\u{2028}", with: close + "<w:br/>" + open)
                 .replacingOccurrences(of: "\u{c}", with: close + "<w:br w:type=\"page\"/>" + open)
-            let content = revisions.wrap("<w:r><w:rPr>\(DOCX.runProperties(run.format))</w:rPr>\(open)\(text)\(close)</w:r>", review: run.review)
+            let content = revisions.wrap("<w:r><w:rPr>\(revisions.properties(run))</w:rPr>\(open)\(text)\(close)</w:r>", review: run.review)
             guard let link = run.link else { return content }
             if let id = DocumentLink.paragraphID(link) {
                 guard bookmarkIDs[id] != nil else { return content }
