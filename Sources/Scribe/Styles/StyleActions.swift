@@ -15,7 +15,7 @@ extension EditorWindowController {
         let sourceID = attributes[.scribeStyle] as? String ?? "normal"
         var style = fileDocument.model.styles.first { $0.id == sourceID } ?? .normal
         style.id = UUID().uuidString; style.name = "Custom Style"; style.isBuiltIn = false
-        if let font = attributes[.font] as? NSFont {
+        if let font = ScriptProjection.logicalFont(in: attributes) {
             style.text.fontFamily = font.familyName; style.text.fontFace = attributes[.scribeFontFace] as? String ?? font.fontName; style.text.fontSize = font.pointSize
             let traits = NSFontManager.shared.traits(of: font)
             style.text.bold = traits.contains(.boldFontMask); style.text.italic = traits.contains(.italicFontMask)

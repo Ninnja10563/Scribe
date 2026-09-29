@@ -43,7 +43,8 @@ extension EditorWindowController {
                 case "docx": try DOCX.encode(model).write(to: url, options: .atomic)
                 case "md": try TextFormats.exportMarkdown(model).write(to: url, atomically: true, encoding: .utf8)
                 case "rtf":
-                    let data = try self.editor.storage.data(from: NSRange(location: 0, length: self.editor.storage.length), documentAttributes: [.documentType: NSAttributedString.DocumentType.rtf])
+                    let value = try ExternalTextProjection.render(self.editor.storage, includeImages: false)
+                    let data = try value.data(from: NSRange(location: 0, length: value.length), documentAttributes: [.documentType: NSAttributedString.DocumentType.rtf])
                     try data.write(to: url, options: .atomic)
                 default: try model.plainText.write(to: url, atomically: true, encoding: .utf8)
                 }

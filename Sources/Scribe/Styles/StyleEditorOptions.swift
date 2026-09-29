@@ -79,9 +79,9 @@ import DocumentCore
     }
     @objc private func updatePreview() {
         highlight.isEnabled = useHighlight.state == .on
-        guard let style = try? value(contentWidth: 10000) else { return }
-        var attributes = AttributedDocument.attributes(style: style)
-        if let font = attributes[.font] as? NSFont { attributes[.font] = NSFontManager.shared.convert(font, toSize: min(26, font.pointSize)) }
+        guard var style = try? value(contentWidth: 10000) else { return }
+        style.text.fontSize = min(26, style.text.fontSize ?? 12)
+        let attributes = AttributedDocument.attributes(style: style)
         preview.attributedStringValue = NSAttributedString(string: "Scribe — The quick brown fox", attributes: attributes)
     }
     private func populateFaces(selected: String?) {

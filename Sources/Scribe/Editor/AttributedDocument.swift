@@ -97,7 +97,7 @@ extension NSAttributedString.Key {
                     let value = text.substring(with: range)
                     guard !value.isEmpty else { return }
                     var format = TextFormatting()
-                    if let font = attributes[.font] as? NSFont {
+                    if let font = ScriptProjection.logicalFont(in: attributes) {
                         let inheritedFont = FontProjection.font(TextFormatting(), over: style.text)
                         let inheritedTraits = NSFontManager.shared.traits(of: inheritedFont)
                         if font.familyName != inheritedFont.familyName { format.fontFamily = font.familyName }
@@ -188,6 +188,7 @@ extension NSAttributedString.Key {
         if let color = highlight { attributes[.backgroundColor] = NSColor(hex: color) }
         else { attributes.removeValue(forKey: .backgroundColor) }
         if let baseline = f.baseline ?? base.baseline { attributes[.superscript] = baseline }
+        ScriptProjection.apply(to: &attributes)
     }
     static func paragraphFormatting(_ ns: NSParagraphStyle) -> ParagraphFormatting {
         var f = ParagraphFormatting()

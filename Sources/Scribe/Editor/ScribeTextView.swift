@@ -5,6 +5,19 @@ import DocumentCore
 @MainActor final class ScribeTextView: NSTextView {
     weak var editor: PaginatedEditor?
     private(set) var spellingTask: Task<Void, Never>?
+    override func superscript(_ sender: Any?) { setScriptLevel(1) }
+    override func `subscript`(_ sender: Any?) { setScriptLevel(-1) }
+    override func unscript(_ sender: Any?) { setScriptLevel(0) }
+    override func changeFont(_ sender: Any?) {
+        let manager = sender as? NSFontManager ?? NSFontManager.shared
+        transformLogicalFonts(action: "Font") { manager.convert($0) }
+    }
+    override func updateFontPanel() {
+        super.updateFontPanel()
+        let range = selectedRange()
+        let attributes = range.length > 0 && range.location < (textStorage?.length ?? 0) ? textStorage!.attributes(at: range.location, effectiveRange: nil) : typingAttributes
+        if let font = ScriptProjection.logicalFont(in: attributes) { NSFontManager.shared.setSelectedFont(font, isMultiple: false) }
+    }
     override func checkSpelling(_ sender: Any?) {
         spellingTask?.cancel()
         spellingTask = Task { [weak self] in
@@ -47,11 +60,13 @@ import DocumentCore
         return types
     }
     override func writeSelection(to pasteboard: NSPasteboard, type: NSPasteboard.PasteboardType) -> Bool {
-        // AppKit still requests the pre-UTI RTFD name during ordinary Copy.
-        guard type == .rtfd || type.rawValue == "NeXT RTFD pasteboard type", let textStorage else { return super.writeSelection(to: pasteboard, type: type) }
+        // AppKit still requests pre-UTI names during ordinary Copy.
+        let richImages = type == .rtfd || type.rawValue == "NeXT RTFD pasteboard type"
+        let richText = type == .rtf || type.rawValue == "NeXT Rich Text Format v1.0 pasteboard type"
+        guard richImages || richText, let textStorage else { return super.writeSelection(to: pasteboard, type: type) }
         do {
-            let value = try ExternalImageProjection.render(textStorage.attributedSubstring(from: selectedRange()))
-            let data = try value.data(from: NSRange(location: 0, length: value.length), documentAttributes: [.documentType: NSAttributedString.DocumentType.rtfd])
+            let value = try ExternalTextProjection.render(textStorage.attributedSubstring(from: selectedRange()), includeImages: richImages)
+            let data = try value.data(from: NSRange(location: 0, length: value.length), documentAttributes: [.documentType: richImages ? NSAttributedString.DocumentType.rtfd : .rtf])
             return pasteboard.setData(data, forType: type)
         } catch { presentError(error); return false }
     }
@@ -103,18 +118,11 @@ import DocumentCore
     @objc func toggleItalic(_ sender: Any?) { toggleTrait(.italicFontMask) }
     private func toggleTrait(_ trait: NSFontTraitMask) {
         let range = selectedRange()
-        let font = typingAttributes[.font] as? NSFont ?? NSFont.systemFont(ofSize: 12)
+        let attributes = range.length > 0 && range.location < (textStorage?.length ?? 0) ? textStorage!.attributes(at: range.location, effectiveRange: nil) : typingAttributes
+        let font = ScriptProjection.logicalFont(in: attributes) ?? NSFont.systemFont(ofSize: 12)
         let remove = NSFontManager.shared.traits(of: font).contains(trait)
-        if range.length == 0 {
-            typingAttributes[.font] = remove ? NSFontManager.shared.convert(font, toNotHaveTrait: trait) : NSFontManager.shared.convert(font, toHaveTrait: trait)
-            return
-        }
-        transformSelection(action: trait == .boldFontMask ? "Bold" : "Italic") { value in
-            value.enumerateAttribute(.font, in: NSRange(location: 0, length: value.length)) { font, range, _ in
-                guard let font = font as? NSFont else { return }
-                let changed = remove ? NSFontManager.shared.convert(font, toNotHaveTrait: trait) : NSFontManager.shared.convert(font, toHaveTrait: trait)
-                value.addAttribute(.font, value: changed, range: range)
-            }
+        transformLogicalFonts(action: trait == .boldFontMask ? "Bold" : "Italic") { font in
+            remove ? NSFontManager.shared.convert(font, toNotHaveTrait: trait) : NSFontManager.shared.convert(font, toHaveTrait: trait)
         }
     }
     @objc func toggleHighlight(_ sender: Any?) {
