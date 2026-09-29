@@ -82,7 +82,7 @@ import ImportExport
                 catch is CancellationError { }
                 catch { self?.editorController?.showStatus("Recovery copy failed: \(error.localizedDescription)") }
             }
-            self.editorController?.refreshOutline()
+            self.editorController?.refreshOutline(using: snapshot.document)
         }
         recoveryWork = work; DispatchQueue.main.asyncAfter(deadline: .now() + 1.5, execute: work)
     }

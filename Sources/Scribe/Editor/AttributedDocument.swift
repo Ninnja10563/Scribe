@@ -76,6 +76,7 @@ extension NSAttributedString.Key {
         var document = original
         var paragraphs: [Paragraph] = [], usedIDs: Set<UUID> = []
         var capturedNotes: [DocumentNote] = []
+        var characterFormats = CharacterFormatCaptureCache()
         let text = storage.string as NSString
         let originalParagraphs = original.paragraphs
         let originalsByID = Dictionary(originalParagraphs.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
@@ -143,7 +144,7 @@ extension NSAttributedString.Key {
                 storage.enumerateAttributes(in: NSRange(location: offset + prefix, length: length - prefix)) { attributes, range, _ in
                     let value = text.substring(with: range)
                     guard !value.isEmpty else { return }
-                    let format = captureTextFormat(attributes, style: style)
+                    let format = characterFormats.format(attributes, style: style)
                     let link = (attributes[.link] as? URL)?.absoluteString ?? attributes[.link] as? String
                     var run = TextRun(value, format: format, link: link)
                     if let data = attributes[.scribeReview] as? Data {
@@ -168,7 +169,7 @@ extension NSAttributedString.Key {
                     } else { p.runs.append(run) }
                 }
             }
-            if p.runs.isEmpty { p.runs = [TextRun("", format: captureTextFormat(attrs, style: style))] }
+            if p.runs.isEmpty { p.runs = [TextRun("", format: characterFormats.format(attrs, style: style))] }
             paragraphs.append(p); offset += length + 1
         }
         document.sections[0].paragraphs = paragraphs

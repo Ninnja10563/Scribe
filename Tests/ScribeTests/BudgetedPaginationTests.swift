@@ -35,7 +35,9 @@ import DocumentCore
         let document = document(paragraphs: 1600); defer { document.close() }
         let original = document.model.paragraphs.map(\.text), editor = document.editorController!.editor
         document.editorController?.window?.makeKeyAndOrderFront(nil)
-        try await Task.sleep(nanoseconds: 30_000_000)
+        // Let the newly shown window finish its first compositor transaction.
+        document.editorController?.window?.displayIfNeeded()
+        try await Task.sleep(nanoseconds: 500_000_000)
         XCTAssertGreaterThan(editor.canvas.pageCount, 200)
         editor.select(NSRange(location: 0, length: 0)); editor.activeTextView.insertNewline(nil)
         var completions = 0
@@ -60,7 +62,10 @@ import DocumentCore
             }
         }
         XCTAssertFalse(editor.hasPendingPagination); XCTAssertGreaterThan(ticks, 1); XCTAssertEqual(completions, 1)
-        let model = document.snapshot(); try NativeFormat.validate(model)
+        let snapshotBegan = ProcessInfo.processInfo.systemUptime
+        let model = document.snapshot()
+        let snapshotSeconds = ProcessInfo.processInfo.systemUptime - snapshotBegan
+        try NativeFormat.validate(model)
         let reference = ScribeFileDocument(); reference.model = model; reference.model.id = UUID()
         reference.makeWindowControllers(); defer { reference.close() }
         let cold = reference.editorController!.editor
@@ -77,7 +82,7 @@ import DocumentCore
         let a = try XCTUnwrap(PDFDocument(url: partialPDF)), b = try XCTUnwrap(PDFDocument(url: coldPDF))
         XCTAssertEqual(a.pageCount, 3); XCTAssertEqual(a.pageCount, b.pageCount)
         for index in 0..<a.pageCount { XCTAssertEqual(a.page(at: index)?.string, b.page(at: index)?.string) }
-        let measurements: [String: Any] = ["pages": editor.canvas.pageCount, "heartbeatCount": ticks,
+        let measurements: [String: Any] = ["pages": editor.canvas.pageCount, "heartbeatCount": ticks, "snapshotSeconds": snapshotSeconds,
             "maximumHeartbeatGapSeconds": maximumGap, "heartbeatGapsSeconds": heartbeatGaps, "observedBatches": batches]
         try JSONSerialization.data(withJSONObject: measurements, options: [.prettyPrinted, .sortedKeys])
             .write(to: folder.appendingPathComponent("BudgetedPaginationMeasurements.json"))
