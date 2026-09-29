@@ -97,7 +97,7 @@ import DocumentCore
         canvas.header = document.model.sections[0].header; canvas.footer = document.model.sections[0].footer
         storage.delegate = self
         storage.addLayoutManager(layout); layout.delegate = self
-        layout.allowsNonContiguousLayout = true
+        layout.allowsNonContiguousLayout = false
         storage.setAttributedString(projectedContent ?? AttributedDocument.render(document.model))
         scrollView.documentView = canvas
         scrollView.hasVerticalScroller = true; scrollView.hasHorizontalScroller = true
