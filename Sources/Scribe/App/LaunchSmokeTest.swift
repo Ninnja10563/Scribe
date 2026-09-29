@@ -132,7 +132,7 @@ extension AppDelegate {
         let word = try DOCX.encode(document.snapshot())
         try word.write(to: folder.appendingPathComponent("Notes-smoke.docx"))
         guard try DOCX.decode(word).document.notes.map(\.plainText) == [foot, end].map(\.plainText) else { throw DocumentError.invalid("DOCX note round-trip lost content") }
-        try await Task.sleep(nanoseconds: 100_000_000)
+        try await Task.sleep(nanoseconds: 500_000_000)
         controller.window?.displayIfNeeded()
         if let view = controller.window?.contentView, let bitmap = view.bitmapImageRepForCachingDisplay(in: view.bounds) {
             view.cacheDisplay(in: view.bounds, to: bitmap)

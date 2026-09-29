@@ -86,6 +86,29 @@ final class NoteInterchangeTests: XCTestCase {
         duplicateDefinition["word/footnotes.xml"] = Data(duplicateXML.utf8)
         XCTAssertThrowsError(try DOCX.decode(ZipArchive.encode(duplicateDefinition)))
     }
+    func testNoteReviewAnchorsAndCustomMarksDiscloseTheirImportLimitations() throws {
+        var model = ScribeDocument()
+        let note = DocumentNote(kind: .footnote, text: "Reviewed citation")
+        model.notes = [note]
+        var reference = TextRun("\u{fffc}"); reference.noteID = note.id
+        model.sections[0].paragraphs[0].runs = [reference]
+        var parts = try ZipArchive.decode(DOCX.encode(model))
+        let body = String(decoding: parts["word/document.xml"]!, as: UTF8.self)
+        parts["word/document.xml"] = Data(body.replacingOccurrences(of: "<w:footnoteReference w:id=\"1\"/>", with: "<w:footnoteReference w:id=\"1\" w:customMarkFollows=\"true\"/><w:t>*</w:t>").utf8)
+        let notes = String(decoding: parts["word/footnotes.xml"]!, as: UTF8.self)
+        parts["word/footnotes.xml"] = Data(notes.replacingOccurrences(of: "<w:footnoteRef/>", with: "<w:footnoteRef/><w:commentReference w:id=\"17\"/>").utf8)
+        parts["word/comments.xml"] = Data("<w:comments xmlns:w=\"\(DOCX.wordNS)\"><w:comment w:id=\"17\" w:author=\"Reviewer\"><w:p><w:r><w:t>Keep this review text.</w:t></w:r></w:p></w:comment></w:comments>".utf8)
+        let relationships = String(decoding: parts["word/_rels/document.xml.rels"]!, as: UTF8.self)
+        parts["word/_rels/document.xml.rels"] = Data(relationships.replacingOccurrences(of: "</Relationships>", with: "<Relationship Id=\"noteReview\" Type=\"\(DOCX.relationNS)/comments\" Target=\"comments.xml\"/></Relationships>").utf8)
+        let types = String(decoding: parts["[Content_Types].xml"]!, as: UTF8.self)
+        parts["[Content_Types].xml"] = Data(types.replacingOccurrences(of: "</Types>", with: "<Override PartName=\"/word/comments.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.wordprocessingml.comments+xml\"/></Types>").utf8)
+        let result = try DOCX.decode(ZipArchive.encode(parts))
+        XCTAssertEqual(result.document.notes.first?.plainText, note.plainText)
+        XCTAssertEqual(result.document.comments.first?.text, "Keep this review text.")
+        XCTAssertEqual(result.document.comments.first?.isDetached, true)
+        XCTAssertTrue(result.warnings.contains { $0.contains("Custom note reference") })
+        XCTAssertTrue(result.warnings.contains { $0.contains("note anchors") })
+    }
     func testAlternateNotePartNamesAndNamespacePrefixesAreResolved() throws {
         var document = ScribeDocument()
         let note = DocumentNote(kind: .footnote, text: "Alternate namespace note.")
