@@ -7,11 +7,22 @@ extension ScribeTextView {
     func editableListRange(_ range: NSRange) -> NSRange {
         guard let storage = textStorage, range.location >= 0, range.length >= 0,
               range.location <= storage.length, range.length <= storage.length - range.location,
-              let context = listContext(for: range), context.start < storage.length,
-              storage.attribute(.scribeList, at: context.start, effectiveRange: nil) != nil,
-              NSMaxRange(range) <= context.end, range.location < context.contentStart else { return range }
-        let end = max(context.contentStart, NSMaxRange(range))
-        return NSRange(location: context.contentStart, length: end - context.contentStart)
+              storage.length > 0,
+              storage.attribute(.scribeList, at: min(range.location, storage.length - 1), effectiveRange: nil) != nil else { return range }
+        let text = storage.string as NSString
+        let preceding = text.range(of: "\n", options: .backwards, range: NSRange(location: 0, length: range.location))
+        var start = preceding.location == NSNotFound ? 0 : NSMaxRange(preceding)
+        if start < text.length, text.character(at: start) == 12 { start += 1 }
+        guard start < text.length, text.character(at: start) == 9 else { return range }
+        let tab = text.range(of: "\t", range: NSRange(location: start + 1, length: text.length - start - 1))
+        guard tab.location != NSNotFound else { return range }
+        let contentStart = NSMaxRange(tab)
+        guard range.location < contentStart else { return range }
+        let newline = text.range(of: "\n", range: NSRange(location: contentStart, length: text.length - contentStart))
+        let paragraphEnd = newline.location == NSNotFound ? text.length : newline.location
+        guard NSMaxRange(range) <= paragraphEnd else { return range }
+        let end = max(contentStart, NSMaxRange(range))
+        return NSRange(location: contentStart, length: end - contentStart)
     }
     func listContentReplacement(_ value: NSAttributedString, range: NSRange, formatting: Bool) -> (NSRange, NSAttributedString) {
         let adjusted = editableListRange(range)
