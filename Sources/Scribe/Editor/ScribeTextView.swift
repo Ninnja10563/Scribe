@@ -385,7 +385,7 @@ import DocumentCore
               let url = urls.first, ["png", "jpg", "jpeg", "heic", "tif", "tiff"].contains(url.pathExtension.lowercased()) else { return nil }
         return url
     }
-    @objc func showFonts() { window?.makeFirstResponder(self); NSFontManager.shared.orderFrontFontPanel(self) }
+    @objc func showFonts() { editor?.owner?.editorController?.showFonts() }
     @objc func toggleBold(_ sender: Any?) { toggleTrait(.boldFontMask) }
     @objc func toggleItalic(_ sender: Any?) { toggleTrait(.italicFontMask) }
     private func toggleTrait(_ trait: NSFontTraitMask) {
@@ -414,7 +414,7 @@ import DocumentCore
     @objc func toggleStrike(_ sender: Any?) { toggleAttribute(.strikethroughStyle) }
     func toggleAttribute(_ key: NSAttributedString.Key) {
         let enabled = (typingAttributes[key] as? Int ?? 0) == 0
-        if selectedRange().length == 0 { typingAttributes[key] = enabled ? 1 : 0; return }
+        if selectedRange().length == 0 { var attributes = typingAttributes; attributes[key] = enabled ? 1 : 0; applyTypingAttributes(attributes, action: "Formatting"); return }
         transformSelection(action: "Formatting") { $0.addAttribute(key, value: enabled ? 1 : 0, range: NSRange(location: 0, length: $0.length)) }
     }
     func transformSelection(action: String, _ transform: (NSMutableAttributedString) -> Void) {

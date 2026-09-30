@@ -15,6 +15,9 @@ import DocumentCore
     let stylePicker = NSPopUpButton()
     let zoomPicker = NSPopUpButton()
     let toolbar = NSStackView()
+    let formattingSidebar = FormattingSidebar(frame: .zero)
+    var copiedCharacterAppearance: [NSAttributedString.Key: Any]?
+    private var formattingBeforeFocus = false
     let searchBar = SearchBar()
     lazy var reviewNavigation = ReviewNavigation(owner: self)
     private let outlineHint = NSTextField(wrappingLabelWithString: "Apply heading styles to build your document outline.")
@@ -87,6 +90,9 @@ import DocumentCore
         reviewSidebar.owner = self; split.addArrangedSubview(reviewSidebar); reviewSidebar.isHidden = true
         reviewSidebar.widthAnchor.constraint(equalToConstant: 300).isActive = true
         split.setHoldingPriority(.defaultHigh, forSubviewAt: 3)
+        formattingSidebar.owner = self; split.addArrangedSubview(formattingSidebar); formattingSidebar.isHidden = true
+        formattingSidebar.widthAnchor.constraint(equalToConstant: 320).isActive = true
+        split.setHoldingPriority(.defaultHigh, forSubviewAt: 4)
         setupOutline()
         sidebar.widthAnchor.constraint(greaterThanOrEqualToConstant: 200).isActive = true
         sidebar.widthAnchor.constraint(lessThanOrEqualToConstant: 280).isActive = true
@@ -159,6 +165,7 @@ import DocumentCore
     func updateStatus() {
         guard !isClosing else { return }
         editor.paragraphRuler?.refresh()
+        if !formattingSidebar.isHidden { formattingSidebar.refresh() }
         if let warning = editor.outputWarning { status.stringValue = warning; return }
         let view = editor.activeTextView
         let selection = view.selectedRange()
@@ -192,7 +199,11 @@ import DocumentCore
         let index = stylePicker.indexOfSelectedItem; guard fileDocument.model.styles.indices.contains(index) else { return }
         editor.applyStyle(fileDocument.model.styles[index].id)
     }
-    @objc func showFonts() { window?.makeFirstResponder(editor.activeTextView); NSFontManager.shared.orderFrontFontPanel(self) }
+    @objc func showFonts() {
+        if isFocused { toggleFocus() }
+        formattingSidebar.refresh(); ChromeAnimation.reveal(formattingSidebar)
+        window?.contentView?.layoutSubtreeIfNeeded()
+    }
     @objc func bulletList() { editor.applyList(ListDescriptor()) }
     @objc func numberedList() { editor.applyList(ListDescriptor(kind: .decimal)) }
     @objc func toggleSidebar() { sidebar.isHidden.toggle() }
@@ -204,6 +215,8 @@ import DocumentCore
         editor.scrollView.rulersVisible.toggle(); editor.paragraphRuler?.refresh(); editor.viewportChanged()
     }
     @objc func toggleFocus() {
+        if !isFocused { formattingBeforeFocus = !formattingSidebar.isHidden; formattingSidebar.isHidden = true }
+        else { formattingSidebar.isHidden = !formattingBeforeFocus }
         if !isFocused { rulerBeforeFocus = editor.scrollView.rulersVisible; editor.scrollView.rulersVisible = false }
         else { editor.scrollView.rulersVisible = rulerBeforeFocus }
         if !isFocused { commentsBeforeFocus = !commentsSidebar.isHidden; commentsSidebar.isHidden = true }
@@ -213,7 +226,7 @@ import DocumentCore
         isFocused.toggle(); sidebar.isHidden = isFocused; toolbar.isHidden = isFocused; if isFocused { searchBar.isHidden = true }; window?.makeFirstResponder(editor.activeTextView) }
     @objc func findNext() { searchBar.isHidden = false; searchBar.next() }
     @objc func findPrevious() { searchBar.isHidden = false; searchBar.previous() }
-    @objc func showFind() { searchBar.isHidden = false; window?.makeFirstResponder(searchBar.query) }
+    @objc func showFind() { ChromeAnimation.reveal(searchBar); window?.makeFirstResponder(searchBar.query) }
     @objc func changeZoom() {
         let title = zoomPicker.titleOfSelectedItem ?? "100%"
         if title == "Fit Width" { editor.selectZoom(.fitWidth) }
