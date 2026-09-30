@@ -27,27 +27,27 @@ jobs:
           PROFILE: ${{ inputs.profile }}
           SCRIBE_PROFILE_NATIVE: ${{ inputs.profile }}
         run: |
-          if [ "$PROFILE" != "true" ]; then
-            swift test --filter "$TEST_FILTER"
-            exit
-          fi
-          swift build --build-tests
+          swift build --build-tests --sanitize=address
           mkdir -p build/schema
-          swift test --skip-build --filter "$TEST_FILTER" &
-          test_runner=$!
-          for attempt in $(seq 1 100); do
-            if [ -s build/schema/NativeTestPID ]; then
-              test_pid=$(cat build/schema/NativeTestPID)
-              sample "$test_pid" 2 1 -file build/schema/NativeProcessSample.txt || true
-              break
-            fi
-            if ! kill -0 "$test_runner" 2>/dev/null; then break; fi
-            sleep 0.1
-          done
-          wait "$test_runner"
-          test -s build/schema/NativeProcessSample.txt
+          python3 - <<'PYCODE'
+          import os, pathlib, subprocess
+          log = open('build/schema/FormattingASAN.log', 'w')
+          env = dict(os.environ, ASAN_OPTIONS='detect_leaks=0:halt_on_error=1')
+          process = subprocess.Popen(['swift', 'test', '--sanitize=address', '--skip-build', '--filter', os.environ['TEST_FILTER']], stdout=log, stderr=subprocess.STDOUT, env=env)
+          try:
+              code = process.wait(timeout=240)
+          except subprocess.TimeoutExpired:
+              pids = subprocess.run(['pgrep', '-f', 'ScribePackageTests'], capture_output=True, text=True).stdout.split()
+              for pid in pids:
+                  subprocess.run(['sample', pid, '3', '1', '-file', 'build/schema/ASAN-' + pid + '.txt'], timeout=20)
+              process.terminate()
+              code = 124
+          log.close()
+          print(pathlib.Path('build/schema/FormattingASAN.log').read_text())
+          raise SystemExit(code)
+          PYCODE
       - name: Diagnose failed targeted tests with Objective-C zombies
-        if: failure()
+        if: false
         env:
           NSZombieEnabled: "YES"
           SCRIBE_SCHEMA_OUTPUT: build/schema
