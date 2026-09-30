@@ -87,6 +87,11 @@ struct SemanticTextSnapshot: Sendable {
         }
     }
 
+    /// Authored ranges exclude generated numbering and running note labels.
+    func contentSourceRanges(in range: NSRange) -> [NSRange] {
+        segments.map { NSIntersectionRange($0.source, range) }.filter { $0.length > 0 }
+    }
+
     func text(inSourceRange range: NSRange) -> String {
         let value = text as NSString
         return segments.compactMap { segment -> String? in

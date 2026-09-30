@@ -86,16 +86,24 @@ extension ScribeTextView {
     @objc func uppercaseSelection(_ sender: Any?) { changeCase(uppercase: true) }
     @objc func lowercaseSelection(_ sender: Any?) { changeCase(uppercase: false) }
     func changeCase(uppercase: Bool) {
-        let selection = selectedRange()
+        let selection = editableListRange(selectedRange())
         guard selection.length > 0, let storage = textStorage, NSMaxRange(selection) <= storage.length else { NSSound.beep(); return }
         let original = storage.attributedSubstring(from: selection)
-        let result = NSMutableAttributedString(string: "")
-        original.enumerateAttributes(in: NSRange(location: 0, length: original.length)) { attributes, range, _ in
-            let text = (original.string as NSString).substring(with: range)
-            let transformed = attributes[.attachment] == nil ? (uppercase ? text.uppercased() : text.lowercased()) : text
-            result.append(NSAttributedString(string: transformed, attributes: attributes))
+        let result = NSMutableAttributedString(attributedString: original)
+        let authored = editor?.semanticText.contentSourceRanges(in: selection) ?? [selection]
+        var replacements: [(NSRange, NSAttributedString)] = []
+        for sourceRange in authored {
+            let local = NSRange(location: sourceRange.location - selection.location, length: sourceRange.length)
+            original.enumerateAttributes(in: local) { attributes, range, _ in
+                guard attributes[.attachment] == nil else { return }
+                let text = (original.string as NSString).substring(with: range)
+                let transformed = uppercase ? text.uppercased() : text.lowercased()
+                if text != transformed { replacements.append((range, NSAttributedString(string: transformed, attributes: attributes))) }
+            }
         }
+        for (range, value) in replacements.reversed() { result.replaceCharacters(in: range, with: value) }
         guard result.string != original.string else { return }
+        setSelectedRange(selection)
         replaceSelection(result, action: uppercase ? "Uppercase" : "Lowercase")
         // Case conversion can expand Unicode characters, for example ß → SS.
         setSelectedRange(NSRange(location: selection.location, length: min(result.length, (textStorage?.length ?? 0) - selection.location)))

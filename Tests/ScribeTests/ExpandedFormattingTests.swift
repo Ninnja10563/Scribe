@@ -109,6 +109,23 @@ import ImportExport
         controller.editor.activeTextView.insertText("Future typing", replacementRange: NSRange(location: NSNotFound, length: 0))
         XCTAssertEqual(document.snapshot().paragraphs[0].runs[0].format.underline, true)
     }
+    func testCaseConversionDoesNotAuthorOrChangeGeneratedListNumbers() throws {
+        for count in [1, 2] {
+            let document = ScribeFileDocument()
+            document.model.sections[0].paragraphs = (0..<count).map { _ in
+                var paragraph = Paragraph("straße"); paragraph.list = .init(kind: .lowerRoman); return paragraph
+            }
+            document.makeWindowControllers(); defer { document.close() }
+            let editor = try XCTUnwrap(document.editorController?.editor)
+            editor.select(NSRange(location: 0, length: editor.storage.length))
+            editor.activeTextView.uppercaseSelection(nil)
+            XCTAssertEqual(document.snapshot().paragraphs.map(\.text), Array(repeating: "STRASSE", count: count))
+            XCTAssertTrue(editor.storage.string.hasPrefix("\ti.\t"))
+            if count == 2 { XCTAssertTrue(editor.storage.string.contains("\tii.\tSTRASSE")) }
+            document.undoManager?.undo()
+            XCTAssertEqual(document.snapshot().paragraphs.map(\.text), Array(repeating: "straße", count: count))
+        }
+    }
     func testContextualFontMenuUsesTheInWindowSidebar() throws {
         let document = ScribeFileDocument(); document.makeWindowControllers(); defer { document.close() }
         let controller = try XCTUnwrap(document.editorController)
