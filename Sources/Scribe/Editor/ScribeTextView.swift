@@ -21,7 +21,6 @@ import DocumentCore
         let color = (sender as? NSColorPanel)?.color ?? NSColorPanel.shared.color
         setCharacterColour(color, highlight: false)
     }
-    }
     override func alignLeft(_ sender: Any?) {
         if !applyTrackedAlignment(.left) { super.alignLeft(sender) }
     }
