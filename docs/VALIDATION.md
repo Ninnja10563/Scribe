@@ -594,3 +594,15 @@ Tag v0.22.0 points to 9fe835e84efcd161d973bb57c23f0cc1508d87f5. Full candidate r
 GitHub published Scribe-0.22.0-arm64.dmg and its checksum on 29 September 2026 UTC, then advanced the public Sparkle feed. The actual downloaded 3,632,099-byte DMG passed scripts/verify-published-update.py: SHA-256, public feed version 0.22.0/build 25, asset URL, byte length and Ed25519 signature against the public key in the exact released Info.plist. SHA-256: `9742fd25a8ab4830994e5079d908c52736a5d98dcae332bd0aa930376808b5b4`.
 
 This is an ad-hoc-signed prerelease. These automated macOS results do not establish Developer ID signing, notarization, physical-Mac Gatekeeper/IME/accessibility validation or manual Word/Pages interoperability. Earlier versions require one manual installation to acquire the updater.
+
+## Published 0.23.0
+
+Tag v0.23.0 points to e6cd1cafdae21bef1446cff78375350a1581ce7e. Candidate CI 36653736661 and tagged release CI 36654825269 succeeded, including native tests, repeated lifecycle checks, Address Sanitizer, packaged direct/Finder-style startup, signed updater installation/forged rejection, native render/save/PDF checks, Office XML validation and independent LibreOffice rendering. The candidate executed 489 tests with zero failures; each subsequent native repeat/sanitizer suite contained 263 tests. The exact tagged revision also passed 232 portable tests on Linux, with one AppKit placeholder skipped.
+
+Targeted run 36653733778 passed all nine formatting regressions. Separate diagnostic 36654105627 passed the same nine tests under Address Sanitizer. Coverage includes the sidebar residing in the document window, contextual font routing, font/size persistence and DOCX round-trip, copied formatting preserving destination links and paragraph identity, Undo/Redo, style-based clearing, Unicode expansion, single/multiple Roman-list prefix preservation, empty-paragraph decoration and future typing, and immediate reduced-motion reveal. A separate full-suite diagnostic was canceled after the actual candidate sanitizer completed successfully; the slower earlier full runs also completed successfully.
+
+The captured candidate sidebar was visually inspected. Its actual PDF was independently read with PyMuPDF: the selected word uses Menlo-Regular at 19.5 points, the remaining text is unchanged, and output occupies one page. The actual DOCX fixture has zero Office 2013 schema/semantic errors. The checked-in sidebar PNG is a native test capture, not a mockup.
+
+GitHub published the 3,678,094-byte Scribe-0.23.0-arm64.dmg and checksum on 30 September 2026 UTC. After downloading the published assets, verify-published-update.py confirmed the SHA-256, live appcast version 0.23.0/build 26, exact asset URL/length and Ed25519 signature against the released public key. SHA-256: `2555663153c09ccebbcd201cad36e2660358b57897e252bd8030387c23507163`.
+
+This remains an ad-hoc-signed prerelease. Automated macOS checks do not establish notarization, physical-Mac accessibility/IME validation, manual Word/Pages interoperability or complete Word formatting coverage.

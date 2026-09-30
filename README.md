@@ -2,11 +2,11 @@
 
 A native document-authoring application for Apple Silicon Macs, built with Swift and AppKit. This repository is an early foundation for a professional word processor, not a finished Word or Pages replacement.
 
-[Download Scribe 0.22.0 for Apple Silicon](https://github.com/Ninnja10563/Scribe/releases/tag/v0.22.0) · [Feature status](docs/FEATURES.md)
+[Download Scribe 0.23.0 for Apple Silicon](https://github.com/Ninnja10563/Scribe/releases/tag/v0.23.0) · [Feature status](docs/FEATURES.md)
 
 ![Scribe's native document window with a table and inline image](docs/images/scribe-light.png)
 
-[View the dark appearance](docs/images/scribe-dark.png). These are captures of the running macOS application.
+[View the dark appearance](docs/images/scribe-dark.png) or the [in-window formatting sidebar](docs/images/scribe-formatting.png). These are captures of the running macOS application.
 
 Requires **macOS 14+**, an **Apple Silicon Mac**, and **Swift 6** to build.
 
@@ -30,7 +30,7 @@ On Linux, install Swift 6 plus the zlib development headers (`zlib1g-dev` on Deb
 - Native multi-window documents and macOS tabs, menus, keyboard shortcuts, spelling and rich text input.
 - Shared TextKit storage with real glyph flow across physical pages; A4, Letter, Legal, custom paper dimensions, orientation and margins.
 - Named paragraph styles, style modifications, custom styles, headings and a native collapsible outline with keyboard navigation.
-- Common character formatting, font panel, alignment, multiple/minimum/exact line heights, spacing/indents and a draggable paragraph ruler, basic lists, page breaks, headers/footers and configurable page numbers.
+- In-window font family/typeface/size controls (⌘T), character formatting, colour/highlight palettes, format copying, case conversion, alignment, multiple/minimum/exact line heights, spacing/indents and a draggable paragraph ruler, basic lists, page breaks, headers/footers and configurable page numbers.
 - Structured tables with row/column editing, cell formatting and minimum row heights; inline images with proportional resize handles, reversible crop/rotation/opacity and accessibility descriptions.
 - Inline equations with native source editing and preview, vector fractions/roots/scripts/operators, native persistence and Office Math interchange.
 - Find/replace with case and whole-word matching, selected-text word counts, focus mode and zoom.

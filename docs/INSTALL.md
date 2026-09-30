@@ -17,3 +17,5 @@ open build/Scribe.app
 Starting with 0.22, use **Scribe → Check for Updates…** for manual checks. The same menu controls automatic checking and optional automatic downloading/installation. Install 0.22 manually once if upgrading from an older release. Keep the app in Applications rather than launching it from the mounted DMG so it can be updated. Update packages have Ed25519 signatures; these are separate from Apple's Developer ID signing and notarization.
 
 See [software update settings and verification](UPDATES.md) for details.
+
+In 0.23, press **Command–T** or use the toolbar’s text-format button to open fonts and formatting inside the document window. Close the sidebar with its × button. The Format and Find reveal animations respect macOS Reduce Motion.
