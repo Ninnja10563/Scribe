@@ -18,8 +18,11 @@ import DocumentCore
     private var displayedFamily = ""
     private let colours = ["#1D1D1F", "#FFFFFF", "#666666", "#B71C1C", "#D84315", "#F9A825", "#2E7D32", "#00838F", "#1565C0", "#283593", "#6A1B9A", "#AD1457", "#FFF176", "#A5D6A7", "#90CAF9", "#F8BBD0"]
     private let colourNames = ["Black", "White", "Grey", "Red", "Orange", "Gold", "Green", "Teal", "Blue", "Indigo", "Purple", "Magenta", "Light yellow", "Light green", "Light blue", "Light pink"]
-    override init(frame frameRect: NSRect) {
-        super.init(frame: frameRect)
+    private var hasBuiltContents = false
+    override init(frame frameRect: NSRect) { super.init(frame: frameRect) }
+    private func buildContentsIfNeeded() {
+        guard !hasBuiltContents else { return }
+        hasBuiltContents = true
         let content = FormattingContentStack(); content.orientation = .vertical; content.alignment = .leading; content.spacing = 10
         content.edgeInsets = NSEdgeInsets(top: 16, left: 16, bottom: 20, right: 16)
         let title = NSTextField(labelWithString: "Format"); title.font = .systemFont(ofSize: 15, weight: .semibold)
@@ -93,6 +96,7 @@ import DocumentCore
         configure(popup, label: isHighlight ? "Highlight colour" : "Text colour", action: #selector(changeColour(_:)))
     }
     func refresh() {
+        buildContentsIfNeeded()
         guard let owner, !owner.isClosing else { return }
         let view = owner.editor.activeTextView
         let attributes = view.currentCharacterAttributes
