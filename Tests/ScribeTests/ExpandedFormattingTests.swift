@@ -17,16 +17,25 @@ import ImportExport
         XCTAssertTrue(controller.formattingSidebar.window === controller.window)
         XCTAssertFalse(NSApp.windows.contains { $0 is NSFontPanel && $0.isVisible })
         let sidebar = controller.formattingSidebar
-        sidebar.family.selectItem(withTitle: "Courier"); sidebar.changeFamily()
+        sidebar.family.selectItem(withTitle: "Menlo")
+        XCTAssertEqual(sidebar.family.titleOfSelectedItem, "Menlo")
+        sidebar.changeFamily()
+        XCTAssertEqual(ScriptProjection.logicalFont(in: editor.activeTextView.currentCharacterAttributes)?.familyName, "Menlo")
         sidebar.size.stringValue = "19.5"; sidebar.changeSize()
         let snapshot = document.snapshot()
-        XCTAssertEqual(snapshot.paragraphs[0].runs.first?.format.fontFamily, "Courier")
+        XCTAssertEqual(snapshot.paragraphs[0].runs.first?.format.fontFamily, "Menlo")
         XCTAssertEqual(snapshot.paragraphs[0].runs.first?.format.fontSize, 19.5)
         let reopened = try NativeFormat.decode(NativeFormat.encode(snapshot))
         XCTAssertEqual(reopened.paragraphs, snapshot.paragraphs)
         let office = try DOCX.decode(DOCX.encode(snapshot))
         XCTAssertEqual(office.document.paragraphs[0].runs.first?.format.fontSize, 19.5)
         NativeDialogCapture.save(controller.window!.contentView!, name: "FormattingSidebar")
+        if let directory = ProcessInfo.processInfo.environment["SCRIBE_SCHEMA_OUTPUT"] {
+            let folder = URL(fileURLWithPath: directory)
+            try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+            try PrintRenderer(editor: editor).exportPDF(to: folder.appendingPathComponent("FormattingSidebar.pdf"), title: "Formatting", author: "Scribe")
+            try DOCX.encode(snapshot).write(to: folder.appendingPathComponent("FormattingSidebar.docx"))
+        }
         controller.toggleFocus(); XCTAssertTrue(sidebar.isHidden)
         controller.toggleFocus(); XCTAssertFalse(sidebar.isHidden)
     }
@@ -78,8 +87,10 @@ import ImportExport
         controller.setLineHeightMultiple(2)
         XCTAssertEqual(document.snapshot().paragraphs[0].formatting?.lineHeight, .init(rule: .multiple, value: 2))
         controller.increaseIndent(); XCTAssertEqual(document.snapshot().paragraphs[0].formatting?.headIndent, 24)
+        document.undoManager?.removeAllActions()
         controller.togglePageBreakBefore(); XCTAssertTrue(document.snapshot().paragraphs[0].pageBreakBefore)
         document.undoManager?.undo(); XCTAssertFalse(document.snapshot().paragraphs[0].pageBreakBefore)
+        document.undoManager?.removeAllActions()
         controller.clearParagraphFormatting(); XCTAssertNil(document.snapshot().paragraphs[0].formatting)
         document.undoManager?.undo(); XCTAssertEqual(document.snapshot().paragraphs[0].formatting?.headIndent, 24)
     }

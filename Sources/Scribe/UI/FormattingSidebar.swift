@@ -19,7 +19,7 @@ import DocumentCore
     private let colourNames = ["Black", "White", "Grey", "Red", "Orange", "Gold", "Green", "Teal", "Blue", "Indigo", "Purple", "Magenta", "Light yellow", "Light green", "Light blue", "Light pink"]
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
-        let content = NSStackView(); content.orientation = .vertical; content.alignment = .leading; content.spacing = 10
+        let content = FormattingContentStack(); content.orientation = .vertical; content.alignment = .leading; content.spacing = 10
         content.edgeInsets = NSEdgeInsets(top: 16, left: 16, bottom: 20, right: 16)
         let title = NSTextField(labelWithString: "Format"); title.font = .systemFont(ofSize: 15, weight: .semibold)
         let close = NSButton(image: NSImage(systemSymbolName: "xmark", accessibilityDescription: "Close formatting sidebar")!, target: self, action: #selector(closeSidebar))
@@ -33,7 +33,6 @@ import DocumentCore
         configure(face, label: "Typeface and weight", action: #selector(changeFace))
         size.addItems(withObjectValues: ["8", "9", "10", "11", "12", "14", "16", "18", "20", "24", "28", "36", "48", "72"])
         size.target = self; size.action = #selector(changeSize); size.setAccessibilityLabel("Font size in points")
-        size.widthAnchor.constraint(equalToConstant: 85).isActive = true
         content.addArrangedSubview(family); content.addArrangedSubview(face)
         content.addArrangedSubview(row([size, command("A−", "Decrease font size", "shrinkFont:"), command("A+", "Increase font size", "growFont:")]))
         content.addArrangedSubview(row([command("B", "Bold", "toggleBold:"), command("I", "Italic", "toggleItalic:"), command("U", "Underline", "underline:"), command("S̶", "Strikethrough", "toggleStrike:")]))
@@ -148,5 +147,8 @@ import DocumentCore
         else if sender === highlight { owner?.editor.activeTextView.setCharacterColour(nil, highlight: true) }
         sender.selectItem(at: 0)
     }
+}
+@MainActor private final class FormattingContentStack: NSStackView {
+    override var isFlipped: Bool { true }
 }
 #endif

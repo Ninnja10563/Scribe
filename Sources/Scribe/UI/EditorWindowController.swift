@@ -66,7 +66,7 @@ import DocumentCore
         toolbar.addArrangedSubview(button("sidebar.left", "Show or hide outline", #selector(toggleSidebar)))
         stylePicker.target = self; stylePicker.action = #selector(changeStyle); stylePicker.setAccessibilityLabel("Paragraph style")
         stylePicker.widthAnchor.constraint(equalToConstant: 125).isActive = true; toolbar.addArrangedSubview(stylePicker)
-        toolbar.addArrangedSubview(button("textformat", "Choose font", #selector(showFonts)))
+        toolbar.addArrangedSubview(button("textformat", "Font and formatting sidebar (⌘T)", #selector(showFonts)))
         toolbar.addArrangedSubview(divider())
         toolbar.addArrangedSubview(button("bold", "Bold (⌘B)", #selector(ScribeTextView.toggleBold(_:)), responder: true))
         toolbar.addArrangedSubview(button("italic", "Italic (⌘I)", #selector(ScribeTextView.toggleItalic(_:)), responder: true))

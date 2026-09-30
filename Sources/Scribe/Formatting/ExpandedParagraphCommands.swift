@@ -23,7 +23,7 @@ extension EditorWindowController {
                 list.level = max(0, min(8, list.level + (amount > 0 ? 1 : -1))); paragraph.list = list
             } else {
                 var format = paragraph.formatting ?? style.paragraph
-                let delta = max(-min(format.headIndent, format.firstLineIndent), min(amount, width - 30 - format.tailIndent - max(format.headIndent, format.firstLineIndent)))
+                let delta = amount > 0 ? max(0, min(amount, width - 30 - format.tailIndent - max(format.headIndent, format.firstLineIndent))) : max(amount, -min(format.headIndent, format.firstLineIndent))
                 format.headIndent += delta; format.firstLineIndent += delta; paragraph.formatting = format
             }
         }

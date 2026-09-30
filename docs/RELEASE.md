@@ -1,10 +1,11 @@
-# Scribe 0.22.0 — Launch and software updates
+# Scribe 0.23.0 — Formatting in your document window
 
-Fixed an ownership-registration bug that created editor windows without adding them to their document’s window list. Scribe now opens a blank editable document immediately at startup, before recovery scanning. Reopening Scribe from the Dock restores an existing window or opens a document when none remain. A dedicated packaged-app startup check covers window visibility, typing and reopening, separately from the document-rendering smoke test.
+Font controls now live in a document-local Format sidebar instead of a separate font panel. Open it with the toolbar’s text-format button or Command–T. Choose an installed font family, its typeface/weight and a fractional point size. Selection changes refresh the controls; mixed selections identify that the first character’s font is displayed.
 
-The Scribe menu adds Check for Updates, automatic checking and optional automatic downloading/installation through Sparkle 2.10.0. Update packages are verified with an embedded Ed25519 public key. The release workflow publishes the update feed only after the release DMG exists and required checks pass. Unsaved documents use the normal macOS document termination flow.
+The sidebar brings together bold, italic, underline, strikethrough, superscript/subscript, normal baseline, text and highlight colour palettes, all four alignments, six line-spacing presets, six list numbering formats, indentation, paragraph spacing and style editing. Detailed spacing and list settings retain their existing dialogs.
 
-Install this version manually once: older Scribe builds do not contain an updater. Drag Scribe.app from the DMG into Applications. Subsequent compatible releases can use the new updater. Automatic installation is optional and can be changed in the Scribe menu.
+New commands increase/decrease font size, convert selections to uppercase/lowercase, copy/paste character formatting, clear direct character or paragraph formatting, indent/outdent and toggle a page break before selected paragraphs. Copying formatting preserves destination links and object identities. Clearing formatting restores the named style. Empty-paragraph formatting is saved and undoable.
 
-This remains an ad-hoc-signed Apple Silicon development release for macOS 14 or later, not a Developer ID-signed or notarized build. Native format v15 remains unchanged. Floating-image development remains on its separate branch; this release does not enable floating images or Track Changes.
+The Format sidebar and Find bar use a short reveal animation. macOS Reduce Motion disables it. Focus mode hides and restores the Format sidebar.
 
+This is a broader everyday formatting workspace, not complete Microsoft Word formatting parity. Advanced typography, custom tabs, paragraph borders/shading, columns, keep-with-next and widow/orphan controls remain future work. Native format v15 is unchanged. Apple Silicon/macOS 14+, ad-hoc signed; Developer ID signing and notarization are not configured. Existing 0.22 installations can receive this release through the signed updater after publication.
