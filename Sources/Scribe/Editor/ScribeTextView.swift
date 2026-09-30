@@ -263,6 +263,7 @@ import DocumentCore
     }
     override func menu(for event: NSEvent) -> NSMenu? {
         let menu = super.menu(for: event) ?? NSMenu()
+        routeFontMenu(menu)
         if selectedRange().location < (textStorage?.length ?? 0), textStorage?.attribute(.scribeEquation, at: selectedRange().location, effectiveRange: nil) != nil {
             menu.addItem(.separator())
             menu.addItem(NSMenuItem(title: "Edit Equation…", action: #selector(EditorWindowController.editEquation), keyEquivalent: ""))

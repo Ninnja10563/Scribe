@@ -20,6 +20,17 @@ import DocumentCore
 }
 
 extension ScribeTextView {
+    /// AppKit can contribute its own font-panel command to a contextual submenu.
+    func routeFontMenu(_ menu: NSMenu) {
+        guard let controller = editor?.owner?.editorController else { return }
+        for item in menu.items {
+            if item.action == #selector(NSFontManager.orderFrontFontPanel(_:)) {
+                item.title = "Font and Formatting Sidebar"
+                item.target = controller; item.action = #selector(EditorWindowController.showFonts)
+            }
+            if let submenu = item.submenu { routeFontMenu(submenu) }
+        }
+    }
     var currentCharacterAttributes: [NSAttributedString.Key: Any] {
         let range = selectedRange()
         return range.length > 0 && range.location < (textStorage?.length ?? 0)

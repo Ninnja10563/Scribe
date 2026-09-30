@@ -109,6 +109,19 @@ import ImportExport
         controller.editor.activeTextView.insertText("Future typing", replacementRange: NSRange(location: NSNotFound, length: 0))
         XCTAssertEqual(document.snapshot().paragraphs[0].runs[0].format.underline, true)
     }
+    func testContextualFontMenuUsesTheInWindowSidebar() throws {
+        let document = ScribeFileDocument(); document.makeWindowControllers(); defer { document.close() }
+        let controller = try XCTUnwrap(document.editorController)
+        let menu = NSMenu(), submenu = NSMenu()
+        let root = NSMenuItem(title: "Font", action: nil, keyEquivalent: ""); root.submenu = submenu; menu.addItem(root)
+        let fonts = NSMenuItem(title: "Show Fonts", action: #selector(NSFontManager.orderFrontFontPanel(_:)), keyEquivalent: "")
+        fonts.target = NSFontManager.shared; submenu.addItem(fonts)
+        controller.editor.activeTextView.routeFontMenu(menu)
+        XCTAssertTrue(fonts.target === controller)
+        XCTAssertEqual(fonts.action, #selector(EditorWindowController.showFonts))
+        XCTAssertTrue(NSApp.sendAction(fonts.action!, to: fonts.target, from: fonts))
+        XCTAssertFalse(controller.formattingSidebar.isHidden)
+    }
     func testReducedMotionRevealIsImmediate() {
         let view = NSView(); view.isHidden = true; view.alphaValue = 0
         ChromeAnimation.reveal(view, reduceMotion: true)
