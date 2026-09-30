@@ -15,16 +15,12 @@ import DocumentCore
         transformLogicalFonts(action: "Font") { manager.convert($0) }
     }
     override func underline(_ sender: Any?) {
-        if editor?.reviewEditing.author == nil { super.underline(sender) }
-        else { toggleAttribute(.underlineStyle) }
+        toggleAttribute(.underlineStyle)
     }
     override func changeColor(_ sender: Any?) {
-        guard editor?.reviewEditing.author != nil else { super.changeColor(sender); return }
         let color = (sender as? NSColorPanel)?.color ?? NSColorPanel.shared.color
-        if selectedRange().length == 0 {
-            var attributes = typingAttributes; attributes[.foregroundColor] = color
-            applyTypingAttributes(attributes, action: "Text Colour")
-        } else { transformSelection(action: "Text Colour") { $0.addAttribute(.foregroundColor, value: color, range: NSRange(location: 0, length: $0.length)) } }
+        setCharacterColour(color, highlight: false)
+    }
     }
     override func alignLeft(_ sender: Any?) {
         if !applyTrackedAlignment(.left) { super.alignLeft(sender) }
@@ -399,7 +395,7 @@ import DocumentCore
     }
     @objc func toggleHighlight(_ sender: Any?) {
         let color = NSColor(srgbRed: 1, green: 0.92, blue: 0.5, alpha: 1)
-        let enabled = typingAttributes[.backgroundColor] == nil
+        let enabled = currentCharacterAttributes[.backgroundColor] == nil
         if selectedRange().length == 0 {
             var attributes = typingAttributes
             if enabled { attributes[.backgroundColor] = color } else { attributes.removeValue(forKey: .backgroundColor) }
@@ -413,7 +409,7 @@ import DocumentCore
     }
     @objc func toggleStrike(_ sender: Any?) { toggleAttribute(.strikethroughStyle) }
     func toggleAttribute(_ key: NSAttributedString.Key) {
-        let enabled = (typingAttributes[key] as? Int ?? 0) == 0
+        let enabled = (currentCharacterAttributes[key] as? Int ?? 0) == 0
         if selectedRange().length == 0 { var attributes = typingAttributes; attributes[key] = enabled ? 1 : 0; applyTypingAttributes(attributes, action: "Formatting"); return }
         transformSelection(action: "Formatting") { $0.addAttribute(key, value: enabled ? 1 : 0, range: NSRange(location: 0, length: $0.length)) }
     }

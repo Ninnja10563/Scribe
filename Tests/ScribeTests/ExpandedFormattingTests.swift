@@ -94,6 +94,21 @@ import ImportExport
         controller.clearParagraphFormatting(); XCTAssertNil(document.snapshot().paragraphs[0].formatting)
         document.undoManager?.undo(); XCTAssertEqual(document.snapshot().paragraphs[0].formatting?.headIndent, 24)
     }
+    func testEmptyUnderlineAndHighlightPersistAndActualButtonActionWorks() throws {
+        let document = ScribeFileDocument(); document.makeWindowControllers(); defer { document.close() }
+        let controller = try XCTUnwrap(document.editorController); controller.showFonts()
+        func descendants(_ view: NSView) -> [NSView] { [view] + view.subviews.flatMap(descendants) }
+        let button = try XCTUnwrap(descendants(controller.formattingSidebar).compactMap { $0 as? NSButton }.first { $0.identifier?.rawValue == "underline:" })
+        button.performClick(nil)
+        XCTAssertEqual(document.snapshot().paragraphs[0].runs[0].format.underline, true)
+        XCTAssertEqual(button.state, .on)
+        controller.editor.activeTextView.setCharacterColour(NSColor(hex: "#FFF176"), highlight: true)
+        let reopened = try NativeFormat.decode(NativeFormat.encode(document.snapshot()))
+        XCTAssertEqual(reopened.paragraphs[0].runs[0].format.highlight, "#FFF176")
+        XCTAssertEqual(reopened.paragraphs[0].runs[0].format.underline, true)
+        controller.editor.activeTextView.insertText("Future typing", replacementRange: NSRange(location: NSNotFound, length: 0))
+        XCTAssertEqual(document.snapshot().paragraphs[0].runs[0].format.underline, true)
+    }
     func testReducedMotionRevealIsImmediate() {
         let view = NSView(); view.isHidden = true; view.alphaValue = 0
         ChromeAnimation.reveal(view, reduceMotion: true)

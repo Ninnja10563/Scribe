@@ -14,6 +14,7 @@ import DocumentCore
     private let textColour = NSPopUpButton()
     private let highlight = NSPopUpButton()
     private var faceNames: [String] = []
+    private var characterButtons: [String: NSButton] = [:]
     private var displayedFamily = ""
     private let colours = ["#1D1D1F", "#FFFFFF", "#666666", "#B71C1C", "#D84315", "#F9A825", "#2E7D32", "#00838F", "#1565C0", "#283593", "#6A1B9A", "#AD1457", "#FFF176", "#A5D6A7", "#90CAF9", "#F8BBD0"]
     private let colourNames = ["Black", "White", "Grey", "Red", "Orange", "Gold", "Green", "Teal", "Blue", "Indigo", "Purple", "Magenta", "Light yellow", "Light green", "Light blue", "Light pink"]
@@ -73,7 +74,11 @@ import DocumentCore
     private func configure(_ control: NSPopUpButton, label: String, action: Selector) { control.target = self; control.action = action; control.setAccessibilityLabel(label) }
     private func command(_ title: String, _ help: String, _ selector: String) -> NSButton {
         let button = NSButton(title: title, target: self, action: #selector(textAction(_:)))
-        button.identifier = .init(selector); button.toolTip = help; button.setAccessibilityLabel(help); button.bezelStyle = .rounded; button.controlSize = .small
+        button.identifier = .init(selector)
+        if ["toggleBold:", "toggleItalic:", "underline:", "toggleStrike:", "superscript:", "subscript:", "unscript:"].contains(selector) {
+            button.setButtonType(.pushOnPushOff); button.allowsMixedState = true; characterButtons[selector] = button
+        }
+        button.toolTip = help; button.setAccessibilityLabel(help); button.bezelStyle = .rounded; button.controlSize = .small
         return button
     }
     private func controllerCommand(_ title: String, _ selector: String) -> NSButton {
@@ -91,6 +96,27 @@ import DocumentCore
         guard let owner, !owner.isClosing else { return }
         let view = owner.editor.activeTextView
         let attributes = view.currentCharacterAttributes
+        var samples = [attributes]
+        let selection = view.selectedRange()
+        if selection.length > 0, NSMaxRange(selection) <= owner.editor.storage.length {
+            samples = []
+            owner.editor.storage.enumerateAttributes(in: selection) { value, _, _ in samples.append(value) }
+        }
+        for (selector, button) in characterButtons {
+            let states = samples.map { value -> Bool in
+                let traits = ScriptProjection.logicalFont(in: value).map { NSFontManager.shared.traits(of: $0) } ?? []
+                switch selector {
+                case "toggleBold:": return traits.contains(.boldFontMask)
+                case "toggleItalic:": return traits.contains(.italicFontMask)
+                case "underline:": return (value[.underlineStyle] as? Int ?? 0) != 0
+                case "toggleStrike:": return (value[.strikethroughStyle] as? Int ?? 0) != 0
+                case "superscript:": return ScriptProjection.level(in: value) == 1
+                case "subscript:": return ScriptProjection.level(in: value) == -1
+                default: return ScriptProjection.level(in: value) == 0
+                }
+            }
+            button.state = states.allSatisfy { $0 } ? .on : states.contains(true) ? .mixed : .off
+        }
         if let font = ScriptProjection.logicalFont(in: attributes) {
             let name = font.familyName ?? font.fontName
             if !family.itemTitles.contains(name) { family.addItem(withTitle: name) }
